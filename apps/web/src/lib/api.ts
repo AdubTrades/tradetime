@@ -29,6 +29,7 @@ export const api = {
   get: <T>(url: string) => request<T>('GET', url),
   post: <T>(url: string, body?: unknown) => request<T>('POST', url, body),
   patch: <T>(url: string, body: unknown) => request<T>('PATCH', url, body),
+  put: <T>(url: string, body: unknown) => request<T>('PUT', url, body),
   delete: <T>(url: string) => request<T>('DELETE', url),
 };
 
@@ -93,7 +94,7 @@ export interface AuditEntry {
   reason: string | null;
   at: string;
 }
-export type ListKind = 'expense_category' | 'expense_type' | 'payment_method';
+export type ListKind = 'expense_category' | 'expense_type' | 'payment_method' | 'mood' | 'mistake';
 export interface ListItem {
   id: string;
   kind: ListKind;
@@ -170,4 +171,102 @@ export interface FySummary {
   gstRegistered: boolean;
   expenses: { total: Totals; byCategory: (Totals & { categoryId: string | null; name: string })[] };
   payouts: { count: number; audReceivedCents: number; grossUsdCents: number };
+}
+export interface Contract {
+  id: string;
+  symbol: string;
+  name: string;
+  tickSize: number;
+  pointValueCents: number;
+  feePerSideCents: number;
+  archived: boolean;
+}
+export interface AccountGroup {
+  id: string;
+  name: string;
+  members: { accountId: string; multiplier: number }[];
+}
+export interface GradeRule {
+  grade: string;
+  maxMissed: number;
+  riskNote?: string | null;
+}
+export interface PlayCriterion {
+  id: string;
+  playId: string;
+  label: string;
+  mustHave: boolean;
+  sortOrder: number;
+  archived: boolean;
+}
+export interface Play {
+  id: string;
+  title: string;
+  description: string | null;
+  gradeRules: GradeRule[];
+  sortOrder: number;
+  archived: boolean;
+  criteria: PlayCriterion[];
+  exampleCount: number;
+}
+export interface PlayExample {
+  id: string;
+  playId: string;
+  grade: string;
+  attachmentId: string;
+  caption: string | null;
+  date: string | null;
+  resultLabel: string | null;
+  sourceTradeId: string | null;
+  mime: string;
+}
+export type PlayDetail = Play & { examples: PlayExample[] };
+export interface FillRow {
+  at: string;
+  side: 'buy' | 'sell';
+  qty: number;
+  price: number;
+}
+export interface TradeAccountRow {
+  id: string;
+  accountId: string;
+  multiplier: number;
+  maxQty: number;
+  avgEntry: number;
+  avgExit: number;
+  grossCents: number;
+  feesCents: number;
+  netCents: number;
+  plannedRiskCents: number | null;
+}
+export interface TradeBase {
+  id: string;
+  tradingDay: string;
+  contractId: string;
+  direction: 'long' | 'short';
+  playId: string | null;
+  grade: string | null;
+  outsidePlan: boolean;
+  stopPrice: number | null;
+  targetPrice: number | null;
+  plannedRiskPoints: number | null;
+  followedPlan: 'yes' | 'partly' | 'no' | null;
+  emotionId: string | null;
+  confidence: number | null;
+  notes: string | null;
+  sessionId: string | null;
+  openedAt: string;
+  closedAt: string;
+  netCents: number;
+  grossCents: number;
+  feesCents: number;
+  r: number | null;
+  mistakeIds: string[];
+}
+export interface TradeRow extends TradeBase {
+  accounts: TradeAccountRow[];
+}
+export interface TradeDetail extends TradeBase {
+  accounts: (TradeAccountRow & { fills: (FillRow & { id: string })[] })[];
+  checks: { criterionId: string; label: string; mustHave: boolean; checked: boolean }[];
 }

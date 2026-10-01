@@ -7,7 +7,7 @@ import { AppError } from './errors';
 const { listItem } = schema;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0] | Db;
 
-export const listKinds = ['expense_category', 'expense_type', 'payment_method'] as const;
+export const listKinds = ['expense_category', 'expense_type', 'payment_method', 'mood', 'mistake'] as const;
 export type ListKind = (typeof listKinds)[number];
 
 export function listItems(kind: ListKind) {

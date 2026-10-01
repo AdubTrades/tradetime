@@ -1,8 +1,13 @@
-import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, Outlet, redirect, useParams } from '@tanstack/react-router';
 import { financialYearOf, localDate } from '@tc/domain';
 import { AppShell } from './components/AppShell';
 import { DevAttachments } from './pages/DevAttachments';
 import { ExpensesPage } from './pages/expenses/ExpensesPage';
+import { DayPage } from './pages/journal/DayPage';
+import { JournalPage } from './pages/journal/JournalPage';
+import { TradeDetailPage } from './pages/journal/TradeDetailPage';
+import { PlaybookPage } from './pages/playbook/PlaybookPage';
+import { PlayDetailPage } from './pages/playbook/PlayDetailPage';
 import { ExpensesReport } from './pages/expenses/ExpensesReport';
 import { Placeholder } from './pages/Placeholder';
 import { SettingsPage } from './pages/SettingsPage';
@@ -19,11 +24,35 @@ const page = <TPath extends string>(path: TPath, title: string, phase: string) =
 
 const shellRoutes = [
   createRoute({ getParentRoute: () => shellRoute, path: '/', beforeLoad: () => redirect({ to: '/journal' }) }),
-  page('/journal', 'Journal', 'Phase 3'),
+  createRoute({ getParentRoute: () => shellRoute, path: '/journal', component: JournalPage }),
+  createRoute({
+    getParentRoute: () => shellRoute,
+    path: '/journal/trades/$tradeId',
+    component: function TradeRoute() {
+      const { tradeId } = useParams({ strict: false }) as { tradeId: string };
+      return <TradeDetailPage key={tradeId} tradeId={tradeId} />;
+    },
+  }),
+  createRoute({
+    getParentRoute: () => shellRoute,
+    path: '/journal/day/$day',
+    component: function DayRoute() {
+      const { day } = useParams({ strict: false }) as { day: string };
+      return <DayPage key={day} day={day} />;
+    },
+  }),
   page('/calendar', 'Calendar', 'Phase 5'),
   createRoute({ getParentRoute: () => shellRoute, path: '/time-log', component: TimeLogPage }),
   createRoute({ getParentRoute: () => shellRoute, path: '/expenses', component: ExpensesPage }),
-  page('/playbook', 'Playbook', 'Phase 3'),
+  createRoute({ getParentRoute: () => shellRoute, path: '/playbook', component: PlaybookPage }),
+  createRoute({
+    getParentRoute: () => shellRoute,
+    path: '/playbook/$playId',
+    component: function PlayRoute() {
+      const { playId } = useParams({ strict: false }) as { playId: string };
+      return <PlayDetailPage key={playId} playId={playId} />;
+    },
+  }),
   createRoute({ getParentRoute: () => shellRoute, path: '/settings', component: SettingsPage }),
   ...(import.meta.env.DEV ? [createRoute({ getParentRoute: () => shellRoute, path: '/dev/attachments', component: DevAttachments })] : []),
 ];

@@ -1,10 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { clsx } from 'clsx';
 import { FileText, ImagePlus, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { api, type Attachment, type AttachmentLink } from '../lib/api';
-
-const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,image/heic,application/pdf';
+import { FileDropTarget } from './FileDropTarget';
 
 interface Props {
   ownerType: string;
@@ -12,14 +10,13 @@ interface Props {
   role?: string;
   /** Listen for Cmd+V anywhere on the page, not just when the zone has focus. */
   pasteAnywhere?: boolean;
+  /** Extra controls under each thumbnail (e.g. "Send to Playbook"). */
+  renderActions?: (attachment: Attachment) => ReactNode;
 }
 
 /** Attach screenshots/receipts by drag-and-drop, clipboard paste or file picker. */
-export function AttachmentDropzone({ ownerType, ownerId, role, pasteAnywhere = false }: Props) {
+export function AttachmentDropzone({ ownerType, ownerId, role, pasteAnywhere = false, renderActions }: Props) {
   const qc = useQueryClient();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const zoneRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
   const queryKey = ['attachments', ownerType, ownerId];
 
   const { data: items = [] } = useQuery({
@@ -44,54 +41,18 @@ export function AttachmentDropzone({ ownerType, ownerId, role, pasteAnywhere = f
     onSuccess: () => qc.invalidateQueries({ queryKey }),
   });
 
-  const addFiles = (files: FileList | File[] | null | undefined) => {
-    const list = Array.from(files ?? []);
-    if (list.length) upload.mutate(list);
-  };
-
-  useEffect(() => {
-    const target: HTMLElement | Window | null = pasteAnywhere ? window : zoneRef.current;
-    if (!target) return;
-    const onPaste = (e: Event) => {
-      const files = (e as ClipboardEvent).clipboardData?.files;
-      if (files?.length) {
-        e.preventDefault();
-        addFiles(files);
-      }
-    };
-    target.addEventListener('paste', onPaste);
-    return () => target.removeEventListener('paste', onPaste);
-  });
-
   return (
     <div className="space-y-3">
-      <div
-        ref={zoneRef}
-        tabIndex={0}
-        role="button"
-        aria-label="Add attachment: drop, paste or click to choose a file"
-        onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && inputRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          addFiles(e.dataTransfer.files);
-        }}
-        className={clsx(
-          'flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-4 py-6 text-sm text-muted transition',
-          'focus:outline-2 focus:outline-accent',
-          dragging ? 'border-accent bg-accent/5 text-text' : 'border-border hover:border-muted',
-        )}
+      <FileDropTarget
+        onFiles={(files) => upload.mutate(files)}
+        pasteAnywhere={pasteAnywhere}
+        label="Add attachment: drop, paste or click to choose a file"
+        className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border px-4 py-6 text-sm text-muted transition hover:border-muted"
+        activeClassName="border-accent bg-accent/5 text-text"
       >
         <ImagePlus size={20} aria-hidden />
         <span>{upload.isPending ? 'Uploading…' : 'Drop, paste (⌘V) or click to add a screenshot or PDF'}</span>
-        <input ref={inputRef} type="file" accept={ACCEPT} multiple hidden onChange={(e) => addFiles(e.target.files)} />
-      </div>
+      </FileDropTarget>
       {upload.error && <p className="text-sm text-loss">{upload.error.message}</p>}
       {items.length > 0 && (
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-3">
@@ -115,6 +76,7 @@ export function AttachmentDropzone({ ownerType, ownerId, role, pasteAnywhere = f
               >
                 <X size={14} />
               </button>
+              {renderActions && <div className="border-t border-border p-1">{renderActions(attachment)}</div>}
             </li>
           ))}
         </ul>

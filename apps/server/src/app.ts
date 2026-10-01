@@ -4,6 +4,7 @@ import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
 import { backupRoutes } from './routes/backup';
 import { expenseRoutes, payoutRoutes, recurringRoutes } from './routes/expenses';
+import { accountGroupRoutes, contractRoutes, dailyReviewRoutes, playRoutes, tradeRoutes } from './routes/journal';
 import { accountRoutes, firmRoutes, listRoutes } from './routes/lists';
 import { sessionRoutes, sessionTypeRoutes } from './routes/sessions';
 import { settingsRoutes } from './routes/settings';
@@ -37,6 +38,11 @@ app.route('/api/accounts', accountRoutes);
 app.route('/api/expenses', expenseRoutes);
 app.route('/api/recurring-expenses', recurringRoutes);
 app.route('/api/payouts', payoutRoutes);
+app.route('/api/contracts', contractRoutes);
+app.route('/api/account-groups', accountGroupRoutes);
+app.route('/api/plays', playRoutes);
+app.route('/api/trades', tradeRoutes);
+app.route('/api/daily-reviews', dailyReviewRoutes);
 
 app.onError((err, c) => {
   if (err instanceof AppError) return c.json({ error: err.message, detail: err.detail }, err.status);

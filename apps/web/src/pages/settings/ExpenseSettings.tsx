@@ -31,7 +31,7 @@ export function ExpenseSettings({ settings }: { settings: Settings }) {
   );
 }
 
-function ListEditor({ kind, title, singular }: { kind: ListKind; title: string; singular: string }) {
+export function ListEditor({ kind, title, singular }: { kind: ListKind; title: string; singular: string }) {
   const qc = useQueryClient();
   const { data: items = [] } = useList(kind);
   const [name, setName] = useState('');

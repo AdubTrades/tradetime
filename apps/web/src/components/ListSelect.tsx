@@ -4,7 +4,7 @@ import { useList } from '../lib/expenses';
 import { Select } from './ui';
 
 const NEW = '__new__';
-const labels: Record<ListKind, string> = { expense_category: 'category', expense_type: 'type', payment_method: 'payment method' };
+const labels: Record<ListKind, string> = { expense_category: 'category', expense_type: 'type', payment_method: 'payment method', mood: 'mood', mistake: 'mistake' };
 
 /** Select from an editable pick-list, with "Add new…" to create an item inline. */
 export function ListSelect({ kind, value, onChange, id }: { kind: ListKind; value: string | null; onChange: (id: string | null) => void; id?: string }) {

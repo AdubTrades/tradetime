@@ -7,6 +7,7 @@ import { api, type BackupStatus, type Settings } from '../lib/api';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { AccountSettings } from './settings/AccountSettings';
 import { ExpenseSettings } from './settings/ExpenseSettings';
+import { JournalSettings } from './settings/JournalSettings';
 import { TimeLogSettings } from './settings/TimeLogSettings';
 
 const intervals: { value: Settings['backupIntervalHours']; label: string }[] = [
@@ -29,6 +30,7 @@ export function SettingsPage() {
         <GeneralSettings settings={settings} />
         <TimeLogSettings settings={settings} />
         <AccountSettings />
+        <JournalSettings />
         <ExpenseSettings settings={settings} />
         <BackupSettings settings={settings} />
       </div>

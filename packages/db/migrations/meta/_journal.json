@@ -22,6 +22,13 @@
       "when": 1790856032671,
       "tag": "0002_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790858046103,
+      "tag": "0003_journal",
+      "breakpoints": true
     }
   ]
 }
