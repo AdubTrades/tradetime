@@ -1,0 +1,21 @@
+{
+  "name": "trading-companion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @tc/server --filter @tc/web dev",
+    "build": "pnpm --filter @tc/web build",
+    "start": "pnpm --filter @tc/server start",
+    "test": "vitest run",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @tc/db generate"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}

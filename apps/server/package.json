@@ -1,0 +1,25 @@
+{
+  "name": "@tc/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "TC_DATA_DIR=../../data-dev TC_PORT=4318 tsx watch src/index.ts",
+    "start": "NODE_ENV=production tsx src/index.ts",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "@tc/db": "workspace:*",
+    "@tc/domain": "workspace:*",
+    "archiver": "^8.0.0",
+    "croner": "^10.0.1",
+    "drizzle-orm": "0.45.3",
+    "hono": "^4.13.11",
+    "luxon": "^3.7.2",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.6"
+  }
+}
