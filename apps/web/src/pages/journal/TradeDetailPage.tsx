@@ -6,6 +6,7 @@ import { formatLocal } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import { HistoryDialog } from '../../components/HistoryDialog';
+import { ReadingChips } from '../../components/ReadingSummary';
 import { Button, Card, cn, PageHeader } from '../../components/ui';
 import { api, type Attachment } from '../../lib/api';
 import { useAccounts, useList } from '../../lib/expenses';
@@ -191,6 +192,20 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
           <dd>{moods.find((m) => m.id === t.emotionId)?.name ?? '—'}</dd>
           <dt className="text-muted">Confidence</dt>
           <dd>{t.confidence ? `${t.confidence} / 5` : '—'}</dd>
+          <dt className="text-muted">State at entry</dt>
+          <dd>
+            {t.state ? (
+              <>
+                <span className="mr-2 text-xs text-muted">
+                  {t.state.kind === 'start' ? 'Session start' : 'Check-in'} {formatLocal(t.state.at, 'HH:mm')}
+                  {t.stateOverridden ? ' (chosen)' : ''}
+                </span>
+                <ReadingChips answers={t.state.answers} />
+              </>
+            ) : (
+              <span className="text-muted">None</span>
+            )}
+          </dd>
           <dt className="text-muted">Mistakes</dt>
           <dd>{t.mistakeIds.length ? t.mistakeIds.map((id) => mistakes.find((m) => m.id === id)?.name).join(', ') : 'None'}</dd>
         </dl>

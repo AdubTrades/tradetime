@@ -14,12 +14,13 @@ import {
   type GradeRule,
 } from '@tc/domain';
 import { auditEvent, auditUpdate } from './audit';
+import { autoReadingFor } from './checkins';
 import { db } from './context';
 import { getContract } from './contracts';
 import { AppError } from './errors';
 import { assertListItem } from './lists';
 
-const { trade, tradeAccount, fill, tradeCriterionCheck, tradeTag, play, playCriterion, account, session, sessionType, dailyReview, auditLog } = schema;
+const { trade, tradeAccount, fill, tradeCriterionCheck, tradeTag, play, playCriterion, account, session, sessionType, dailyReview, auditLog, stateReading } = schema;
 const nowIso = () => new Date().toISOString();
 
 export interface TradeInput {
@@ -38,6 +39,8 @@ export interface TradeInput {
   mistakeIds?: string[];
   /** Explicit session, null for none, or omit to link automatically by time. */
   sessionId?: string | null;
+  /** Override the state reading (null = none). Omit to use the latest reading before entry. */
+  stateReadingId?: string | null;
   /** Fills at base size (multiplier 1). Each account gets them × its multiplier. */
   fills: Fill[];
   accounts: { accountId: string; multiplier: number; feesCents?: number | null }[];
@@ -119,6 +122,12 @@ function build(input: TradeInput, tradeId: string) {
     };
   });
 
+  const sessionId = input.sessionId === undefined ? findSessionAt(base.openedAt) : input.sessionId;
+  const overridden = input.stateReadingId !== undefined;
+  if (overridden && input.stateReadingId) {
+    const r = db.select({ id: stateReading.id }).from(stateReading).where(and(eq(stateReading.id, input.stateReadingId), isNull(stateReading.deletedAt))).get();
+    if (!r) throw new AppError(422, 'Unknown state reading');
+  }
   const tradeRow = {
     id: tradeId,
     tradingDay: input.tradingDay,
@@ -134,7 +143,9 @@ function build(input: TradeInput, tradeId: string) {
     emotionId: input.emotionId ?? null,
     confidence: input.confidence ?? null,
     notes: input.notes?.trim() || null,
-    sessionId: input.sessionId === undefined ? findSessionAt(base.openedAt) : input.sessionId,
+    sessionId,
+    stateReadingId: overridden ? (input.stateReadingId ?? null) : autoReadingFor(sessionId, base.openedAt),
+    stateOverridden: overridden,
     openedAt: base.openedAt,
     closedAt: base.closedAt,
   };
@@ -249,6 +260,7 @@ export function getTrade(id: string) {
   return {
     ...t,
     ...summarise(accounts),
+    state: t.stateReadingId ? (db.select().from(stateReading).where(eq(stateReading.id, t.stateReadingId)).get() ?? null) : null,
     accounts: accounts.map((a) => ({ ...a, fills: fills.filter((f) => f.tradeAccountId === a.id) })),
     checks,
     mistakeIds,
@@ -269,11 +281,15 @@ export function listTrades(range: { from: string; to: string }) {
   const ids = trades.map((t) => t.id);
   const accounts = db.select().from(tradeAccount).where(inArray(tradeAccount.tradeId, ids)).all();
   const tags = db.select().from(tradeTag).where(inArray(tradeTag.tradeId, ids)).all();
+  const readingIds = [...new Set(trades.map((t) => t.stateReadingId).filter((x): x is string => !!x))];
+  const readings = readingIds.length ? db.select().from(stateReading).where(inArray(stateReading.id, readingIds)).all() : [];
   return trades.map((t) => {
     const mine = accounts.filter((a) => a.tradeId === t.id);
+    const r = readings.find((x) => x.id === t.stateReadingId);
     return {
       ...t,
       ...summarise(mine),
+      state: r ? { id: r.id, kind: r.kind, at: r.at, answers: r.answers } : null,
       accounts: mine.map(({ id, accountId, multiplier, maxQty, avgEntry, avgExit, grossCents, feesCents, netCents, plannedRiskCents }) => ({
         id,
         accountId,

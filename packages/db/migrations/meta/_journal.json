@@ -29,6 +29,13 @@
       "when": 1790858046103,
       "tag": "0003_journal",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790860973931,
+      "tag": "0004_checkins",
+      "breakpoints": true
     }
   ]
 }

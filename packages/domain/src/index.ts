@@ -6,3 +6,4 @@ export * from './expenses';
 export * from './trades';
 export * from './grading';
 export * as stats from './stats';
+export * from './checkins';

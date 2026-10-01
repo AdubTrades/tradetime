@@ -9,6 +9,8 @@ import { Button, Card, cn, PageHeader } from '../../components/ui';
 import { api } from '../../lib/api';
 import { useContracts, usePlays, useTrades } from '../../lib/journal';
 import { useSessions, useSessionTypes } from '../../lib/sessions';
+import { useDayReadings } from '../../lib/checkins';
+import { ReadingChips, ReadingNotes } from '../../components/ReadingSummary';
 import { TradeForm } from './TradeForm';
 
 /** Everything for one trading day: trades, sessions and the end-of-day review. */
@@ -18,6 +20,7 @@ export function DayPage({ day }: { day: string }) {
   const { data: trades = [] } = useTrades(day, day);
   const { data: sessions = [] } = useSessions(day, day);
   const { data: types = [] } = useSessionTypes();
+  const { data: readings = [] } = useDayReadings(day);
   const { data: plays = [] } = usePlays();
   const { data: contracts = [] } = useContracts();
   const [logging, setLogging] = useState(false);
@@ -67,7 +70,7 @@ export function DayPage({ day }: { day: string }) {
       </div>
 
       <Card title="Timeline">
-        {trades.length + sessions.length === 0 ? (
+        {trades.length + sessions.length + readings.length === 0 ? (
           <p className="text-sm text-muted">Nothing logged for this day.</p>
         ) : (
           <ol className="space-y-1 text-sm">
@@ -76,6 +79,18 @@ export function DayPage({ day }: { day: string }) {
                 { at: s.start, el: <span className="text-muted">▶ Started {types.find((x) => x.id === s.typeId)?.name ?? 'session'}</span> },
                 ...(s.end ? [{ at: s.end, el: <span className="text-muted">■ Stopped · {formatDuration(durationMinutes(s))}</span> }] : []),
               ]),
+              ...readings.map((r) => ({
+                at: r.at,
+                el: (
+                  <div className={cn('rounded-md border px-2 py-1.5', r.kind === 'start' ? 'border-accent/30 bg-accent/5' : 'border-warn/30 bg-warn/5')}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold">{r.kind === 'start' ? 'Session start' : 'Check-in'}</span>
+                      <ReadingChips answers={r.answers} decision={r.decision} />
+                    </div>
+                    <ReadingNotes answers={r.answers} />
+                  </div>
+                ),
+              })),
               ...trades.map((t) => ({
                 at: t.openedAt,
                 el: (
@@ -84,6 +99,7 @@ export function DayPage({ day }: { day: string }) {
                     <span className={cn('capitalize', t.direction === 'long' ? 'text-profit' : 'text-loss')}>{t.direction}</span>
                     <span>{plays.find((p) => p.id === t.playId)?.title ?? 'No Play'}</span>
                     <GradeBadge grade={t.grade} outsidePlan={t.outsidePlan} />
+                    {t.state && <span className="text-xs text-muted">state: {t.state.kind === 'start' ? 'start' : `check-in ${formatLocal(t.state.at, 'HH:mm')}`}</span>}
                     <Pnl cents={t.netCents} className="ml-auto" />
                     {t.r !== null && <span className="tabular w-14 text-right text-muted">{t.r}R</span>}
                   </Link>
@@ -99,7 +115,6 @@ export function DayPage({ day }: { day: string }) {
               ))}
           </ol>
         )}
-        <p className="mt-3 text-xs text-muted">Session-start and check-in answers will appear here once check-ins are added.</p>
       </Card>
 
       <DailyReviewEditor day={day} />

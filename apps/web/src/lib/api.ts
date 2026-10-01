@@ -43,6 +43,10 @@ export interface Settings {
   backupRetention: number;
   longSessionHours: number;
   gstRegistered: boolean;
+  checkInEnabled: boolean;
+  checkInMinutes: number;
+  checkInSecondMinutes: number | null;
+  checkInSnoozeMinutes: number;
 }
 export interface BackupStatus {
   lastSuccessAt: string | null;
@@ -262,6 +266,9 @@ export interface TradeBase {
   feesCents: number;
   r: number | null;
   mistakeIds: string[];
+  stateReadingId: string | null;
+  stateOverridden: boolean;
+  state: Pick<StateReading, 'id' | 'kind' | 'at' | 'answers'> | null;
 }
 export interface TradeRow extends TradeBase {
   accounts: TradeAccountRow[];
@@ -269,4 +276,35 @@ export interface TradeRow extends TradeBase {
 export interface TradeDetail extends TradeBase {
   accounts: (TradeAccountRow & { fills: (FillRow & { id: string })[] })[];
   checks: { criterionId: string; label: string; mustHave: boolean; checked: boolean }[];
+}
+export type QuestionKind = 'mood' | 'scale' | 'yesPartlyNo' | 'text';
+export interface Question {
+  id: string;
+  prompt: string;
+  kind: QuestionKind;
+  appliesTo: 'both' | 'start' | 'checkin';
+  sortOrder: number;
+  archived: boolean;
+}
+export interface ReadingAnswer {
+  questionId: string;
+  prompt: string;
+  kind: QuestionKind;
+  value: string | number | null;
+  label?: string | null;
+}
+export type Decision = 'keep_trading' | 'take_break' | 'stop';
+export interface StateReading {
+  id: string;
+  sessionId: string;
+  kind: 'start' | 'checkin';
+  at: string;
+  answers: ReadingAnswer[];
+  decision: Decision | null;
+}
+export interface DueCheckIn {
+  sessionId: string;
+  elapsedMinutes: number;
+  level: number;
+  thresholdMinutes: number;
 }

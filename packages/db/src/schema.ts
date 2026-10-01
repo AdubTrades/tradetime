@@ -300,6 +300,9 @@ export const trade = sqliteTable(
     confidence: integer('confidence'),
     notes: text('notes'),
     sessionId: text('session_id').references(() => session.id),
+    /** The state reading in effect at entry: latest before entry in the same session, unless overridden. */
+    stateReadingId: text('state_reading_id'),
+    stateOverridden: integer('state_overridden', { mode: 'boolean' }).notNull().default(false),
     /** Cached from fills across accounts. */
     openedAt: text('opened_at').notNull(),
     closedAt: text('closed_at').notNull(),
@@ -382,3 +385,41 @@ export const dailyReview = sqliteTable('daily_review', {
   tradingDay: text('trading_day').notNull().unique(),
   notes: text('notes').notNull().default(''),
 });
+
+// ---------- Check-ins ----------
+
+/** A question asked at session start, at check-ins, or both (so start and check-in readings line up). */
+export const question = sqliteTable('question', {
+  ...recordColumns,
+  prompt: text('prompt').notNull(),
+  kind: text('kind', { enum: ['mood', 'scale', 'yesPartlyNo', 'text'] }).notNull(),
+  appliesTo: text('applies_to', { enum: ['both', 'start', 'checkin'] }).notNull().default('both'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+});
+
+export interface ReadingAnswer {
+  questionId: string;
+  /** Snapshots so later edits to the question list don't change history. */
+  prompt: string;
+  kind: 'mood' | 'scale' | 'yesPartlyNo' | 'text';
+  value: string | number | null;
+  /** Display label for mood answers. */
+  label?: string | null;
+}
+
+/** Answers given at session start or at a mid-session check-in, timestamped against the session. */
+export const stateReading = sqliteTable(
+  'state_reading',
+  {
+    ...recordColumns,
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => session.id),
+    kind: text('kind', { enum: ['start', 'checkin'] }).notNull(),
+    at: text('at').notNull(),
+    answers: text('answers', { mode: 'json' }).$type<ReadingAnswer[]>().notNull(),
+    decision: text('decision', { enum: ['keep_trading', 'take_break', 'stop'] }),
+  },
+  (t) => [index('state_reading_session_idx').on(t.sessionId), index('state_reading_at_idx').on(t.at)],
+);

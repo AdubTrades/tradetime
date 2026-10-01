@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 import { decimalHours, durationMinutes, formatLocal } from '@tc/domain';
+import { createReading, relinkSessionTrades } from '../checkins';
 import { toCsv } from '../csv';
+import { answersSchema } from './checkins';
 import { body, fyParam, instant, isoDate } from '../http';
 import { AppError } from '../errors';
 import {
@@ -52,20 +54,27 @@ export const sessionRoutes = new Hono()
     return c.json(listSessions({ from: from.data, to: to.data }));
   })
   .get('/running', (c) => c.json(getRunningSession()))
+  /** Start the timer. Trading sessions may include the session-start checklist answers. */
   .post('/start', async (c) => {
-    const { typeId } = await body(c.req, z.object({ typeId: z.string().min(1) }));
-    return c.json(startTimer(typeId), 201);
+    const { typeId, startAnswers } = await body(c.req, z.object({ typeId: z.string().min(1), startAnswers: answersSchema.optional() }));
+    const session = startTimer(typeId);
+    if (startAnswers) createReading(session.id, { kind: 'start', answers: startAnswers });
+    return c.json(session, 201);
   })
   .post('/:id/stop', async (c) => {
     const { end } = await body(c.req, z.object({ end: instant.optional() }));
-    return c.json(stopTimer(c.req.param('id'), end));
+    const stopped = stopTimer(c.req.param('id'), end);
+    relinkSessionTrades(stopped.id);
+    return c.json(stopped);
   })
   .post('/', async (c) => {
     const input = await body(
       c.req,
       z.object({ typeId: z.string().min(1), start: instant, end: instant, notes: z.string().max(2000).nullable().optional(), force: z.boolean().optional() }),
     );
-    return c.json(createManualSession(input, input.force), 201);
+    const created = createManualSession(input, input.force);
+    relinkSessionTrades(created.id);
+    return c.json(created, 201);
   })
   .patch('/:id', async (c) => {
     const { reason, force, ...patch } = await body(
@@ -82,14 +91,18 @@ export const sessionRoutes = new Hono()
         .partial()
         .strict(),
     );
-    return c.json(updateSession(c.req.param('id'), patch, reason ?? null, force));
+    const updated = updateSession(c.req.param('id'), patch, reason ?? null, force);
+    relinkSessionTrades(updated.id);
+    return c.json(updated);
   })
   .delete('/:id', (c) => {
     deleteSession(c.req.param('id'));
+    relinkSessionTrades(c.req.param('id'));
     return c.body(null, 204);
   })
   .post('/:id/restore', (c) => {
     restoreSession(c.req.param('id'));
+    relinkSessionTrades(c.req.param('id'));
     return c.body(null, 204);
   })
   .get('/:id/history', (c) => c.json(sessionHistory(c.req.param('id'))))

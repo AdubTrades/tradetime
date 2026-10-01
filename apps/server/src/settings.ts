@@ -16,6 +16,11 @@ const settingsShape = z.object({
   longSessionHours: z.number().min(1).max(24),
   /** Registered for GST: claim ex-GST amounts plus GST credits instead of inc-GST amounts. */
   gstRegistered: z.boolean(),
+  /** Mid-session check-in prompts for trading sessions, based on screen time since Start. */
+  checkInEnabled: z.boolean(),
+  checkInMinutes: z.number().int().min(5).max(720),
+  checkInSecondMinutes: z.number().int().min(5).max(720).nullable(),
+  checkInSnoozeMinutes: z.number().int().min(1).max(120),
 });
 
 export type Settings = z.infer<typeof settingsShape>;
@@ -28,6 +33,10 @@ export const defaultSettings: Settings = {
   backupRetention: 30,
   longSessionHours: 6,
   gstRegistered: false,
+  checkInEnabled: true,
+  checkInMinutes: 90,
+  checkInSecondMinutes: null,
+  checkInSnoozeMinutes: 15,
 };
 
 // No defaults here: a patch must only touch the keys it names.

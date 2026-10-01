@@ -1,6 +1,7 @@
 import { Cron } from 'croner';
 import { formatDuration, localDate } from '@tc/domain';
 import { isBackupDue, runBackup } from './backup';
+import { checkInToNotify } from './checkins';
 import { generateRecurringExpenses } from './expenses';
 import { notify } from './notify';
 import { getRunningSession, runningMinutes } from './sessions';
@@ -27,6 +28,12 @@ export function startJobs(): Cron[] {
     notify('Still going?', `Your session has been running for ${formatDuration(minutes)}. Stop the timer if you've finished.`);
   });
 
+  // Mid-session check-in: one notification per threshold; the in-app card does the rest.
+  const checkIn = new Cron('* * * * *', { protect: true }, () => {
+    const due = checkInToNotify();
+    if (due) notify('Time to check in', `${formatDuration(due.elapsedMinutes)} on screen. How are you doing — keep trading, take a break, or stop?`);
+  });
+
   // Recurring expenses: create any occurrences due up to today (catches up after downtime).
   const recurring = new Cron('5 * * * *', { protect: true }, () => {
     const created = generateRecurringExpenses(localDate(new Date()));
@@ -34,5 +41,5 @@ export function startJobs(): Cron[] {
   });
   void recurring.trigger();
 
-  return [backupCheck, longSessionCheck, recurring];
+  return [backupCheck, longSessionCheck, checkIn, recurring];
 }

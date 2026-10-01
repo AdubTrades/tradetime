@@ -1,10 +1,12 @@
-import { AlertTriangle, Play, Square } from 'lucide-react';
+import { AlertTriangle, MessageCircleQuestion, Play, Square } from 'lucide-react';
 import { useState } from 'react';
 import { durationMinutes, formatDuration, formatLocal } from '@tc/domain';
 import { Button, Input, Select } from '../../components/ui';
 import { api, type Session, type SessionType } from '../../lib/api';
 import { latestInstantAt } from '../../lib/localTime';
 import { useNow, useRunningSession, useSessionMutation } from '../../lib/sessions';
+import { CheckInDialog } from '../checkins/CheckInDialog';
+import { SessionStartDialog } from '../checkins/SessionStartDialog';
 
 const LAST_TYPE_KEY = 'tc-last-session-type';
 
@@ -32,6 +34,9 @@ export function TimerCard({ types, longSessionHours }: { types: SessionType[]; l
   const selectedType = active.find((t) => t.id === typeId) ?? active[0];
 
   const start = useSessionMutation((id: string) => api.post<Session>('/sessions/start', { typeId: id }));
+  const [checklistFor, setChecklistFor] = useState<SessionType | null>(null);
+  // Trading sessions open the session-start checklist; other types start straight away.
+  const begin = (type: SessionType) => (type.isTrading ? setChecklistFor(type) : start.mutate(type.id));
 
   if (isLoading) return <div className="h-28 rounded-lg border border-border bg-surface" />;
   if (running) return <RunningTimer session={running} type={types.find((t) => t.id === running.typeId)} longSessionHours={longSessionHours} />;
@@ -61,10 +66,11 @@ export function TimerCard({ types, longSessionHours }: { types: SessionType[]; l
           </option>
         ))}
       </Select>
-      <Button variant="primary" className="px-5 py-2" disabled={!selectedType || start.isPending} onClick={() => selectedType && start.mutate(selectedType.id)}>
+      <Button variant="primary" className="px-5 py-2" disabled={!selectedType || start.isPending} onClick={() => selectedType && begin(selectedType)}>
         <Play size={16} aria-hidden /> Start
       </Button>
       {start.error && <p className="w-full text-sm text-loss">{start.error.message}</p>}
+      <SessionStartDialog type={checklistFor} open={!!checklistFor} onClose={() => setChecklistFor(null)} />
     </div>
   );
 }
@@ -72,6 +78,7 @@ export function TimerCard({ types, longSessionHours }: { types: SessionType[]; l
 function RunningTimer({ session, type, longSessionHours }: { session: Session; type?: SessionType; longSessionHours: number }) {
   const now = useNow();
   const [stopAt, setStopAt] = useState('');
+  const [checkingIn, setCheckingIn] = useState(false);
   const stop = useSessionMutation((end?: string) => api.post<Session>(`/sessions/${session.id}/stop`, end ? { end } : {}));
   const longRunning = durationMinutes(session, now) >= longSessionHours * 60;
   const stopAtInstant = stopAt ? latestInstantAt(stopAt, session.start, now) : null;
@@ -89,6 +96,11 @@ function RunningTimer({ session, type, longSessionHours }: { session: Session; t
           </div>
           <div className="tabular text-3xl font-semibold">{elapsedClock(session.start, now)}</div>
         </div>
+        {type?.isTrading && (
+          <Button onClick={() => setCheckingIn(true)}>
+            <MessageCircleQuestion size={16} aria-hidden /> Check in
+          </Button>
+        )}
         <Button variant="danger" className="px-5 py-2" disabled={stop.isPending} onClick={() => stop.mutate(undefined)}>
           <Square size={16} aria-hidden /> Stop
         </Button>
@@ -109,6 +121,7 @@ function RunningTimer({ session, type, longSessionHours }: { session: Session; t
       )}
       {stopAt && !stopAtInstant && <p className="text-sm text-loss">That time is before the session started.</p>}
       {stop.error && <p className="text-sm text-loss">{stop.error.message}</p>}
+      <CheckInDialog sessionId={checkingIn ? session.id : null} elapsedMinutes={Math.floor(durationMinutes(session, now))} onClose={() => setCheckingIn(false)} />
     </div>
   );
 }

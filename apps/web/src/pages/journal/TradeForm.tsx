@@ -1,13 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { gradeTrade, isOnTick, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule } from '@tc/domain';
+import { formatLocal, gradeTrade, isOnTick, latestReadingBefore, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
 import { Dialog } from '../../components/Dialog';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import { MoneyInput } from '../../components/MoneyInput';
 import { Button, cn, Field, Input, Select } from '../../components/ui';
-import { api, type Attachment, type AttachmentLink, type TradeDetail } from '../../lib/api';
+import { api, type Attachment, type AttachmentLink, type StateReading, type TradeDetail } from '../../lib/api';
+import { useDayReadings } from '../../lib/checkins';
+import { ReadingChips } from '../../components/ReadingSummary';
 import { useAccounts, useList } from '../../lib/expenses';
 import { useAccountGroups, useContracts, useJournalMutation, usePlays } from '../../lib/journal';
 import { instantToLocalTime, tradingDayTimeToInstant } from '../../lib/localTime';
@@ -54,6 +56,8 @@ interface Form extends Carry {
   mistakeIds: string[];
   notes: string;
   reason: string;
+  /** 'auto' = latest reading before entry; '' = none; otherwise a reading id. */
+  state: string;
 }
 
 const LAST_CARRY_KEY = 'tc-last-trade-carry';
@@ -99,6 +103,7 @@ function fresh(carry: Carry): Form {
     mistakeIds: [],
     notes: '',
     reason: '',
+    state: 'auto',
   };
 }
 
@@ -129,6 +134,7 @@ function fromTrade(t: TradeDetail): Form {
     mistakeIds: t.mistakeIds,
     notes: t.notes ?? '',
     reason: '',
+    state: t.stateOverridden ? (t.stateReadingId ?? '') : 'auto',
   };
 }
 
@@ -243,6 +249,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
       confidence: form.confidence,
       mistakeIds: form.mistakeIds,
       notes: form.notes || null,
+      ...(form.state === 'auto' ? {} : { stateReadingId: form.state || null }),
       fills,
       accounts: form.accounts.map((a) => ({ accountId: a.accountId, multiplier: a.multiplier, feesCents: a.feesCents })),
     };
@@ -577,6 +584,8 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
           </div>
         </section>
 
+        <StatePicker day={form.tradingDay} value={form.state} onChange={(v) => set('state', v)} entryAt={fills ? [...fills].sort((a, b) => a.at.localeCompare(b.at))[0]!.at : null} />
+
         <section className="grid gap-4 sm:grid-cols-2">
           <Field label="Notes">
             <textarea
@@ -702,5 +711,31 @@ function FillsEditor({ fills, onChange }: { fills: FillDraft[]; onChange: (f: Fi
         <Plus size={14} aria-hidden /> Add fill
       </Button>
     </div>
+  );
+}
+
+/** Which session-start/check-in reading applies to this trade. Auto picks the latest before entry. */
+function StatePicker({ day, value, onChange, entryAt }: { day: string; value: string; onChange: (v: string) => void; entryAt: string | null }) {
+  const { data: readings = [] } = useDayReadings(day);
+  if (readings.length === 0) return null;
+  const auto = entryAt ? latestReadingBefore(readings, entryAt) : null;
+  const label = (r: StateReading) => `${r.kind === 'start' ? 'Session start' : 'Check-in'} ${formatLocal(r.at, 'HH:mm')}`;
+  const shown = value === 'auto' ? auto : readings.find((r) => r.id === value);
+  return (
+    <section>
+      <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">State at entry</h3>
+      <div className="flex flex-wrap items-center gap-3">
+        <Select aria-label="State reading" className="w-64" value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="auto">Auto{auto ? ` (${label(auto)})` : entryAt ? ' (none before entry)' : ''}</option>
+          {readings.map((r) => (
+            <option key={r.id} value={r.id}>
+              {label(r)}
+            </option>
+          ))}
+          <option value="">None</option>
+        </Select>
+        {shown && <ReadingChips answers={shown.answers} decision={shown.decision} />}
+      </div>
+    </section>
   );
 }

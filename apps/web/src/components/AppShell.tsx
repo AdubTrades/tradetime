@@ -3,6 +3,7 @@ import { BookOpen, CalendarDays, Monitor, Moon, Receipt, Settings as SettingsIco
 import type { Theme } from '../lib/api';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { useThemeSync } from '../lib/theme';
+import { CheckInPrompt } from '../pages/checkins/CheckInPrompt';
 
 const nav = [
   { to: '/journal', label: 'Journal', icon: BookOpen },
@@ -58,6 +59,7 @@ export function AppShell() {
       <main className="min-w-0 flex-1 px-8 py-6">
         <Outlet />
       </main>
+      <CheckInPrompt />
     </div>
   );
 }

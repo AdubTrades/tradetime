@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
+import { checkInRoutes, questionRoutes, readingRoutes } from './routes/checkins';
 import { backupRoutes } from './routes/backup';
 import { expenseRoutes, payoutRoutes, recurringRoutes } from './routes/expenses';
 import { accountGroupRoutes, contractRoutes, dailyReviewRoutes, playRoutes, tradeRoutes } from './routes/journal';
@@ -43,6 +44,9 @@ app.route('/api/account-groups', accountGroupRoutes);
 app.route('/api/plays', playRoutes);
 app.route('/api/trades', tradeRoutes);
 app.route('/api/daily-reviews', dailyReviewRoutes);
+app.route('/api/questions', questionRoutes);
+app.route('/api/readings', readingRoutes);
+app.route('/api/check-ins', checkInRoutes);
 
 app.onError((err, c) => {
   if (err instanceof AppError) return c.json({ error: err.message, detail: err.detail }, err.status);

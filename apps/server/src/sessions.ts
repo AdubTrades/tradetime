@@ -6,7 +6,7 @@ import { db } from './context';
 import { AppError } from './errors';
 import { getSettings } from './settings';
 
-const { session, sessionType, auditLog } = schema;
+const { session, sessionType, auditLog, stateReading } = schema;
 type SessionRow = typeof session.$inferSelect;
 
 const MAX_SESSION_HOURS = 24;
@@ -226,6 +226,10 @@ export function updateSession(id: string, patch: SessionPatch, reason: string | 
       .returning()
       .get();
     auditUpdate(tx, 'session', id, before, next, reason ?? undefined);
+    // The session-start checklist is "at the start", so it moves with the start time.
+    if (next.start !== before.start) {
+      tx.update(stateReading).set({ at: next.start }).where(and(eq(stateReading.sessionId, id), eq(stateReading.kind, 'start'))).run();
+    }
     return updated;
   });
 }

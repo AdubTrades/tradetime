@@ -11,6 +11,9 @@ const usd = (c: number) => new Intl.NumberFormat('en-AU', { style: 'currency', c
 const pct = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
 const fixed = (x: number | null, dp = 2) => (x === null ? '—' : x.toFixed(dp));
 
+const stateAnswer = (t: TradeRow, kind: 'mood' | 'scale', prompt?: string) =>
+  t.state?.answers.find((a) => a.kind === kind && (!prompt || a.prompt === prompt) && a.value !== null);
+
 /** Small samples are flagged: with 3–4 trades a session, results take a while to mean much. */
 function N({ n }: { n: number }) {
   return <span className={`tabular text-xs ${n < 20 ? 'text-warn' : 'text-muted'}`}>n={n}</span>;
@@ -96,6 +99,8 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
         <Breakdown title="By time of day (entry, Perth)" rows={stats.summariseBy([...trades].sort((a, b) => stats.hourBucket(a.openedAt).localeCompare(stats.hourBucket(b.openedAt))), (t) => stats.hourBucket(t.openedAt))} />
         <Breakdown title="By day of week" rows={stats.summariseBy(trades, (t) => stats.weekdayOf(t.tradingDay), stats.WEEKDAYS)} />
       </div>
+
+      <StateBreakdowns trades={trades} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Breakdown title="Followed my plan?" rows={followed.map((r) => ({ ...r, key: r.key[0]!.toUpperCase() + r.key.slice(1) }))} note={`${trades.filter((t) => t.followedPlan).length} of ${trades.length} trades answered.`} />
@@ -197,5 +202,32 @@ function GradeByPlay({ trades }: { trades: TradeRow[] }) {
       </div>
       <p className="border-t border-border px-4 py-2 text-xs text-muted">Your risk rules are shown for reference; the app never sizes trades for you.</p>
     </section>
+  );
+}
+
+/** Results grouped by the state reading in effect at entry (session start or latest check-in). */
+function StateBreakdowns({ trades }: { trades: TradeRow[] }) {
+  const withState = trades.filter((t) => t.state);
+  if (withState.length === 0) return null;
+  const scalePrompts = [...new Set(withState.flatMap((t) => t.state!.answers.filter((a) => a.kind === 'scale').map((a) => a.prompt)))];
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Breakdown
+        title="By mood at entry"
+        rows={stats.summariseBy(withState.filter((t) => stateAnswer(t, 'mood')), (t) => stateAnswer(t, 'mood')?.label ?? '?')}
+        note={`${withState.length} of ${trades.length} trades have a session-start or check-in reading.`}
+      />
+      {scalePrompts.map((p) => (
+        <Breakdown
+          key={p}
+          title={`By ${p.toLowerCase()} at entry`}
+          rows={stats.summariseBy(
+            withState.filter((t) => stateAnswer(t, 'scale', p)),
+            (t) => `${p} ${stateAnswer(t, 'scale', p)?.value}`,
+            [1, 2, 3, 4, 5].map((n) => `${p} ${n}`),
+          )}
+        />
+      ))}
+    </div>
   );
 }
