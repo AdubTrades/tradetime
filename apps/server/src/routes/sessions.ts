@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import { decimalHours, durationMinutes, financialYearOf, formatLocal, localDate } from '@tc/domain';
+import { decimalHours, durationMinutes, formatLocal } from '@tc/domain';
 import { toCsv } from '../csv';
+import { body, fyParam, instant, isoDate } from '../http';
 import { AppError } from '../errors';
 import {
   createManualSession,
@@ -19,21 +20,6 @@ import {
   updateSession,
   updateSessionType,
 } from '../sessions';
-
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const instant = z.iso.datetime({ offset: true });
-
-async function body<T extends z.ZodType>(req: { json: () => Promise<unknown> }, schema: T): Promise<z.infer<T>> {
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) throw new AppError(400, z.prettifyError(parsed.error));
-  return parsed.data;
-}
-
-const fyParam = (raw: string | undefined) => {
-  const year = raw ? Number(raw) : financialYearOf(localDate(new Date())).startYear;
-  if (!Number.isInteger(year) || year < 2000 || year > 2100) throw new AppError(400, 'Invalid financial year');
-  return year;
-};
 
 export const sessionTypeRoutes = new Hono()
   .get('/', (c) => c.json(listSessionTypes()))

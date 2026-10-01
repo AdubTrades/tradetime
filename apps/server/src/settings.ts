@@ -14,6 +14,8 @@ const settingsShape = z.object({
   backupRetention: z.number().int().min(1).max(365),
   /** A running session longer than this triggers a "still going?" prompt. */
   longSessionHours: z.number().min(1).max(24),
+  /** Registered for GST: claim ex-GST amounts plus GST credits instead of inc-GST amounts. */
+  gstRegistered: z.boolean(),
 });
 
 export type Settings = z.infer<typeof settingsShape>;
@@ -25,6 +27,7 @@ export const defaultSettings: Settings = {
   backupIntervalHours: 24,
   backupRetention: 30,
   longSessionHours: 6,
+  gstRegistered: false,
 };
 
 // No defaults here: a patch must only touch the keys it names.

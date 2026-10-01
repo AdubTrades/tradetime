@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { businessPortion, incGst, parseMoney } from './money';
+import { businessPortion, formatMoney, incGst, parseMoney } from './money';
 
 describe('money', () => {
   it('parses user input into cents', () => {
@@ -21,5 +21,11 @@ describe('money', () => {
     expect(businessPortion(11000, 60)).toBe(6600);
     expect(businessPortion(333, 50)).toBe(167);
     expect(() => businessPortion(100, 120)).toThrow();
+  });
+
+  it('formats AUD and USD distinctly', () => {
+    expect(formatMoney(123450)).toBe('$1,234.50');
+    expect(formatMoney(-500, 'USD')).toBe('-US$5.00');
+    expect(formatMoney(150000, 'USD')).toBe('US$1,500.00');
   });
 });

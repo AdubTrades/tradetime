@@ -43,12 +43,13 @@ export function SessionDialog({ open, onClose, types, session }: Props) {
   const running = editing && session.end === null;
   const [form, setForm] = useState<Form>(() => initialForm(session, types));
   const [overlaps, setOverlaps] = useState<Session[] | null>(null);
+  // Reset only when the dialog opens, so a refetch of session types can't wipe what's being typed.
   useEffect(() => {
     if (open) {
       setForm(initialForm(session, types));
       setOverlaps(null);
     }
-  }, [open, session, types]);
+  }, [open, session]);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));

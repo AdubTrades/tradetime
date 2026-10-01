@@ -14,8 +14,12 @@ export function parseMoney(input: string): Cents {
   return negative ? -cents : cents;
 }
 
+const audFormat = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', currencyDisplay: 'narrowSymbol' });
+
+/** "$1,234.50" for AUD; "US$1,234.50" for USD so the two are never confused. */
 export function formatMoney(cents: Cents, currency: Currency = 'AUD'): string {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).format(cents / 100);
+  const formatted = audFormat.format(cents / 100);
+  return currency === 'USD' ? formatted.replace('$', 'US$') : formatted;
 }
 
 /** Inc-GST is always derived from ex-GST + entered GST (GST is not assumed to be 10%). */

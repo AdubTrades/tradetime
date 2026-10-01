@@ -41,6 +41,7 @@ export interface Settings {
   backupIntervalHours: 0 | 6 | 12 | 24 | 168;
   backupRetention: number;
   longSessionHours: number;
+  gstRegistered: boolean;
 }
 export interface BackupStatus {
   lastSuccessAt: string | null;
@@ -91,4 +92,82 @@ export interface AuditEntry {
   newValue: unknown;
   reason: string | null;
   at: string;
+}
+export type ListKind = 'expense_category' | 'expense_type' | 'payment_method';
+export interface ListItem {
+  id: string;
+  kind: ListKind;
+  name: string;
+  color: string | null;
+  sortOrder: number;
+  archived: boolean;
+}
+export interface Firm {
+  id: string;
+  name: string;
+  website: string | null;
+  archived: boolean;
+}
+export type AccountType = 'evaluation' | 'funded' | 'live' | 'sim';
+export type AccountStatus = 'active' | 'passed' | 'failed' | 'closed';
+export interface Account {
+  id: string;
+  firmId: string | null;
+  name: string;
+  type: AccountType;
+  status: AccountStatus;
+  startDate: string | null;
+  endDate: string | null;
+  startingBalanceCents: number | null;
+  currency: string;
+  notes: string | null;
+}
+export interface Expense {
+  id: string;
+  name: string;
+  vendor: string | null;
+  date: string;
+  description: string | null;
+  categoryId: string | null;
+  typeId: string | null;
+  paymentMethodId: string | null;
+  accountId: string | null;
+  exGstCents: number;
+  gstCents: number;
+  incGstCents: number;
+  businessUsePct: number;
+  recurringId: string | null;
+  importBatchId: string | null;
+}
+export type Frequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+export interface RecurringExpense extends Omit<Expense, 'date' | 'incGstCents' | 'recurringId' | 'importBatchId'> {
+  frequency: Frequency;
+  interval: number;
+  startDate: string;
+  endDate: string | null;
+  active: boolean;
+  nextDate: string | null;
+}
+export interface Payout {
+  id: string;
+  accountId: string | null;
+  requestedDate: string | null;
+  receivedDate: string;
+  grossUsdCents: number | null;
+  audReceivedCents: number;
+  notes: string | null;
+}
+export interface Totals {
+  count: number;
+  exGstCents: number;
+  gstCents: number;
+  incGstCents: number;
+  deductibleCents: number;
+  gstCreditCents: number;
+}
+export interface FySummary {
+  fy: { startYear: number; label: string; start: string; end: string };
+  gstRegistered: boolean;
+  expenses: { total: Totals; byCategory: (Totals & { categoryId: string | null; name: string })[] };
+  payouts: { count: number; audReceivedCents: number; grossUsdCents: number };
 }

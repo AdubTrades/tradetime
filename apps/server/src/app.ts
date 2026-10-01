@@ -3,6 +3,8 @@ import { HTTPException } from 'hono/http-exception';
 import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
 import { backupRoutes } from './routes/backup';
+import { expenseRoutes, payoutRoutes, recurringRoutes } from './routes/expenses';
+import { accountRoutes, firmRoutes, listRoutes } from './routes/lists';
 import { sessionRoutes, sessionTypeRoutes } from './routes/sessions';
 import { settingsRoutes } from './routes/settings';
 
@@ -29,6 +31,12 @@ app.route('/api/attachments', attachmentRoutes);
 app.route('/api/backup', backupRoutes);
 app.route('/api/sessions', sessionRoutes);
 app.route('/api/session-types', sessionTypeRoutes);
+app.route('/api/lists', listRoutes);
+app.route('/api/firms', firmRoutes);
+app.route('/api/accounts', accountRoutes);
+app.route('/api/expenses', expenseRoutes);
+app.route('/api/recurring-expenses', recurringRoutes);
+app.route('/api/payouts', payoutRoutes);
 
 app.onError((err, c) => {
   if (err instanceof AppError) return c.json({ error: err.message, detail: err.detail }, err.status);
