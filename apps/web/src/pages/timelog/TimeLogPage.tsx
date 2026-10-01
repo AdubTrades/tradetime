@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { swatch } from '../../lib/theme';
 import { ChevronLeft, ChevronRight, Download, History, Pencil, Plus, Printer, Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
@@ -65,11 +66,11 @@ function SummaryTiles({ today, fyStartYear, now }: { today: string; fyStartYear:
   }, [sessions, today, now, fy.label]);
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
       {totals.map((t) => (
-        <div key={t.label} className="rounded-lg border border-border bg-surface p-4">
+        <div key={t.label} className="tile px-5 py-4">
           <div className="text-xs text-muted">{t.label}</div>
-          <div className="tabular mt-1 text-xl font-semibold">{formatDuration(t.minutes)}</div>
+          <div className="tabular font-display mt-1 text-[28px] leading-tight">{formatDuration(t.minutes)}</div>
         </div>
       ))}
     </div>
@@ -99,12 +100,12 @@ function MonthSessions({ month, onMonthChange, types, now, onEdit, onHistory }: 
   const monthMinutes = sessions.reduce((sum, s) => sum + durationMinutes(s, now), 0);
 
   return (
-    <section className="rounded-lg border border-border bg-surface">
+    <section className="panel">
       <header className="flex items-center gap-2 border-b border-border px-4 py-3">
         <Button variant="ghost" aria-label="Previous month" onClick={() => onMonthChange(dt.minus({ months: 1 }).toFormat('yyyy-MM'))}>
           <ChevronLeft size={16} />
         </Button>
-        <h2 className="w-36 text-center font-semibold">{dt.toFormat('LLLL yyyy')}</h2>
+        <h2 className="w-36 text-center">{dt.toFormat('LLLL yyyy')}</h2>
         <Button variant="ghost" aria-label="Next month" onClick={() => onMonthChange(dt.plus({ months: 1 }).toFormat('yyyy-MM'))}>
           <ChevronRight size={16} />
         </Button>
@@ -127,7 +128,7 @@ function MonthSessions({ month, onMonthChange, types, now, onEdit, onHistory }: 
                   const type = typeById.get(s.typeId);
                   return (
                     <li key={s.id} className="group flex flex-wrap items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-surface-2">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: type?.color }} aria-hidden />
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: swatch(type?.color) }} aria-hidden />
                       <span className="w-32 truncate">{type?.name ?? 'Unknown'}</span>
                       <span className="tabular w-32 text-muted">
                         {formatLocal(s.start, 'HH:mm')} – {s.end ? formatLocal(s.end, 'HH:mm') : 'running'}
@@ -170,7 +171,7 @@ function ExportBar({ currentFy }: { currentFy: number }) {
   const [fy, setFy] = useState(currentFy);
   const years = Array.from({ length: 5 }, (_, i) => currentFy - i);
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-4 text-sm">
+    <div className="flex flex-wrap items-center gap-2 panel p-4 text-sm">
       <span className="mr-auto font-medium">Records for your accountant</span>
       <Select aria-label="Financial year" className="w-36" value={fy} onChange={(e) => setFy(Number(e.target.value))}>
         {years.map((y) => (
@@ -181,7 +182,7 @@ function ExportBar({ currentFy }: { currentFy: number }) {
       </Select>
       <a
         href={`/api/sessions/export.csv?fy=${fy}`}
-        className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-1.5 font-medium hover:bg-border/60"
+        className="inline-flex items-center gap-2 font-display rounded-none border border-text/80 px-3.5 py-1.5 hover:bg-surface"
       >
         <Download size={16} aria-hidden /> CSV
       </a>
@@ -189,7 +190,7 @@ function ExportBar({ currentFy }: { currentFy: number }) {
         to="/time-log/report"
         search={{ fy }}
         target="_blank"
-        className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-1.5 font-medium hover:bg-border/60"
+        className="inline-flex items-center gap-2 font-display rounded-none border border-text/80 px-3.5 py-1.5 hover:bg-surface"
       >
         <Printer size={16} aria-hidden /> Printable report (PDF)
       </Link>

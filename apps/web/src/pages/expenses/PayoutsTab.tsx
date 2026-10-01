@@ -28,7 +28,7 @@ export function PayoutsTab({ fy }: { fy: number }) {
           <Plus size={16} aria-hidden /> Add payout
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div className="overflow-x-auto panel">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-surface-2 text-left text-xs text-muted">
             <tr>

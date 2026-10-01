@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds the web app and installs a macOS LaunchAgent so Trading Companion
+# Builds the web app and installs a macOS LaunchAgent so TradeTime
 # starts at login and restarts if it crashes. Open http://127.0.0.1:4317 afterwards.
 set -euo pipefail
 
@@ -45,4 +45,4 @@ PLIST
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "Installed. Trading Companion is running at http://127.0.0.1:4317 (data: $DATA_DIR)"
+echo "Installed. TradeTime is running at http://127.0.0.1:4317 (data: $DATA_DIR)"

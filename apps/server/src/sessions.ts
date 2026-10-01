@@ -23,7 +23,7 @@ export function createSessionType(input: { name: string; isTrading?: boolean; co
   const maxOrder = db.select({ max: sql<number>`coalesce(max(${sessionType.sortOrder}), -1)` }).from(sessionType).get()?.max ?? -1;
   return db
     .insert(sessionType)
-    .values({ id: newId(), name: input.name.trim(), isTrading: input.isTrading ?? false, color: input.color, sortOrder: maxOrder + 1 })
+    .values({ id: newId(), name: input.name.trim(), isTrading: input.isTrading ?? false, color: input.color ?? '#9a958c', sortOrder: maxOrder + 1 })
     .returning()
     .get();
 }

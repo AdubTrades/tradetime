@@ -137,7 +137,7 @@ export function ExpensesReport({ fy }: { fy: number }) {
         </tbody>
       </table>
       <p className="mt-4 text-black/60">
-        Claimable = {gstRegistered ? 'amount ex GST' : 'amount inc GST'} × business-use %. Receipts are stored with each expense in Trading Companion.
+        Claimable = {gstRegistered ? 'amount ex GST' : 'amount inc GST'} × business-use %. Receipts are stored with each expense in TradeTime.
       </p>
     </div>
   );

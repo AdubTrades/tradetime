@@ -4,7 +4,7 @@ export function Placeholder({ title, phase }: { title: string; phase: string }) 
   return (
     <div>
       <PageHeader title={title} />
-      <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted">Coming in {phase}.</div>
+      <div className="panel p-10 text-center text-sm text-muted">Coming in {phase}.</div>
     </div>
   );
 }

@@ -12,3 +12,10 @@
 - Dialog forms reset in a `useEffect` keyed on `[open, record]` only. Don't add query data (lists, types) to the deps, or a refetch wipes what the user is typing.
 - Restore: `apps/server/src/restore.ts` validates and stages a backup into `restore-pending/`, writes a `pre-restore` safety zip, then exits. launchd restarts the app, and `restoreApply.ts` swaps the data in before the database opens. In dev (tsx watch) you restart by hand.
 - FOMC dates are a curated list in `packages/domain/src/calendar.ts` (`FOMC_MEETINGS`). Extend it each year from federalreserve.gov. Don't use FRED rid 101: it's updated daily.
+- The product name is **TradeTime** (wordmark: "Trade" semibold + "Time" regular, `Wordmark` in `AppShell.tsx`). The repo, data folder (`~/TradingCompanion`) and launchd label keep their old names on purpose. Backups are `tradetime-backup-*`, and the old `trading-companion-*` names are still accepted.
+- Design system (Ventriloc-style), defined in `apps/web/src/styles.css`:
+  - Graphite/Ash/Fog/Ivory surfaces; Ember (`text-ember`, `bg-ember`) only for links, focus, today and highlights; Brass for warnings and secondary chart lines.
+  - Muted `profit`/`loss` only for P&L (the user chose this). Errors and destructive actions also use `loss`.
+  - Utilities: `panel` (Ash, 6px top-left radius) for cards/sections, `tile` (20px) for stat tiles and data widgets, `font-display` (Inter Tight 400, −0.02em) for headings, figures and button labels, `link-ember` for key links.
+  - Buttons and fields are square (`rounded-none`); nav, tags and toggles are pills. No shadows.
+  - Use `swatch()` for user-chosen colours so graphite stays visible in dark mode.

@@ -21,10 +21,11 @@ export function useJournalMutation<TVars, TResult = unknown>(fn: (vars: TVars) =
 }
 
 export const gradeTone: Record<string, string> = {
-  'A+': 'bg-profit/15 text-profit',
-  A: 'bg-profit/10 text-profit',
-  'B+': 'bg-accent/10 text-accent',
-  B: 'bg-accent/10 text-accent',
-  'C+': 'bg-warn/15 text-warn',
-  C: 'bg-warn/15 text-warn',
+  // Monochrome scale: graphite for the best grades, warm ivory for the middle, plain grey below.
+  'A+': 'bg-text text-bg',
+  A: 'bg-text/75 text-bg',
+  'B+': 'bg-ivory text-text',
+  B: 'bg-ivory text-text/75',
+  'C+': 'bg-surface text-muted ring-1 ring-inset ring-text/10',
+  C: 'bg-surface text-muted ring-1 ring-inset ring-text/10',
 };

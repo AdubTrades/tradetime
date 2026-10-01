@@ -156,7 +156,7 @@ export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTyp
     >
       <div className="space-y-4">
         {occurrence?.recurring && (
-          <div className="flex overflow-hidden rounded-md border border-border text-sm">
+          <div className="flex overflow-hidden rounded-full border border-text/15 text-sm">
             {(['one', 'all'] as const).map((s) => (
               <button key={s} type="button" onClick={() => setScope(s)} className={cn('flex-1 px-3 py-1.5', scope === s ? 'bg-accent text-accent-text' : 'text-muted')}>
                 {s === 'one' ? 'This occurrence' : 'All occurrences'}
@@ -266,7 +266,7 @@ export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTyp
             rows={3}
             value={form.notes}
             onChange={(e) => set('notes', e.target.value)}
-            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-accent"
+            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-ember"
           />
         </Field>
         {seriesFieldsLocked && <p className="text-xs text-muted">Changes apply to this occurrence only. Switch to “All occurrences” to change the repeat, type or reminder.</p>}

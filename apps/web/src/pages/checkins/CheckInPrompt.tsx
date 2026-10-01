@@ -22,11 +22,11 @@ export function CheckInPrompt() {
   return (
     <>
       {due && !open && (
-        <div role="alertdialog" aria-label="Time to check in" className="fixed right-5 bottom-5 z-40 w-80 rounded-lg border-2 border-accent bg-surface p-4 shadow-2xl">
+        <div role="alertdialog" aria-label="Time to check in" className="fixed right-6 bottom-6 z-40 w-80 rounded-[6px_0_0_0] border border-ember bg-bg p-5">
           <div className="flex items-start gap-3">
-            <BellRing className="mt-0.5 shrink-0 text-accent" size={20} aria-hidden />
+            <BellRing className="mt-0.5 shrink-0 text-ember" size={20} aria-hidden />
             <div className="flex-1">
-              <div className="font-semibold">Time to check in</div>
+              <div className="font-display text-lg leading-tight">Time to check in</div>
               <div className="text-sm text-muted">{formatDuration(due.elapsedMinutes)} on screen this session. Should you still be trading?</div>
             </div>
             <button type="button" aria-label="Dismiss" className="text-muted hover:text-text" onClick={() => act.mutate('dismiss')}>

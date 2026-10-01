@@ -198,7 +198,7 @@ function BackupSettings({ settings }: { settings: Settings }) {
           </Button>
           <a
             href="/api/backup/export"
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium hover:bg-border/60"
+            className="inline-flex items-center gap-2 font-display rounded-none border border-text/80 px-3.5 py-1.5 text-sm hover:bg-surface"
           >
             <Download size={16} aria-hidden /> Export everything (.zip)
           </a>

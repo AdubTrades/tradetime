@@ -49,23 +49,23 @@ export function DayPage({ day }: { day: string }) {
           </>
         }
       />
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-border bg-surface p-3">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="tile px-5 py-4">
           <div className="text-xs text-muted">Net (USD)</div>
-          <div className="mt-1 text-lg font-semibold">
+          <div className="font-display mt-1 text-2xl leading-tight">
             <Pnl cents={net} />
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-3">
+        <div className="tile px-5 py-4">
           <div className="text-xs text-muted">Trades</div>
-          <div className="mt-1 text-lg font-semibold">
+          <div className="font-display mt-1 text-2xl leading-tight">
             {trades.length}
             {trades.length > 0 && <span className="text-sm font-normal text-muted"> · {trades.filter((t) => t.netCents > 0).length} won</span>}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-3">
+        <div className="tile px-5 py-4">
           <div className="text-xs text-muted">Screen time</div>
-          <div className="tabular mt-1 text-lg font-semibold">{formatDuration(screen)}</div>
+          <div className="tabular font-display mt-1 text-2xl leading-tight">{formatDuration(screen)}</div>
         </div>
       </div>
 
@@ -82,7 +82,7 @@ export function DayPage({ day }: { day: string }) {
               ...readings.map((r) => ({
                 at: r.at,
                 el: (
-                  <div className={cn('rounded-md border px-2 py-1.5', r.kind === 'start' ? 'border-accent/30 bg-accent/5' : 'border-warn/30 bg-warn/5')}>
+                  <div className={cn('rounded-md border px-2 py-1.5', r.kind === 'start' ? 'border-ember/30 bg-ember/5' : 'border-warn/30 bg-warn/5')}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-semibold">{r.kind === 'start' ? 'Session start' : 'Check-in'}</span>
                       <ReadingChips answers={r.answers} decision={r.decision} />
@@ -96,7 +96,7 @@ export function DayPage({ day }: { day: string }) {
                 el: (
                   <Link to="/journal/trades/$tradeId" params={{ tradeId: t.id }} className="flex flex-wrap items-center gap-2 rounded px-1 hover:bg-surface-2">
                     <span className="font-medium">{contracts.find((c) => c.id === t.contractId)?.symbol}</span>
-                    <span className={cn('capitalize', t.direction === 'long' ? 'text-profit' : 'text-loss')}>{t.direction}</span>
+                    <span className={'capitalize text-muted'}>{t.direction}</span>
                     <span>{plays.find((p) => p.id === t.playId)?.title ?? 'No Play'}</span>
                     <GradeBadge grade={t.grade} outsidePlan={t.outsidePlan} />
                     {t.state && <span className="text-xs text-muted">state: {t.state.kind === 'start' ? 'start' : `check-in ${formatLocal(t.state.at, 'HH:mm')}`}</span>}
@@ -159,7 +159,7 @@ function DailyReviewEditor({ day }: { day: string }) {
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="What went well, what didn't, what to change tomorrow."
-        className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-2 focus:outline-accent"
+        className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-2 focus:outline-ember"
       />
       <p className="mt-1 text-xs text-muted">{status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : status === 'error' ? 'Couldn’t save — check the app is running' : 'Saves automatically'}</p>
     </Card>

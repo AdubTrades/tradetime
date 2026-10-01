@@ -77,7 +77,7 @@ export function ExpensesPage() {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={cn('-mb-px border-b-2 px-3 py-2 text-sm', tab === t.id ? 'border-accent font-medium text-text' : 'border-transparent text-muted hover:text-text')}
+            className={cn('font-display -mb-px border-b-2 px-3 py-2 text-[15px]', tab === t.id ? 'border-ember text-text' : 'border-transparent text-muted hover:text-text')}
           >
             {t.label}
           </button>

@@ -43,6 +43,13 @@
       "when": 1790862283758,
       "tag": "0005_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790867034331,
+      "tag": "0006_tradetime_palette",
+      "breakpoints": true
     }
   ]
 }

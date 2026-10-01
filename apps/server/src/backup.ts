@@ -11,7 +11,9 @@ import { paths } from './config';
 import { sqlite } from './context';
 import { getSettings, getState, setState } from './settings';
 
-const BACKUP_PREFIX = 'trading-companion-backup-';
+const BACKUP_PREFIX = 'tradetime-backup-';
+/** Backups made before the app was renamed to TradeTime; still recognised and rotated. */
+const LEGACY_PREFIX = 'trading-companion-backup-';
 const FORMAT_VERSION = 1;
 
 export interface BackupStatus {
@@ -38,7 +40,7 @@ export async function createArchive(): Promise<{ archive: Readable; cleanup: () 
 
   const archive = new ZipArchive({ zlib: { level: 6 } });
   archive.append(
-    JSON.stringify({ app: 'trading-companion', formatVersion: FORMAT_VERSION, createdAt: new Date().toISOString() }, null, 2),
+    JSON.stringify({ app: 'tradetime', formatVersion: FORMAT_VERSION, createdAt: new Date().toISOString() }, null, 2),
     { name: 'manifest.json' },
   );
   archive.file(snapshot, { name: 'app.db' });
@@ -66,9 +68,9 @@ export async function checkWritableFolder(folder: string): Promise<string | null
 
 function pruneOldBackups(folder: string, keep: number): void {
   const files = readdirSync(folder)
-    .filter((f) => f.startsWith(BACKUP_PREFIX) && f.endsWith('.zip'))
-    .sort()
-    .reverse();
+    .filter((f) => (f.startsWith(BACKUP_PREFIX) || f.startsWith(LEGACY_PREFIX)) && f.endsWith('.zip'))
+    // Same timestamp format under both prefixes, so compare by timestamp: newest first.
+    .sort((a, b) => b.replace(LEGACY_PREFIX, BACKUP_PREFIX).localeCompare(a.replace(LEGACY_PREFIX, BACKUP_PREFIX)));
   for (const f of files.slice(keep)) rmSync(path.join(folder, f), { force: true });
 }
 

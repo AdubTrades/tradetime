@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { swatch } from '../../lib/theme';
 import { CheckSquare, ExternalLink, Play, Plus, Square } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useState } from 'react';
@@ -73,7 +74,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
   };
 
   const section = 'space-y-2';
-  const h = 'text-xs font-semibold tracking-wide text-muted uppercase';
+  const h = 'font-display text-[13px] text-brass';
 
   return (
     <Dialog
@@ -83,7 +84,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
       width="max-w-3xl"
       footer={
         <>
-          <Link to="/journal/day/$day" params={{ day }} className="mr-auto self-center text-sm text-accent hover:underline">
+          <Link to="/journal/day/$day" params={{ day }} className="mr-auto self-center text-sm text-ember hover:underline">
             Open daily review →
           </Link>
           <Button onClick={() => onNewEvent(day)}>
@@ -105,7 +106,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
             <ul className="space-y-1.5">
               {market.map((m) => (
                 <li key={m.id} className="flex items-center gap-2">
-                  <span className={cn('h-2 w-2 rounded-full', m.impact === 'high' ? 'bg-loss' : 'bg-warn')} />
+                  <span className={cn('h-2 w-2 rounded-full', m.impact === 'high' ? 'bg-ember' : 'bg-brass')} />
                   <span className="tabular w-12 text-muted">{formatLocal(m.at, 'HH:mm')}</span>
                   <span>{m.title}</span>
                   <span className="text-xs text-muted">· {m.impact} impact · {m.currency}</span>
@@ -121,7 +122,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
                         {o.done ? <CheckSquare size={14} /> : <Square size={14} />}
                       </button>
                     ) : (
-                      <span className="h-2 w-2 rounded-sm" style={{ background: t?.color }} />
+                      <span className="h-2 w-2 rounded-sm" style={{ background: swatch(t?.color) }} />
                     )}
                     <span className="tabular w-12 text-muted">{o.allDay || !o.startTime ? 'All day' : o.startTime}</span>
                     <button type="button" className={cn('text-left hover:underline', o.done && 'text-muted line-through')} onClick={() => onEditEvent(o)}>
@@ -129,7 +130,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
                     </button>
                     <span className="text-xs text-muted">· {t?.name}</span>
                     {o.link && (
-                      <a href={o.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-accent hover:underline">
+                      <a href={o.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-ember hover:underline">
                         <ExternalLink size={12} /> Join
                       </a>
                     )}
@@ -155,7 +156,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
                 <li key={t.id}>
                   <Link to="/journal/trades/$tradeId" params={{ tradeId: t.id }} className="flex items-center gap-2 rounded px-1 hover:bg-surface-2">
                     <span className="tabular w-12 text-muted">{formatLocal(t.openedAt, 'HH:mm')}</span>
-                    <span className={cn('w-12 capitalize', t.direction === 'long' ? 'text-profit' : 'text-loss')}>{t.direction}</span>
+                    <span className={'w-12 capitalize text-muted'}>{t.direction}</span>
                     <span>{plays.find((p) => p.id === t.playId)?.title ?? 'No Play'}</span>
                     <GradeBadge grade={t.grade} outsidePlan={t.outsidePlan} />
                     <Pnl cents={t.netCents} className="ml-auto" />
@@ -177,7 +178,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
             <ul className="space-y-1">
               {[...sessions].reverse().map((s) => (
                 <li key={s.id} className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full" style={{ background: sType(s.typeId)?.color }} />
+                  <span className="h-2 w-2 rounded-full" style={{ background: swatch(sType(s.typeId)?.color) }} />
                   <span className="w-28">{sType(s.typeId)?.name}</span>
                   <span className="tabular text-muted">
                     {formatLocal(s.start, 'HH:mm')} – {s.end ? formatLocal(s.end, 'HH:mm') : 'running'}

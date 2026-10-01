@@ -35,7 +35,7 @@ export function PlaybookPage() {
         }
       />
       {!isLoading && visible.length === 0 && (
-        <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted">
+        <div className="panel p-10 text-center text-sm text-muted">
           No Plays yet. Add your first entry model, list the criteria that must play out before you take it, and build a gallery of what each grade looks
           like.
         </div>
@@ -48,10 +48,10 @@ export function PlaybookPage() {
               key={p.id}
               to="/playbook/$playId"
               params={{ playId: p.id }}
-              className={`block rounded-lg border border-border bg-surface p-5 transition hover:border-accent/50 ${p.archived ? 'opacity-60' : ''}`}
+              className={`block panel p-5 transition hover:bg-ivory ${p.archived ? 'opacity-60' : ''}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <h2 className="font-semibold">{p.title}</h2>
+                <h2 className="">{p.title}</h2>
                 {p.archived && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-muted">Archived</span>}
               </div>
               {p.description && <p className="mt-1 line-clamp-2 text-sm text-muted">{p.description}</p>}

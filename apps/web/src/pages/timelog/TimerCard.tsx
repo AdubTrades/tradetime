@@ -38,14 +38,14 @@ export function TimerCard({ types, longSessionHours }: { types: SessionType[]; l
   // Trading sessions open the session-start checklist; other types start straight away.
   const begin = (type: SessionType) => (type.isTrading ? setChecklistFor(type) : start.mutate(type.id));
 
-  if (isLoading) return <div className="h-28 rounded-lg border border-border bg-surface" />;
+  if (isLoading) return <div className="h-28 panel" />;
   if (running) return <RunningTimer session={running} type={types.find((t) => t.id === running.typeId)} longSessionHours={longSessionHours} />;
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface p-5">
+    <div className="flex flex-wrap items-center gap-3 panel p-5">
       <div className="mr-auto">
         <div className="text-sm text-muted">No session running</div>
-        <div className="tabular text-3xl font-semibold text-muted">00:00:00</div>
+        <div className="tabular font-display text-[40px] leading-none text-muted">00:00:00</div>
       </div>
       <Select
         aria-label="Session type"
@@ -84,17 +84,17 @@ function RunningTimer({ session, type, longSessionHours }: { session: Session; t
   const stopAtInstant = stopAt ? latestInstantAt(stopAt, session.start, now) : null;
 
   return (
-    <div className="space-y-4 rounded-lg border border-accent/40 bg-surface p-5">
+    <div className="panel space-y-4 p-6">
       <div className="flex flex-wrap items-center gap-3">
         <div className="mr-auto">
           <div className="flex items-center gap-2 text-sm text-muted">
             <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-profit opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-profit" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ember opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ember" />
             </span>
             {type?.name ?? 'Session'} · started {formatLocal(session.start, 'ccc HH:mm')}
           </div>
-          <div className="tabular text-3xl font-semibold">{elapsedClock(session.start, now)}</div>
+          <div className="tabular font-display text-[40px] leading-none">{elapsedClock(session.start, now)}</div>
         </div>
         {type?.isTrading && (
           <Button onClick={() => setCheckingIn(true)}>

@@ -25,3 +25,7 @@ export function useThemeSync(theme: Theme | undefined): void {
     return () => mq.removeEventListener('change', onChange);
   }, [theme]);
 }
+
+/** A user-chosen type colour for display. Graphite follows the text colour so it stays visible in dark mode. */
+export const swatch = (color: string | null | undefined): string | undefined =>
+  !color ? undefined : color.toLowerCase() === '#202020' ? 'var(--text)' : color;

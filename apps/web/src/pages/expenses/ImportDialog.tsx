@@ -117,7 +117,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
       {result ? (
         <div className="space-y-2 text-sm">
           <p className="flex items-center gap-2 text-base font-medium">
-            <CheckCircle2 className="text-profit" size={20} aria-hidden /> Imported {result.imported} expenses
+            <CheckCircle2 className="text-ember" size={20} aria-hidden /> Imported {result.imported} expenses
           </p>
           {result.skippedDuplicates > 0 && <p className="text-muted">Skipped {result.skippedDuplicates} duplicates.</p>}
           {result.skippedErrors > 0 && <p className="text-muted">Skipped {result.skippedErrors} rows with errors.</p>}
@@ -138,7 +138,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex w-full flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border px-4 py-10 text-muted hover:border-muted"
+            className="flex w-full flex-col items-center gap-2 rounded-[6px_0_0_0] border border-dashed border-text/25 px-4 py-10 text-muted hover:border-text/50"
           >
             <FileUp size={24} aria-hidden />
             Choose a CSV file
@@ -179,7 +179,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
               <section>
                 <h3 className="mb-2 font-medium">
-                  Preview · <span className="text-profit">{p.counts.ok} ready</span>
+                  Preview · <span>{p.counts.ok} ready</span>
                   {p.counts.duplicate > 0 && <span className="text-warn"> · {p.counts.duplicate} already imported</span>}
                   {p.counts.error > 0 && <span className="text-loss"> · {p.counts.error} with errors</span>}
                 </h3>

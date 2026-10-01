@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Stops Trading Companion and removes the login item. Your data folder is left untouched.
+# Stops TradeTime and removes the login item. Your data folder is left untouched.
 set -euo pipefail
 LABEL="com.tradingcompanion.server"
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true

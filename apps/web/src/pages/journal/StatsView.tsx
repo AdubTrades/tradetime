@@ -34,7 +34,7 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
   const curve = useMemo(() => stats.equityCurve(trades.map((t) => ({ ...t, at: t.openedAt }))), [trades]);
   const yFormat = useCallback((v: number) => usd(v), []);
 
-  if (trades.length === 0) return <p className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted">No trades match.</p>;
+  if (trades.length === 0) return <p className="panel p-10 text-center text-sm text-muted">No trades match.</p>;
 
   const equityPoints = curve.map((p) => ({
     x: DateTime.fromISO(p.at).toFormat('d LLL'),
@@ -63,7 +63,7 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 2xl:grid-cols-7">
         <Tile label="Net P&L" value={<Pnl cents={all.netCents} />} n={all.n} />
         <Tile label="Win rate" value={pct(all.winRate)} n={all.n} />
         <Tile label="Avg win" value={all.avgWinCents === null ? '—' : <Pnl cents={all.avgWinCents} />} n={all.wins} />
@@ -73,17 +73,17 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
         <Tile label="Avg R" value={all.avgR === null ? '—' : `${all.avgR}R`} n={all.nR} />
       </div>
 
-      <section className="rounded-lg border border-border bg-surface p-4">
+      <section className="panel p-4">
         <div className="mb-2 flex items-baseline justify-between">
-          <h2 className="font-semibold">Equity curve</h2>
+          <h2 className="">Equity curve</h2>
           <span className="text-xs text-muted">
             Max drawdown <span className="tabular text-text">{usd(stats.maxDrawdown(curve))}</span> · <N n={curve.length} />
           </span>
         </div>
         <Suspense fallback={<div className="h-[352px]" />}>
-          <LineChart points={equityPoints} colorVar="--accent" yFormat={yFormat} ariaLabel="Equity curve: cumulative P&L by trade" />
+          <LineChart points={equityPoints} colorVar="--ember" yFormat={yFormat} ariaLabel="Equity curve: cumulative P&L by trade" />
           <h3 className="mt-4 mb-1 text-sm font-medium text-muted">Drawdown from peak</h3>
-          <LineChart points={ddPoints} colorVar="--loss" area height={120} yFormat={yFormat} ariaLabel="Drawdown from running peak by trade" />
+          <LineChart points={ddPoints} colorVar="--brass" area height={120} yFormat={yFormat} ariaLabel="Drawdown from running peak by trade" />
         </Suspense>
       </section>
 
@@ -118,19 +118,19 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
 
 function Tile({ label, value, n }: { label: string; value: ReactNode; n: number }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-3">
+    <div className="tile min-w-0 px-5 py-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-2 text-xs text-muted">
         <span>{label}</span> <N n={n} />
       </div>
-      <div className="tabular mt-1 text-lg font-semibold">{value}</div>
+      <div className="tabular font-display mt-2 truncate text-[26px] leading-tight">{value}</div>
     </div>
   );
 }
 
 function Breakdown({ title, rows, note }: { title: string; rows: { key: string; summary: stats.Summary }[]; note?: string }) {
   return (
-    <section className="rounded-lg border border-border bg-surface">
-      <h2 className="border-b border-border px-4 py-2.5 text-sm font-semibold">{title}</h2>
+    <section className="panel">
+      <h2 className="border-b border-border px-4 py-2.5 text-sm">{title}</h2>
       {rows.length === 0 ? (
         <p className="px-4 py-4 text-sm text-muted">No data.</p>
       ) : (
@@ -181,8 +181,8 @@ function GradeByPlay({ trades }: { trades: TradeRow[] }) {
   const withPlay = plays.filter((p) => trades.some((t) => t.playId === p.id));
   if (withPlay.length === 0) return null;
   return (
-    <section className="rounded-lg border border-border bg-surface">
-      <h2 className="border-b border-border px-4 py-2.5 text-sm font-semibold">By grade within each Play</h2>
+    <section className="panel">
+      <h2 className="border-b border-border px-4 py-2.5 text-sm">By grade within each Play</h2>
       <div className="divide-y divide-border">
         {withPlay.map((p) => {
           const rows = stats.summariseBy(
@@ -250,8 +250,8 @@ function DisciplinePanels({ trades }: { trades: TradeRow[] }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-3 text-sm font-semibold">Plan vs outcome</h2>
+        <section className="panel p-4">
+          <h2 className="mb-3 text-sm">Plan vs outcome</h2>
           <dl className="grid grid-cols-[1fr_auto] gap-y-1.5 text-sm">
             <dt className="text-muted">Average planned R:R</dt>
             <dd className="tabular">{plan.avgPlannedRR === null ? '—' : `${plan.avgPlannedRR}:1`}</dd>
@@ -274,8 +274,8 @@ function DisciplinePanels({ trades }: { trades: TradeRow[] }) {
           </dl>
           <p className="mt-3 text-xs text-muted">Only trades with a target and a stop (or risk in points) count towards planned R:R.</p>
         </section>
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-3 text-sm font-semibold">Streaks</h2>
+        <section className="panel p-4">
+          <h2 className="mb-3 text-sm">Streaks</h2>
           <dl className="grid grid-cols-[1fr_auto] gap-y-1.5 text-sm">
             <dt className="text-muted">Longest winning streak</dt>
             <dd className="tabular">{streak.longestWin}</dd>

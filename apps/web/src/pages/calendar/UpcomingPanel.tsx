@@ -1,4 +1,5 @@
 import { CheckSquare, ExternalLink, Square } from 'lucide-react';
+import { swatch } from '../../lib/theme';
 import { DateTime } from 'luxon';
 import { formatLocal } from '@tc/domain';
 import { cn } from '../../components/ui';
@@ -26,13 +27,13 @@ export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void 
   const color = (id: string) => types.find((t) => t.id === id)?.color ?? '#64748b';
 
   return (
-    <aside className="rounded-lg border border-border bg-surface">
-      <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">Upcoming · next 7 days</h2>
+    <aside className="panel">
+      <h2 className="border-b border-border px-4 py-3 text-sm">Upcoming · next 7 days</h2>
       {items.length === 0 && <p className="px-4 py-6 text-sm text-muted">Nothing scheduled.</p>}
       <div className="divide-y divide-border">
         {days.map((day) => (
-          <section key={day} className={cn('px-4 py-3', day === data.today && 'bg-accent/5')}>
-            <h3 className={cn('mb-2 text-xs font-semibold', day === data.today ? 'text-accent' : 'text-muted')}>
+          <section key={day} className={cn('px-4 py-3', day === data.today && 'bg-ember/5')}>
+            <h3 className={cn('font-display mb-2 text-[13px]', day === data.today ? 'text-ember' : 'text-brass')}>
               {day === data.today ? 'Today · ' : ''}
               {DateTime.fromISO(day).toFormat('ccc d LLL')}
             </h3>
@@ -42,7 +43,7 @@ export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void 
                 .map((i) =>
                   i.kind === 'market' ? (
                     <li key={i.m.id} className="flex items-center gap-2">
-                      <span className={cn('h-2 w-2 shrink-0 rounded-full', i.m.impact === 'high' ? 'bg-loss' : 'bg-warn')} aria-label={`${i.m.impact} impact`} />
+                      <span className={cn('h-2 w-2 shrink-0 rounded-full', i.m.impact === 'high' ? 'bg-ember' : 'bg-brass')} aria-label={`${i.m.impact} impact`} />
                       <span className="tabular w-11 text-xs text-muted">{formatLocal(i.m.at, 'HH:mm')}</span>
                       <span className="truncate">{i.m.title}</span>
                     </li>
@@ -53,15 +54,15 @@ export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void 
                           {i.o.done ? <CheckSquare size={14} /> : <Square size={14} />}
                         </button>
                       ) : (
-                        <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: color(i.o.typeId) }} aria-hidden />
+                        <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: swatch(color(i.o.typeId)) }} aria-hidden />
                       )}
                       <span className="tabular w-11 text-xs text-muted">{i.o.allDay || !i.o.startTime ? (i.overdue ? 'Due' : 'All day') : i.o.startTime}</span>
-                      <button type="button" onClick={() => onOpen(i.o)} className={cn('truncate text-left hover:underline', i.overdue && 'text-loss')}>
+                      <button type="button" onClick={() => onOpen(i.o)} className={cn('truncate text-left hover:underline', i.overdue && 'text-ember')}>
                         {i.o.title}
                         {i.overdue && <span className="text-xs"> (overdue {DateTime.fromISO(i.o.date).toFormat('d LLL')})</span>}
                       </button>
                       {i.o.link && (
-                        <a href={i.o.link} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-accent" aria-label="Open link">
+                        <a href={i.o.link} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-ember" aria-label="Open link">
                           <ExternalLink size={12} />
                         </a>
                       )}

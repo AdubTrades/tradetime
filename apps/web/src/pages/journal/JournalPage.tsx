@@ -87,7 +87,7 @@ export function JournalPage() {
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={cn('-mb-px border-b-2 px-3 py-2 text-sm capitalize', tab === t ? 'border-accent font-medium' : 'border-transparent text-muted hover:text-text')}
+            className={cn('font-display -mb-px border-b-2 px-3 py-2 text-[15px] capitalize', tab === t ? 'border-ember text-text' : 'border-transparent text-muted hover:text-text')}
           >
             {t}
           </button>
@@ -179,7 +179,7 @@ function TradeList({ trades, loading }: { trades: TradeRow[]; loading: boolean }
   }, [trades]);
 
   if (!loading && trades.length === 0) {
-    return <p className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted">No trades in this range. Use “Log trades” to add some.</p>;
+    return <p className="panel p-10 text-center text-sm text-muted">No trades in this range. Use “Log trades” to add some.</p>;
   }
 
   return (
@@ -188,7 +188,7 @@ function TradeList({ trades, loading }: { trades: TradeRow[]; loading: boolean }
       {days.map(([day, list]) => {
         const net = list.reduce((s, t) => s + t.netCents, 0);
         return (
-          <section key={day} className="overflow-hidden rounded-lg border border-border bg-surface">
+          <section key={day} className="overflow-hidden panel">
             <header className="flex items-center gap-3 border-b border-border bg-surface-2 px-4 py-2 text-sm">
               <Link to="/journal/day/$day" params={{ day }} className="font-medium hover:underline">
                 {DateTime.fromISO(day).toFormat('cccc d LLLL yyyy')}
@@ -204,7 +204,7 @@ function TradeList({ trades, loading }: { trades: TradeRow[]; loading: boolean }
                   <tr key={t.id} className="cursor-pointer hover:bg-surface-2" onClick={() => navigate({ to: '/journal/trades/$tradeId', params: { tradeId: t.id } })}>
                     <td className="tabular w-20 px-4 py-2 text-muted">{formatLocal(t.openedAt, 'HH:mm')}</td>
                     <td className="w-16 py-2 font-medium">{symbol(t.contractId)}</td>
-                    <td className={cn('w-16 py-2 capitalize', t.direction === 'long' ? 'text-profit' : 'text-loss')}>{t.direction}</td>
+                    <td className={'w-16 py-2 capitalize text-muted'}>{t.direction}</td>
                     <td className="py-2">{playName(t.playId)}</td>
                     <td className="w-28 py-2">
                       <GradeBadge grade={t.grade} outsidePlan={t.outsidePlan} />

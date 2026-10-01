@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, NotebookPen, Plus, Receipt } from 'lucide-react';
+import { swatch } from '../../lib/theme';
 import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
 import { formatLocal, formatMoney, monthWeeks, tradingDay } from '@tc/domain';
@@ -67,7 +68,7 @@ export function CalendarPage() {
             <Button variant="ghost" aria-label="Previous month" onClick={() => setMonth(dt.minus({ months: 1 }).toFormat('yyyy-MM'))}>
               <ChevronLeft size={16} />
             </Button>
-            <h2 className="w-40 text-center text-lg font-semibold">{dt.toFormat('LLLL yyyy')}</h2>
+            <h2 className="w-44 text-center text-2xl">{dt.toFormat('LLLL yyyy')}</h2>
             <Button variant="ghost" aria-label="Next month" onClick={() => setMonth(dt.plus({ months: 1 }).toFormat('yyyy-MM'))}>
               <ChevronRight size={16} />
             </Button>
@@ -81,7 +82,7 @@ export function CalendarPage() {
                   type="button"
                   aria-pressed={layers.has(l.id)}
                   onClick={() => toggleLayer(l.id)}
-                  className={cn('rounded-full border px-2.5 py-0.5 text-xs', layers.has(l.id) ? 'border-accent bg-accent/10 text-text' : 'border-border text-muted')}
+                  className={cn('rounded-full border px-2.5 py-0.5 text-xs', layers.has(l.id) ? 'border-accent bg-accent text-accent-text' : 'border-text/15 text-muted hover:text-text')}
                 >
                   {l.label}
                 </button>
@@ -89,26 +90,26 @@ export function CalendarPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface p-3 text-sm sm:grid-cols-4">
-            <div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="tile px-5 py-4">
               <div className="text-xs text-muted">Net P&L (USD)</div>
-              <Pnl cents={totals.net} className="text-lg font-semibold" />
+              <Pnl cents={totals.net} className="font-display mt-1 block text-2xl" />
             </div>
-            <div>
+            <div className="tile px-5 py-4">
               <div className="text-xs text-muted">Days traded</div>
-              <div className="text-lg font-semibold">
+              <div className="font-display mt-1 text-2xl">
                 {totals.traded}
                 <span className="text-sm font-normal text-muted"> of {available} available</span>
               </div>
               {noTradeDays > 0 && <div className="text-xs text-muted">{noTradeDays} no-trade days excluded</div>}
             </div>
-            <div>
+            <div className="tile px-5 py-4">
               <div className="text-xs text-muted">Trading hours</div>
-              <div className="tabular text-lg font-semibold">{hoursLabel(totals.trading)}</div>
+              <div className="tabular font-display mt-1 text-2xl">{hoursLabel(totals.trading)}</div>
             </div>
-            <div>
+            <div className="tile px-5 py-4">
               <div className="text-xs text-muted">Other business hours</div>
-              <div className="tabular text-lg font-semibold">{hoursLabel(totals.other)}</div>
+              <div className="tabular font-display mt-1 text-2xl">{hoursLabel(totals.other)}</div>
             </div>
           </div>
 
@@ -143,8 +144,8 @@ export function CalendarPage() {
                       onOpen={() => setOpenDay(d)}
                     />
                   )),
-                  <div key={`${week[0]}-sum`} className="flex flex-col justify-center gap-0.5 rounded-md bg-surface-2 p-2">
-                    {layers.has('pnl') && <Pnl cents={w.net} className="text-sm font-semibold" />}
+                  <div key={`${week[0]}-sum`} className="flex flex-col justify-center gap-0.5 rounded-[6px_0_0_0] bg-surface p-2">
+                    {layers.has('pnl') && <Pnl cents={w.net} className="font-display text-base" />}
                     <span className="text-muted">{w.traded} days traded</span>
                     {layers.has('screen') && <span className="tabular text-muted">{hoursLabel(w.minutes)}</span>}
                   </div>,
@@ -183,7 +184,7 @@ interface CellProps {
 
 function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTrade, layers, colorOf, onOpen }: CellProps) {
   const showPnl = layers.has('pnl') && f.trades > 0;
-  const tone = showPnl ? (f.netCents > 0 ? 'bg-profit/12 border-profit/30' : f.netCents < 0 ? 'bg-loss/12 border-loss/30' : 'bg-surface-2') : 'bg-surface';
+  const tone = showPnl ? (f.netCents > 0 ? 'bg-profit/12 border-profit/30' : f.netCents < 0 ? 'bg-loss/12 border-loss/30' : 'bg-surface-2') : 'bg-bg';
   const high = market.filter((m) => m.impact === 'high');
   const screen = f.tradingMinutes + f.otherMinutes;
 
@@ -195,16 +196,16 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
       aria-label={DateTime.fromISO(date).toFormat('cccc d LLLL')}
       className={cn(
-        'relative flex min-h-28 cursor-pointer flex-col gap-0.5 rounded-md border p-1.5 transition hover:border-accent/60 focus:outline-2 focus:outline-accent',
+        'relative flex min-h-28 cursor-pointer flex-col gap-0.5 rounded-[6px_0_0_0] border p-1.5 transition hover:border-text/30 focus:outline-2 focus:outline-ember',
         tone,
         !showPnl && 'border-border',
         !inMonth && 'opacity-45',
-        isToday && 'ring-2 ring-accent',
+        isToday && 'ring-2 ring-ember',
         noTrade && 'bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,var(--border)_6px,var(--border)_7px)]',
       )}
     >
       <div className="flex items-center gap-1">
-        <span className={cn('font-medium', isToday && 'text-accent')}>{DateTime.fromISO(date).day}</span>
+        <span className={cn('font-medium', isToday && 'text-ember')}>{DateTime.fromISO(date).day}</span>
         {layers.has('events') && market.length > 0 && <MarketDots events={market} highCount={high.length} />}
         <span className="ml-auto flex items-center gap-1 text-muted">
           {layers.has('journal') && f.hasReview && <NotebookPen size={12} aria-label="Daily review written" />}
@@ -217,7 +218,7 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
       </div>
       {showPnl && (
         <div>
-          <Pnl cents={f.netCents} className="text-sm font-semibold" />
+          <Pnl cents={f.netCents} className="font-display text-base" />
           <div className="text-muted">
             {f.trades} trade{f.trades === 1 ? '' : 's'} · {Math.round((f.wins / f.trades) * 100)}%
           </div>
@@ -227,7 +228,11 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
       {noTrade && <div className="text-[10px] font-medium text-muted uppercase">No-trade day</div>}
       {layers.has('mine') &&
         occurrences.slice(0, 3).map((o) => (
-          <div key={o.key} className={cn('truncate rounded px-1 text-[11px] text-white', o.done && 'line-through opacity-60')} style={{ background: colorOf(o.typeId) }}>
+          <div
+            key={o.key}
+            className={cn('truncate border-l-2 bg-bg/70 py-px pr-1 pl-1.5 text-[11px] text-text', o.done && 'line-through opacity-60')}
+            style={{ borderLeftColor: swatch(colorOf(o.typeId)) }}
+          >
             {o.startTime && !o.allDay ? `${o.startTime} ` : ''}
             {o.title}
           </div>
@@ -242,13 +247,13 @@ function MarketDots({ events, highCount }: { events: MarketEvent[]; highCount: n
   const label = events.map((e) => `${formatLocal(e.at, 'HH:mm')} ${e.title} (${e.impact})`).join('\n');
   return (
     <span className="group relative" onClick={(e) => e.stopPropagation()}>
-      <span className={cn('block h-2 w-2 rounded-full', highCount ? 'bg-loss' : 'bg-warn')} aria-label={label} title={label} />
+      <span className={cn('block h-2 w-2 rounded-full', highCount ? 'bg-ember' : 'bg-brass')} aria-label={label} title={label} />
       <span className="pointer-events-none absolute top-3 left-0 z-20 hidden w-56 rounded-md border border-border bg-surface p-2 text-xs shadow-lg group-hover:block">
         {events.map((e) => (
           <span key={e.id} className="flex gap-2">
             <span className="tabular text-muted">{formatLocal(e.at, 'HH:mm')}</span>
             <span className="flex-1">{e.title}</span>
-            <span className={e.impact === 'high' ? 'text-loss' : 'text-warn'}>{e.impact}</span>
+            <span className={e.impact === 'high' ? 'text-ember' : 'text-brass'}>{e.impact}</span>
           </span>
         ))}
       </span>

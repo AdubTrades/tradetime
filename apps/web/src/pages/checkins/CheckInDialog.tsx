@@ -74,7 +74,7 @@ export function CheckInDialog({ sessionId, elapsedMinutes, onClose }: Props) {
                 }}
                 className={cn(
                   'rounded-full border px-3 py-1 text-sm',
-                  decision === d ? (d === 'stop' ? 'border-loss bg-loss text-white' : 'border-accent bg-accent text-accent-text') : 'border-border text-muted hover:text-text',
+                  decision === d ? ('border-accent bg-accent text-accent-text') : 'border-border text-muted hover:text-text',
                 )}
               >
                 {decisionLabels[d]}

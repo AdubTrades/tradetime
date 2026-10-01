@@ -1,4 +1,4 @@
-# Trading Companion
+# TradeTime
 
 A local-first trading journal, time log, expenses tracker, playbook and calendar for a futures scalper. All data stays on this Mac in `~/TradingCompanion/`.
 

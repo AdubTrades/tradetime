@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" ry="12" fill="#202020"/>
+  <text x="11" y="45" font-family="Inter Tight, Inter, Helvetica, Arial, sans-serif" font-size="34" letter-spacing="-1.5" fill="#ffffff"><tspan font-weight="700">T</tspan><tspan font-weight="400">t</tspan></text>
+  <circle cx="51" cy="44" r="4" fill="#ff682c"/>
+</svg>

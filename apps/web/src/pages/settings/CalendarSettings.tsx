@@ -39,7 +39,7 @@ export function CalendarSettings({ settings }: { settings: Settings }) {
             hint={
               <>
                 Free: create an account at{' '}
-                <a href="https://fredaccount.stlouisfed.org/apikeys" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-accent hover:underline">
+                <a href="https://fredaccount.stlouisfed.org/apikeys" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-ember hover:underline">
                   fredaccount.stlouisfed.org <ExternalLink size={11} aria-hidden />
                 </a>{' '}
                 and request an API key. It's stored only in your local database (and its backups).
@@ -110,7 +110,7 @@ function EventTypesEditor() {
   const refresh = () => qc.invalidateQueries({ queryKey: ['calendar'] });
   const patch = useMutation({ mutationFn: ({ id, ...b }: Partial<CalendarEventType> & { id: string }) => api.patch(`/calendar/types/${id}`, b), onSettled: refresh });
   const create = useMutation({
-    mutationFn: () => api.post('/calendar/types', { name, color: '#64748b' }),
+    mutationFn: () => api.post('/calendar/types', { name, color: '#9a958c' }),
     onSuccess: () => {
       setName('');
       void refresh();

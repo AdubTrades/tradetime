@@ -24,8 +24,17 @@ describe('backups', () => {
     expect(status.lastError).toBeNull();
     const list = restore.listBackups();
     expect(list).toHaveLength(1);
+    expect(list[0]!.name).toMatch(/^tradetime-backup-/);
     const info = await restore.inspectBackup(list[0]!.path);
     expect(info).toMatchObject({ integrity: 'ok', counts: { expenses: 1, trades: 0 }, latestActivity: '2026-09-01' });
+  });
+
+  it('still lists backups made before the rename to TradeTime', async () => {
+    const current = restore.listBackups()[0]!;
+    const legacy = path.join(config.paths.localBackups, 'trading-companion-backup-20260901-120000.zip');
+    execFileSync('cp', [current.path, legacy]);
+    expect(restore.listBackups().map((b) => b.name)).toContain('trading-companion-backup-20260901-120000.zip');
+    expect((await restore.inspectBackup(legacy)).integrity).toBe('ok');
   });
 
   it('refuses paths that are not listed backups or uploads', async () => {
@@ -42,13 +51,13 @@ describe('backups', () => {
   });
 
   it('stages a restore after writing a safety backup', async () => {
-    const list = restore.listBackups().filter((b) => b.name.includes('-backup-'));
+    const list = restore.listBackups().filter((b) => b.name.startsWith('tradetime-backup-'));
     // Prevent the staged restart from exiting the test process.
     const realExit = process.exit;
     process.exit = (() => undefined) as never;
     try {
       const res = await restore.stageRestore(list[0]!.path);
-      expect(path.basename(res.safetyBackup)).toMatch(/^trading-companion-pre-restore-/);
+      expect(path.basename(res.safetyBackup)).toMatch(/^tradetime-pre-restore-/);
       expect(existsSync(path.join(config.paths.restorePending, 'app.db'))).toBe(true);
       expect(readdirSync(config.paths.localBackups).some((f) => f.includes('pre-restore'))).toBe(true);
     } finally {

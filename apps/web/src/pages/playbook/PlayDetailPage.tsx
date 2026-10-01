@@ -39,7 +39,7 @@ export function PlayDetailPage({ playId }: { playId: string }) {
               key={play.description ?? ''}
               defaultValue={play.description ?? ''}
               rows={2}
-              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-accent"
+              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-ember"
               placeholder="What this setup is and when it applies"
               onBlur={(e) => e.target.value !== (play.description ?? '') && update.mutate({ description: e.target.value || null })}
             />
@@ -88,7 +88,7 @@ function CriteriaEditor({ play }: { play: PlayDetail }) {
             <button
               type="button"
               onClick={() => patch.mutate({ id: c.id, mustHave: !c.mustHave })}
-              className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${c.mustHave ? 'bg-loss/15 text-loss' : 'bg-surface-2 text-muted'}`}
+              className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${c.mustHave ? 'text-ember ring-1 ring-inset ring-ember' : 'bg-bg text-muted ring-1 ring-inset ring-text/10'}`}
               title="Toggle must-have"
             >
               {c.mustHave ? 'Must-have' : 'Standard'}
@@ -204,7 +204,7 @@ function Gallery({ play }: { play: PlayDetail }) {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold">Gallery</h2>
+        <h2 className="text-base">Gallery</h2>
         <p className="text-sm text-muted">What each grade of this setup looks like. A+ is your ideal-example shelf. Drop or paste screenshots onto a shelf.</p>
       </div>
       {GRADES.map((g) => (
@@ -225,7 +225,7 @@ function GradeShelf({ play, grade, examples }: { play: PlayDetail; grade: string
   const remove = useJournalMutation((id: string) => api.delete(`/plays/examples/${id}`));
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="panel p-4">
       <div className="mb-3 flex items-center gap-2">
         <GradeBadge grade={grade} className="text-sm" />
         <span className="text-xs text-muted">{examples.length} examples</span>
@@ -286,7 +286,7 @@ function GradeShelf({ play, grade, examples }: { play: PlayDetail; grade: string
           accept="image/png,image/jpeg,image/webp,image/gif,image/heic"
           label={`Add ${grade} example`}
           className="flex aspect-video flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border text-xs text-muted hover:border-muted"
-          activeClassName="border-accent bg-accent/5"
+          activeClassName="border-ember bg-ember/5"
         >
           <ImagePlus size={18} aria-hidden />
           {upload.isPending ? 'Uploading…' : `Add ${grade} example`}

@@ -14,7 +14,8 @@ import { AppError } from './errors';
 import { getSettings } from './settings';
 
 const run = promisify(execFile);
-const BACKUP_RE = /^trading-companion-(backup|pre-restore)-\d{8}-\d{6}\.zip$/;
+// Accepts backups from before the rename to TradeTime too.
+const BACKUP_RE = /^(tradetime|trading-companion)-(backup|pre-restore)-\d{8}-\d{6}\.zip$/;
 export const uploadsDir = () => path.join(paths.tmp, 'uploads');
 
 export interface BackupFile {
@@ -75,7 +76,7 @@ async function extract(zipPath: string): Promise<string> {
   });
   const entries = stdout.split('\n').filter(Boolean);
   if (entries.some((e) => e.startsWith('/') || e.split('/').includes('..'))) throw new AppError(422, 'The zip contains unsafe paths');
-  if (!entries.includes('manifest.json') || !entries.includes('app.db')) throw new AppError(422, "This doesn't look like a Trading Companion backup");
+  if (!entries.includes('manifest.json') || !entries.includes('app.db')) throw new AppError(422, "This doesn't look like a TradeTime backup");
   const dir = mkdtempSync(path.join(paths.tmp, 'restore-'));
   await run('/usr/bin/unzip', ['-q', '-o', zipPath, '-d', dir]);
   return dir;
@@ -83,7 +84,7 @@ async function extract(zipPath: string): Promise<string> {
 
 function inspectExtracted(dir: string, zipPath: string): BackupInspection {
   const manifest = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8')) as { app?: string; formatVersion?: number; createdAt?: string };
-  if (manifest.app !== 'trading-companion') throw new AppError(422, "This doesn't look like a Trading Companion backup");
+  if (manifest.app !== 'tradetime' && manifest.app !== 'trading-companion') throw new AppError(422, "This doesn't look like a TradeTime backup");
   if ((manifest.formatVersion ?? 0) > 1) throw new AppError(422, 'This backup was made by a newer version of the app. Update the app first.');
   const db = new Database(path.join(dir, 'app.db'), { readonly: true, fileMustExist: true });
   try {
@@ -126,7 +127,7 @@ export async function inspectBackup(zipPath: string): Promise<BackupInspection> 
 /** Write a zipped copy of the current data before it's replaced. */
 async function safetyBackup(): Promise<string> {
   const stamp = DateTime.now().setZone(LOCAL_ZONE).toFormat('yyyyLLdd-HHmmss');
-  const target = path.join(paths.localBackups, `trading-companion-pre-restore-${stamp}.zip`);
+  const target = path.join(paths.localBackups, `tradetime-pre-restore-${stamp}.zip`);
   const { archive, cleanup } = await createArchive();
   try {
     await pipeline(archive, createWriteStream(`${target}.part`));

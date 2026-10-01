@@ -14,7 +14,7 @@ export function ReadingChips({ answers, decision, className }: { answers: Readin
           {c}
         </span>
       ))}
-      {decision && <span className="rounded bg-accent/10 px-1.5 py-0.5 text-xs text-accent">{decisionLabels[decision]}</span>}
+      {decision && <span className="rounded bg-ember/10 px-1.5 py-0.5 text-xs text-ember">{decisionLabels[decision]}</span>}
       {chips.length === 0 && !decision && <span className="text-xs text-muted">No answers</span>}
     </span>
   );

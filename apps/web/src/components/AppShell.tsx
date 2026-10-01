@@ -20,8 +20,9 @@ const themeCycle: Record<Theme, { next: Theme; icon: typeof Sun; label: string }
   dark: { next: 'system', icon: Moon, label: 'Theme: dark' },
 };
 
+// Pill-shaped nav items; the active page sits in an Ash capsule with a small Ember marker.
 const linkClass =
-  'flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-text [&.active]:bg-surface-2 [&.active]:font-medium [&.active]:text-text';
+  'font-display group relative flex items-center gap-3 rounded-full px-4 py-2 text-[15px] text-muted transition hover:text-text [&.active]:bg-surface [&.active]:text-text';
 
 export function AppShell() {
   const { data: settings } = useSettings();
@@ -32,19 +33,22 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-border bg-surface px-3 py-4">
-        <div className="mb-6 px-3 text-sm font-semibold tracking-tight">Trading Companion</div>
+      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-bg px-4 py-6">
+        <Link to="/journal" className="mb-10 px-4" aria-label="TradeTime home">
+          <Wordmark />
+        </Link>
         <nav className="flex flex-1 flex-col gap-1">
           {nav.map(({ to, label, icon: Icon }) => (
             <Link key={to} to={to} className={linkClass}>
-              <Icon size={18} aria-hidden />
+              <Icon size={17} strokeWidth={1.6} aria-hidden />
               {label}
+              <span className="ml-auto hidden h-1.5 w-1.5 rounded-full bg-ember group-[.active]:block" aria-hidden />
             </Link>
           ))}
         </nav>
-        <div className="flex flex-col gap-1 border-t border-border pt-3">
+        <div className="flex flex-col gap-1 border-t border-border pt-4">
           <Link to="/settings" className={linkClass}>
-            <SettingsIcon size={18} aria-hidden />
+            <SettingsIcon size={17} strokeWidth={1.6} aria-hidden />
             Settings
           </Link>
           <button
@@ -53,17 +57,27 @@ export function AppShell() {
             onClick={() => updateSettings.mutate({ theme: theme.next })}
             title="Switch theme"
           >
-            <theme.icon size={18} aria-hidden />
+            <theme.icon size={17} strokeWidth={1.6} aria-hidden />
             {theme.label}
           </button>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 px-8 py-6">
+      <main className="min-w-0 flex-1 px-10 py-10">
         <ErrorBoundary resetKey={pathname}>
           <Outlet />
         </ErrorBoundary>
       </main>
       <CheckInPrompt />
     </div>
+  );
+}
+
+/** TradeTime wordmark: one word, "Trade" in bold, set in the display face. */
+export function Wordmark({ className = 'text-[22px]' }: { className?: string }) {
+  return (
+    <span className={`font-display leading-none tracking-[-0.03em] ${className}`}>
+      <span className="font-semibold">Trade</span>
+      <span>Time</span>
+    </span>
   );
 }

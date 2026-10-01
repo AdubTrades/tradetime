@@ -47,8 +47,8 @@ export function AttachmentDropzone({ ownerType, ownerId, role, pasteAnywhere = f
         onFiles={(files) => upload.mutate(files)}
         pasteAnywhere={pasteAnywhere}
         label="Add attachment: drop, paste or click to choose a file"
-        className="flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border px-4 py-6 text-sm text-muted transition hover:border-muted"
-        activeClassName="border-accent bg-accent/5 text-text"
+        className="flex flex-col items-center justify-center gap-1 rounded-[6px_0_0_0] border border-dashed border-text/25 px-4 py-6 text-sm text-muted transition hover:border-text/50"
+        activeClassName="border-ember bg-ember/5 text-text"
       >
         <ImagePlus size={20} aria-hidden />
         <span>{upload.isPending ? 'Uploading…' : 'Drop, paste (⌘V) or click to add a screenshot or PDF'}</span>

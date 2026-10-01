@@ -15,5 +15,5 @@ if (isProduction) {
 startJobs();
 
 serve({ fetch: app.fetch, hostname: host, port }, (info) => {
-  console.log(`Trading Companion server on http://${host}:${info.port} (data: ${dataDir})`);
+  console.log(`TradeTime server on http://${host}:${info.port} (data: ${dataDir})`);
 });

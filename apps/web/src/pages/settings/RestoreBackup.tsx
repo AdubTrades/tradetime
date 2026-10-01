@@ -91,7 +91,7 @@ export function RestoreBackup() {
       {(inspect.error || upload.error) && <p className="text-sm text-loss">{(inspect.error ?? upload.error)?.message}</p>}
 
       {inspection && (
-        <div className="rounded-md border border-profit/30 bg-profit/5 p-3 text-sm">
+        <div className="rounded-[6px_0_0_0] bg-ivory p-4 text-sm">
           <p className="font-medium">
             Backup checked: database intact
             {inspection.createdAt && <span className="font-normal text-muted"> · made {formatLocal(inspection.createdAt, 'ccc d LLL yyyy, HH:mm')}</span>}
@@ -151,7 +151,7 @@ export function RestoreBackup() {
           </div>
         )}
         {phase === 'restarting' && <p className="text-sm">Restoring and restarting… this takes a few seconds.</p>}
-        {phase === 'done' && <p className="text-sm text-profit">Restored. Reloading…</p>}
+        {phase === 'done' && <p className="text-sm">Restored. Reloading…</p>}
         {phase === 'manual' && (
           <p className="text-sm">
             The backup is staged. The app didn't restart by itself (it does when installed with the install script). Restart it to finish, then refresh

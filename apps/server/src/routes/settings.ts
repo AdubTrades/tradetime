@@ -35,7 +35,7 @@ export const settingsRoutes = new Hono()
     try {
       const { stdout } = await execFileAsync('osascript', [
         '-e',
-        'POSIX path of (choose folder with prompt "Choose a folder for Trading Companion backups")',
+        'POSIX path of (choose folder with prompt "Choose a folder for TradeTime backups")',
       ]);
       return c.json({ path: stdout.trim().replace(/\/$/, '') });
     } catch {

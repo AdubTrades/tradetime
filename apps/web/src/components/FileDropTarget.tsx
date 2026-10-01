@@ -54,7 +54,7 @@ export function FileDropTarget({ onFiles, pasteAnywhere = false, accept = ACCEPT
         setDragging(false);
         if (e.dataTransfer.files.length) onFiles(Array.from(e.dataTransfer.files));
       }}
-      className={cn('cursor-pointer focus:outline-2 focus:outline-accent', className, dragging && activeClassName)}
+      className={cn('cursor-pointer focus:outline-2 focus:outline-ember', className, dragging && activeClassName)}
     >
       {children}
       <input

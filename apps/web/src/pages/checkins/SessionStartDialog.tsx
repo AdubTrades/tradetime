@@ -41,7 +41,7 @@ export function SessionStartDialog({ type, open, onClose }: { type: SessionType 
       <div className="space-y-5">
         <div className="flex items-center justify-between gap-3 rounded-md bg-surface-2 p-3 text-sm">
           <span className="text-muted">Take a minute to review your ideal setups before trading.</span>
-          <a href="/playbook" target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 font-medium text-accent hover:underline">
+          <a href="/playbook" target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 font-medium text-ember hover:underline">
             <BookOpen size={16} aria-hidden /> Open Playbook
           </a>
         </div>

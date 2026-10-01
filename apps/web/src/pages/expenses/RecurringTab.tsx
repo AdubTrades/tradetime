@@ -33,7 +33,7 @@ export function RecurringTab() {
           <Plus size={16} aria-hidden /> Add recurring
         </Button>
       </div>
-      <div className="divide-y divide-border rounded-lg border border-border bg-surface">
+      <div className="divide-y divide-border panel">
         {items.length === 0 && <p className="px-4 py-10 text-center text-sm text-muted">No recurring expenses yet.</p>}
         {items.map((r) => (
           <div key={r.id} className={`flex flex-wrap items-center gap-4 px-4 py-3 text-sm ${r.active ? '' : 'opacity-60'}`}>

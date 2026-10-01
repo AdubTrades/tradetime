@@ -2,9 +2,9 @@ import { gradeTone } from '../lib/journal';
 import { cn } from './ui';
 
 export function GradeBadge({ grade, outsidePlan, className }: { grade: string | null; outsidePlan?: boolean; className?: string }) {
-  if (outsidePlan) return <span className={cn('rounded bg-loss/15 px-1.5 py-0.5 text-xs font-semibold text-loss', className)}>Outside plan</span>;
+  if (outsidePlan) return <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium text-ember ring-1 ring-inset ring-ember', className)}>Outside plan</span>;
   if (!grade) return <span className="text-muted">—</span>;
-  return <span className={cn('rounded px-1.5 py-0.5 text-xs font-semibold', gradeTone[grade], className)}>{grade}</span>;
+  return <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', gradeTone[grade], className)}>{grade}</span>;
 }
 
 /** Signed money with profit/loss colour. */

@@ -25,8 +25,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div className="max-w-xl rounded-lg border border-loss/30 bg-loss/5 p-6">
-        <h1 className="text-lg font-semibold">Something went wrong on this page</h1>
+      <div className="panel max-w-xl p-6">
+        <h1 className="text-lg">Something went wrong on this page</h1>
         <p className="mt-1 text-sm text-muted">Your data is safe — it's stored by the app's server, not this page. Reloading usually fixes it.</p>
         <pre className="mt-3 overflow-x-auto rounded bg-surface-2 p-2 text-xs text-muted">{this.state.error.message}</pre>
         <div className="mt-4 flex gap-2">

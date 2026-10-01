@@ -8,7 +8,7 @@ interface Health {
   dbBytes: number;
 }
 
-const icon = { ok: <CheckCircle2 size={16} className="text-profit" />, warn: <AlertTriangle size={16} className="text-warn" />, fail: <XCircle size={16} className="text-loss" /> };
+const icon = { ok: <CheckCircle2 size={16} className="text-text" />, warn: <AlertTriangle size={16} className="text-warn" />, fail: <XCircle size={16} className="text-loss" /> };
 
 export function DataHealth() {
   const { data, refetch, isFetching } = useQuery({ queryKey: ['data-health'], queryFn: () => api.get<Health>('/health/data') });

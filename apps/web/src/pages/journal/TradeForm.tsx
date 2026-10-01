@@ -281,7 +281,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
   };
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'Unknown';
-  const sectionTitle = 'mb-2 text-xs font-semibold tracking-wide text-muted uppercase';
+  const sectionTitle = 'font-display mb-3 text-[13px] text-brass';
 
   return (
     <Dialog
@@ -357,13 +357,13 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
             </Field>
             {form.mode === 'simple' && (
               <Field label="Direction">
-                <div className="flex overflow-hidden rounded-md border border-border">
+                <div className="flex overflow-hidden rounded-full border border-text/15">
                   {(['long', 'short'] as const).map((d) => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => set('direction', d)}
-                      className={cn('px-4 py-1.5 text-sm capitalize', form.direction === d ? (d === 'long' ? 'bg-profit text-white' : 'bg-loss text-white') : 'text-muted')}
+                      className={cn('px-4 py-1.5 text-sm capitalize', form.direction === d ? 'bg-accent text-accent-text' : 'text-muted hover:text-text')}
                     >
                       {d}
                     </button>
@@ -385,7 +385,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                         onChange={(e) => setForm((f) => ({ ...f, checks: { ...f.checks, [c.id]: e.target.checked } }))}
                       />
                       {c.label}
-                      {c.mustHave && <span className="rounded bg-loss/10 px-1 text-xs text-loss">must-have</span>}
+                      {c.mustHave && <span className="rounded-full px-1.5 text-xs text-ember ring-1 ring-inset ring-ember/60">must-have</span>}
                     </label>
                   </li>
                 ))}
@@ -442,7 +442,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h3 className={sectionTitle + ' mb-0'}>3 · Execution (Perth time, size for ×1 accounts)</h3>
-            <button type="button" className="text-xs text-accent hover:underline" onClick={() => set('mode', form.mode === 'simple' ? 'fills' : 'simple')}>
+            <button type="button" className="text-xs text-ember hover:underline" onClick={() => set('mode', form.mode === 'simple' ? 'fills' : 'simple')}>
               {form.mode === 'simple' ? 'Scaled in or out? Enter individual fills' : 'Single entry and exit'}
             </button>
           </div>
@@ -524,7 +524,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
           <h3 className={sectionTitle}>5 · Behaviour</h3>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Followed my plan?">
-              <div className="flex overflow-hidden rounded-md border border-border">
+              <div className="flex overflow-hidden rounded-full border border-text/15">
                 {(['yes', 'partly', 'no'] as const).map((v) => (
                   <button
                     key={v}
@@ -575,7 +575,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                     key={m.id}
                     type="button"
                     onClick={() => set('mistakeIds', on ? form.mistakeIds.filter((x) => x !== m.id) : [...form.mistakeIds, m.id])}
-                    className={cn('rounded-full border px-2.5 py-0.5 text-xs', on ? 'border-loss bg-loss/10 text-loss' : 'border-border text-muted hover:text-text')}
+                    className={cn('rounded-full border px-2.5 py-0.5 text-xs', on ? 'border-ember bg-ember/10 text-text' : 'border-text/15 text-muted hover:text-text')}
                   >
                     {m.name}
                   </button>
@@ -592,7 +592,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
               rows={5}
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
-              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-accent"
+              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-ember"
             />
           </Field>
           <div>
@@ -723,7 +723,7 @@ function StatePicker({ day, value, onChange, entryAt }: { day: string; value: st
   const shown = value === 'auto' ? auto : readings.find((r) => r.id === value);
   return (
     <section>
-      <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">State at entry</h3>
+      <h3 className="mb-2 text-xs tracking-wide text-muted uppercase">State at entry</h3>
       <div className="flex flex-wrap items-center gap-3">
         <Select aria-label="State reading" className="w-64" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="auto">Auto{auto ? ` (${label(auto)})` : entryAt ? ' (none before entry)' : ''}</option>

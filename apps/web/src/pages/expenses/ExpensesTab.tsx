@@ -80,7 +80,7 @@ export function ExpensesTab({ fy, onEdit }: { fy: number; onEdit: (e: Expense) =
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div className="overflow-x-auto panel">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-surface-2 text-left text-xs text-muted">
             {table.getHeaderGroups().map((hg) => (

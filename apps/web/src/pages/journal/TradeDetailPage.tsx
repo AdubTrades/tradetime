@@ -78,7 +78,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         <Stat label="Net (USD)" value={<Pnl cents={t.netCents} />} />
         <Stat label="R multiple" value={t.r === null ? '—' : `${t.r}R`} />
         <Stat label="Play" value={play?.title ?? 'No Play'} />
@@ -101,9 +101,9 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
             <ul className="space-y-1 text-sm">
               {t.checks.map((c) => (
                 <li key={c.criterionId} className={cn('flex items-center gap-2', !c.checked && 'text-muted')}>
-                  <span className={cn('w-4 text-center', c.checked ? 'text-profit' : c.mustHave ? 'text-loss' : 'text-muted')}>{c.checked ? '✓' : '✗'}</span>
+                  <span className={cn('w-4 text-center', c.checked ? 'text-text' : c.mustHave ? 'text-ember' : 'text-muted')}>{c.checked ? '✓' : '✗'}</span>
                   {c.label}
-                  {c.mustHave && <span className="rounded bg-loss/10 px-1 text-xs text-loss">must-have</span>}
+                  {c.mustHave && <span className="rounded-full px-1.5 text-xs text-ember ring-1 ring-inset ring-ember/60">must-have</span>}
                 </li>
               ))}
             </ul>
@@ -141,7 +141,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
                 {baseFills.map((f) => (
                   <tr key={f.id}>
                     <td className="tabular py-1 text-muted">{formatLocal(f.at, 'HH:mm:ss')}</td>
-                    <td className={cn('py-1 capitalize', f.side === 'buy' ? 'text-profit' : 'text-loss')}>{f.side}</td>
+                    <td className={'py-1 capitalize text-muted'}>{f.side}</td>
                     <td className="tabular py-1 text-right">{f.qty}</td>
                     <td className="tabular py-1 text-right">{f.price}</td>
                   </tr>
@@ -223,7 +223,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
                 type="button"
                 disabled={sent.has(a.id) || send.isPending}
                 onClick={() => send.mutate(a.id, { onSuccess: () => setSent((s) => new Set(s).add(a.id)) })}
-                className="flex w-full items-center justify-center gap-1 text-xs text-muted hover:text-text disabled:text-profit"
+                className="flex w-full items-center justify-center gap-1 text-xs text-muted hover:text-text disabled:text-ember"
               >
                 <BookImage size={12} aria-hidden /> {sent.has(a.id) ? 'Added to Playbook' : 'Send to Playbook'}
               </button>
@@ -241,9 +241,9 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-3">
+    <div className="tile px-5 py-4">
       <div className="text-xs text-muted">{label}</div>
-      <div className="mt-1 text-base font-semibold">{value}</div>
+      <div className="font-display mt-1 text-xl leading-tight">{value}</div>
     </div>
   );
 }
