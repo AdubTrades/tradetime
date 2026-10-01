@@ -22,16 +22,16 @@ export function ExpenseSettings({ settings }: { settings: Settings }) {
           </span>
         </label>
         <div className="grid gap-6 lg:grid-cols-3">
-          <ListEditor kind="expense_category" title="Categories" />
-          <ListEditor kind="expense_type" title="Types" />
-          <ListEditor kind="payment_method" title="Payment methods" />
+          <ListEditor kind="expense_category" title="Categories" singular="category" />
+          <ListEditor kind="expense_type" title="Types" singular="type" />
+          <ListEditor kind="payment_method" title="Payment methods" singular="payment method" />
         </div>
       </div>
     </Card>
   );
 }
 
-function ListEditor({ kind, title }: { kind: ListKind; title: string }) {
+function ListEditor({ kind, title, singular }: { kind: ListKind; title: string; singular: string }) {
   const qc = useQueryClient();
   const { data: items = [] } = useList(kind);
   const [name, setName] = useState('');
@@ -75,8 +75,8 @@ function ListEditor({ kind, title }: { kind: ListKind; title: string }) {
           if (name.trim()) create.mutate(name.trim());
         }}
       >
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={`New ${title.toLowerCase().replace(/s$/, '')}`} />
-        <Button type="submit" aria-label={`Add ${title}`} disabled={!name.trim()}>
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={`New ${singular}`} />
+        <Button type="submit" aria-label={`Add ${singular}`} disabled={!name.trim()}>
           <Plus size={16} />
         </Button>
       </form>
