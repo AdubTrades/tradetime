@@ -6,6 +6,7 @@ import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui
 import { api, type BackupStatus, type Settings } from '../lib/api';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { AccountSettings } from './settings/AccountSettings';
+import { CalendarSettings } from './settings/CalendarSettings';
 import { CheckInSettings } from './settings/CheckInSettings';
 import { ExpenseSettings } from './settings/ExpenseSettings';
 import { JournalSettings } from './settings/JournalSettings';
@@ -31,6 +32,7 @@ export function SettingsPage() {
         <GeneralSettings settings={settings} />
         <TimeLogSettings settings={settings} />
         <CheckInSettings settings={settings} />
+        <CalendarSettings settings={settings} />
         <AccountSettings />
         <JournalSettings />
         <ExpenseSettings settings={settings} />

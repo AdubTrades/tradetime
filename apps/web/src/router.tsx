@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet, redirect, useParams } from '@tanstack/react-router';
 import { financialYearOf, localDate } from '@tc/domain';
 import { AppShell } from './components/AppShell';
+import { CalendarPage } from './pages/calendar/CalendarPage';
 import { DevAttachments } from './pages/DevAttachments';
 import { ExpensesPage } from './pages/expenses/ExpensesPage';
 import { DayPage } from './pages/journal/DayPage';
@@ -41,7 +42,7 @@ const shellRoutes = [
       return <DayPage key={day} day={day} />;
     },
   }),
-  page('/calendar', 'Calendar', 'Phase 5'),
+  createRoute({ getParentRoute: () => shellRoute, path: '/calendar', component: CalendarPage }),
   createRoute({ getParentRoute: () => shellRoute, path: '/time-log', component: TimeLogPage }),
   createRoute({ getParentRoute: () => shellRoute, path: '/expenses', component: ExpensesPage }),
   createRoute({ getParentRoute: () => shellRoute, path: '/playbook', component: PlaybookPage }),

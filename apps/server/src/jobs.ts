@@ -1,7 +1,9 @@
 import { Cron } from 'croner';
 import { formatDuration, localDate } from '@tc/domain';
 import { isBackupDue, runBackup } from './backup';
+import { dueReminders } from './calendar';
 import { checkInToNotify } from './checkins';
+import { isMarketRefreshDue, refreshMarketEvents } from './marketEvents';
 import { generateRecurringExpenses } from './expenses';
 import { notify } from './notify';
 import { getRunningSession, runningMinutes } from './sessions';
@@ -34,6 +36,24 @@ export function startJobs(): Cron[] {
     if (due) notify('Time to check in', `${formatDuration(due.elapsedMinutes)} on screen. How are you doing — keep trading, take a break, or stop?`);
   });
 
+  // Economic events: refresh from FRED every 12 hours (stored locally for offline use).
+  const market = new Cron('17 * * * *', { protect: true }, async () => {
+    if (!isMarketRefreshDue()) return;
+    const s = await refreshMarketEvents();
+    if (s.lastError) console.error(`[market] ${s.lastError}`);
+  });
+  setTimeout(() => void market.trigger(), 20_000);
+
+  // Reminders for your own events: notify when the reminder time passes (checked each minute).
+  let lastReminderCheck = Date.now();
+  const reminders = new Cron('* * * * *', { protect: true }, () => {
+    const now = Date.now();
+    for (const o of dueReminders(lastReminderCheck, now)) {
+      notify(o.title, o.allDay || !o.startTime ? `Today${o.isTask ? ' (task)' : ''}` : `Starts at ${o.startTime}${o.link ? ' · link in the calendar' : ''}`);
+    }
+    lastReminderCheck = now;
+  });
+
   // Recurring expenses: create any occurrences due up to today (catches up after downtime).
   const recurring = new Cron('5 * * * *', { protect: true }, () => {
     const created = generateRecurringExpenses(localDate(new Date()));
@@ -41,5 +61,5 @@ export function startJobs(): Cron[] {
   });
   void recurring.trigger();
 
-  return [backupCheck, longSessionCheck, checkIn, recurring];
+  return [backupCheck, longSessionCheck, checkIn, market, reminders, recurring];
 }

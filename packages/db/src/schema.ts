@@ -423,3 +423,83 @@ export const stateReading = sqliteTable(
   },
   (t) => [index('state_reading_session_idx').on(t.sessionId), index('state_reading_at_idx').on(t.at)],
 );
+
+// ---------- Calendar ----------
+
+/** Scheduled economic release, fetched from a provider and stored locally for offline use. */
+export const marketEvent = sqliteTable(
+  'market_event',
+  {
+    ...recordColumns,
+    provider: text('provider').notNull(),
+    providerId: text('provider_id').notNull(),
+    title: text('title').notNull(),
+    at: text('at').notNull(),
+    impact: text('impact', { enum: ['high', 'medium', 'low'] }).notNull(),
+    country: text('country').notNull(),
+    currency: text('currency').notNull(),
+    fetchedAt: text('fetched_at').notNull(),
+  },
+  (t) => [uniqueIndex('market_event_provider_idx').on(t.provider, t.providerId), index('market_event_at_idx').on(t.at)],
+);
+
+/** Your own event types, each a colour-coded calendar layer. */
+export const calendarEventType = sqliteTable('calendar_event_type', {
+  ...recordColumns,
+  name: text('name').notNull(),
+  color: text('color').notNull(),
+  /** Session type preselected when starting a session from an event of this type. */
+  sessionTypeId: text('session_type_id').references(() => sessionType.id),
+  /** Days with an event of this type don't count as "not traded". */
+  isNoTrade: integer('is_no_trade', { mode: 'boolean' }).notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+});
+
+export interface Recurrence {
+  freq: 'daily' | 'weekly' | 'monthly';
+  interval: number;
+  /** Weekly: ISO weekdays 1 (Mon) – 7 (Sun). */
+  byWeekday?: number[];
+  /** Last date (inclusive) an occurrence may fall on. */
+  until?: string | null;
+}
+
+/** An event or task you create. Times are Perth wall-clock times (no daylight saving). */
+export const calendarEvent = sqliteTable(
+  'calendar_event',
+  {
+    ...recordColumns,
+    typeId: text('type_id')
+      .notNull()
+      .references(() => calendarEventType.id),
+    title: text('title').notNull(),
+    notes: text('notes'),
+    link: text('link'),
+    date: text('date').notNull(),
+    allDay: integer('all_day', { mode: 'boolean' }).notNull().default(false),
+    startTime: text('start_time'),
+    endTime: text('end_time'),
+    recurrence: text('recurrence', { mode: 'json' }).$type<Recurrence | null>(),
+    reminderMinutes: integer('reminder_minutes'),
+    isTask: integer('is_task', { mode: 'boolean' }).notNull().default(false),
+    /** For one-off tasks. Recurring tasks track completion per occurrence in exceptions. */
+    doneAt: text('done_at'),
+  },
+  (t) => [index('calendar_event_date_idx').on(t.date)],
+);
+
+/** A change to one occurrence of a recurring event: skipped, moved/renamed, or (for tasks) done. */
+export const calendarEventException = sqliteTable(
+  'calendar_event_exception',
+  {
+    eventId: text('event_id')
+      .notNull()
+      .references(() => calendarEvent.id),
+    occurrenceDate: text('occurrence_date').notNull(),
+    skipped: integer('skipped', { mode: 'boolean' }).notNull().default(false),
+    override: text('override', { mode: 'json' }).$type<{ title?: string; date?: string; startTime?: string | null; endTime?: string | null; notes?: string | null }>(),
+    doneAt: text('done_at'),
+  },
+  (t) => [uniqueIndex('calendar_event_exception_idx').on(t.eventId, t.occurrenceDate)],
+);

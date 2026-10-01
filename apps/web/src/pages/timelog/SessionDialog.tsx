@@ -12,6 +12,8 @@ interface Props {
   types: SessionType[];
   /** Edit this session; omit to add a manual session. */
   session?: Session | null;
+  /** Date to prefill when adding (defaults to today). */
+  defaultDate?: string;
 }
 
 interface Form {
@@ -23,9 +25,9 @@ interface Form {
   reason: string;
 }
 
-function initialForm(session: Session | null | undefined, types: SessionType[]): Form {
+function initialForm(session: Session | null | undefined, types: SessionType[], defaultDate?: string): Form {
   if (!session) {
-    return { typeId: types.find((t) => !t.archived)?.id ?? '', date: todayLocal(), startTime: '', endTime: '', notes: '', reason: '' };
+    return { typeId: types.find((t) => !t.archived)?.id ?? '', date: defaultDate ?? todayLocal(), startTime: '', endTime: '', notes: '', reason: '' };
   }
   const start = instantToLocalParts(session.start);
   return {
@@ -38,15 +40,15 @@ function initialForm(session: Session | null | undefined, types: SessionType[]):
   };
 }
 
-export function SessionDialog({ open, onClose, types, session }: Props) {
+export function SessionDialog({ open, onClose, types, session, defaultDate }: Props) {
   const editing = !!session;
   const running = editing && session.end === null;
-  const [form, setForm] = useState<Form>(() => initialForm(session, types));
+  const [form, setForm] = useState<Form>(() => initialForm(session, types, defaultDate));
   const [overlaps, setOverlaps] = useState<Session[] | null>(null);
   // Reset only when the dialog opens, so a refetch of session types can't wipe what's being typed.
   useEffect(() => {
     if (open) {
-      setForm(initialForm(session, types));
+      setForm(initialForm(session, types, defaultDate));
       setOverlaps(null);
     }
   }, [open, session]);

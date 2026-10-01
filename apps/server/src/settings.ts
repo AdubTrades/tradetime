@@ -21,6 +21,10 @@ const settingsShape = z.object({
   checkInMinutes: z.number().int().min(5).max(720),
   checkInSecondMinutes: z.number().int().min(5).max(720).nullable(),
   checkInSnoozeMinutes: z.number().int().min(1).max(120),
+  /** Your own FRED API key (free from fred.stlouisfed.org). Stored only in the local database. */
+  fredApiKey: z.string().trim().regex(/^[a-z0-9]{32}$/i, 'A FRED API key is 32 letters and numbers').nullable(),
+  /** Show medium-impact releases as well as high-impact ones. */
+  includeMediumEvents: z.boolean(),
 });
 
 export type Settings = z.infer<typeof settingsShape>;
@@ -37,6 +41,8 @@ export const defaultSettings: Settings = {
   checkInMinutes: 90,
   checkInSecondMinutes: null,
   checkInSnoozeMinutes: 15,
+  fredApiKey: null,
+  includeMediumEvents: false,
 };
 
 // No defaults here: a patch must only touch the keys it names.

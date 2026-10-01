@@ -3,13 +3,17 @@ import { promisify } from 'node:util';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { checkWritableFolder, detectCloudFolders } from '../backup';
+import { refreshMarketEvents } from '../marketEvents';
 import { recomputeTradingDays } from '../sessions';
 import { getSettings, settingsPatchSchema, updateSettings } from '../settings';
 
 const execFileAsync = promisify(execFile);
 
+/** The API key never goes back to the browser in full: just enough to recognise it. */
+const forClient = (s: ReturnType<typeof getSettings>) => ({ ...s, fredApiKey: s.fredApiKey ? `••••${s.fredApiKey.slice(-4)}` : null });
+
 export const settingsRoutes = new Hono()
-  .get('/', (c) => c.json(getSettings()))
+  .get('/', (c) => c.json(forClient(getSettings())))
   .patch('/', async (c) => {
     const parsed = settingsPatchSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: z.prettifyError(parsed.error) }, 400);
@@ -20,7 +24,8 @@ export const settingsRoutes = new Hono()
     const before = getSettings();
     const after = updateSettings(parsed.data);
     if (after.rolloverTime !== before.rolloverTime) recomputeTradingDays(after.rolloverTime);
-    return c.json(after);
+    if (after.fredApiKey && after.fredApiKey !== before.fredApiKey) void refreshMarketEvents();
+    return c.json(forClient(after));
   })
   .get('/backup-folders', (c) => c.json(detectCloudFolders()))
   /** Open the native macOS folder picker on the Mac running the server. */

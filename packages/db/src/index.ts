@@ -20,3 +20,4 @@ export function openDb(file: string): { db: Db; sqlite: Database.Database } {
   return { db, sqlite };
 }
 export type { ReadingAnswer } from './schema';
+export type { Recurrence } from './schema';

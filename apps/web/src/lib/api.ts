@@ -47,6 +47,9 @@ export interface Settings {
   checkInMinutes: number;
   checkInSecondMinutes: number | null;
   checkInSnoozeMinutes: number;
+  /** Masked by the server, e.g. "••••ab12". */
+  fredApiKey: string | null;
+  includeMediumEvents: boolean;
 }
 export interface BackupStatus {
   lastSuccessAt: string | null;
@@ -307,4 +310,73 @@ export interface DueCheckIn {
   elapsedMinutes: number;
   level: number;
   thresholdMinutes: number;
+}
+export interface MarketEvent {
+  id: string;
+  provider: string;
+  title: string;
+  at: string;
+  impact: 'high' | 'medium' | 'low';
+  country: string;
+  currency: string;
+  tradingDay: string;
+}
+export interface EventRecurrence {
+  freq: 'daily' | 'weekly' | 'monthly';
+  interval: number;
+  byWeekday?: number[];
+  until?: string | null;
+}
+export interface CalendarEventType {
+  id: string;
+  name: string;
+  color: string;
+  sessionTypeId: string | null;
+  isNoTrade: boolean;
+  sortOrder: number;
+  archived: boolean;
+}
+export interface OccurrenceView {
+  key: string;
+  eventId: string;
+  occurrenceDate: string;
+  date: string;
+  title: string;
+  startTime: string | null;
+  endTime: string | null;
+  notes: string | null;
+  allDay: boolean;
+  typeId: string;
+  link: string | null;
+  isTask: boolean;
+  done: boolean;
+  recurring: boolean;
+  recurrence: EventRecurrence | null;
+  reminderMinutes: number | null;
+  startAt: string | null;
+}
+export interface DayFigures {
+  netCents: number;
+  trades: number;
+  wins: number;
+  tradingMinutes: number;
+  otherMinutes: number;
+  expensesCents: number;
+  hasReview: boolean;
+}
+export interface CalendarRangeData {
+  days: Record<string, DayFigures>;
+  market: MarketEvent[];
+  occurrences: OccurrenceView[];
+}
+export interface UpcomingData {
+  today: string;
+  market: MarketEvent[];
+  occurrences: OccurrenceView[];
+}
+export interface MarketStatus {
+  lastSuccessAt: string | null;
+  lastAttemptAt: string | null;
+  lastError: string | null;
+  count: number;
 }
