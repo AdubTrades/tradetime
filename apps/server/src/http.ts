@@ -6,10 +6,15 @@ export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
 export const instant = z.iso.datetime({ offset: true });
 export const cents = z.number().int();
 
+/** Readable validation message: the issue messages, without Zod's symbols and paths. */
+export function formatZodError(error: z.ZodError): string {
+  return [...new Set(error.issues.map((i) => i.message))].join('; ');
+}
+
 /** Parse a JSON body with a Zod schema, throwing a 400 with a readable message. */
 export async function body<T extends z.ZodType>(req: { json: () => Promise<unknown> }, schema: T): Promise<z.infer<T>> {
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) throw new AppError(400, z.prettifyError(parsed.error));
+  if (!parsed.success) throw new AppError(400, formatZodError(parsed.error));
   return parsed.data;
 }
 

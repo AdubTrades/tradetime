@@ -283,13 +283,37 @@ export function listTrades(range: { from: string; to: string }) {
   const tags = db.select().from(tradeTag).where(inArray(tradeTag.tradeId, ids)).all();
   const readingIds = [...new Set(trades.map((t) => t.stateReadingId).filter((x): x is string => !!x))];
   const readings = readingIds.length ? db.select().from(stateReading).where(inArray(stateReading.id, readingIds)).all() : [];
+  const sessionIds = [...new Set(trades.map((t) => t.sessionId).filter((x): x is string => !!x))];
+  const sessionStarts = new Map(
+    sessionIds.length ? db.select({ id: session.id, start: session.start }).from(session).where(inArray(session.id, sessionIds)).all().map((x) => [x.id, x.start]) : [],
+  );
+  const firstEntry = new Map<string, number>();
+  if (accounts.length) {
+    const firstFills = db
+      .select({ tradeAccountId: fill.tradeAccountId, at: fill.at, price: fill.price })
+      .from(fill)
+      .where(inArray(fill.tradeAccountId, accounts.map((a) => a.id)))
+      .orderBy(asc(fill.at))
+      .all();
+    const accountTrade = new Map(accounts.map((a) => [a.id, a.tradeId]));
+    for (const f of firstFills) {
+      const tid = accountTrade.get(f.tradeAccountId)!;
+      if (!firstEntry.has(tid)) firstEntry.set(tid, f.price);
+    }
+  }
   return trades.map((t) => {
     const mine = accounts.filter((a) => a.tradeId === t.id);
     const r = readings.find((x) => x.id === t.stateReadingId);
     return {
       ...t,
       ...summarise(mine),
-      state: r ? { id: r.id, kind: r.kind, at: r.at, answers: r.answers } : null,
+      state: r ? { id: r.id, kind: r.kind, at: r.at, answers: r.answers, decision: r.decision } : null,
+      sessionStart: t.sessionId ? (sessionStarts.get(t.sessionId) ?? null) : null,
+      /** Planned reward:risk from the first entry, when both a target and a planned risk were set. */
+      plannedRR:
+        t.targetPrice != null && t.plannedRiskPoints && firstEntry.has(t.id)
+          ? Math.round((Math.abs(t.targetPrice - firstEntry.get(t.id)!) / t.plannedRiskPoints) * 100) / 100
+          : null,
       accounts: mine.map(({ id, accountId, multiplier, maxQty, avgEntry, avgExit, grossCents, feesCents, netCents, plannedRiskCents }) => ({
         id,
         accountId,

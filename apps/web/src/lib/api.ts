@@ -50,6 +50,8 @@ export interface Settings {
   /** Masked by the server, e.g. "••••ab12". */
   fredApiKey: string | null;
   includeMediumEvents: boolean;
+  reportName: string | null;
+  reportAbn: string | null;
 }
 export interface BackupStatus {
   lastSuccessAt: string | null;
@@ -271,10 +273,12 @@ export interface TradeBase {
   mistakeIds: string[];
   stateReadingId: string | null;
   stateOverridden: boolean;
-  state: Pick<StateReading, 'id' | 'kind' | 'at' | 'answers'> | null;
+  state: Pick<StateReading, 'id' | 'kind' | 'at' | 'answers'> & { decision?: StateReading['decision'] } | null;
 }
 export interface TradeRow extends TradeBase {
   accounts: TradeAccountRow[];
+  sessionStart: string | null;
+  plannedRR: number | null;
 }
 export interface TradeDetail extends TradeBase {
   accounts: (TradeAccountRow & { fills: (FillRow & { id: string })[] })[];

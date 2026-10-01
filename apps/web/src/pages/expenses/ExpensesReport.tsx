@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Printer } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { claimable, formatMoney } from '@tc/domain';
-import { Button } from '../../components/ui';
+import { ReportHeader } from '../../components/ReportHeader';
 import { api, type Expense, type Payout } from '../../lib/api';
 import { useExpenseLookups, useFySummary } from '../../lib/expenses';
 
@@ -23,19 +22,10 @@ export function ExpensesReport({ fy }: { fy: number }) {
 
   return (
     <div className="mx-auto max-w-5xl bg-white p-8 text-[12px] text-black print:p-0">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Business expenses and income — FY {year.label}</h1>
-          <p className="text-black/60">
-            {DateTime.fromISO(year.start).toFormat('d LLLL yyyy')} to {DateTime.fromISO(year.end).toFormat('d LLLL yyyy')} · amounts in AUD ·{' '}
-            {gstRegistered ? 'registered for GST' : 'not registered for GST'} · generated {DateTime.now().toFormat('d LLL yyyy HH:mm')}
-          </p>
-        </div>
-        <Button className="print:hidden" onClick={() => window.print()}>
-          <Printer size={16} aria-hidden /> Print / Save as PDF
-        </Button>
-      </div>
-
+      <ReportHeader
+        title={`Business expenses and income — FY ${year.label}`}
+        subtitle={`${DateTime.fromISO(year.start).toFormat('d LLLL yyyy')} to ${DateTime.fromISO(year.end).toFormat('d LLLL yyyy')} · amounts in AUD · ${gstRegistered ? 'registered for GST' : 'not registered for GST'}`}
+      />
       <div className="mb-6 grid grid-cols-4 gap-3">
         {[
           ['Payouts received', formatMoney(summary.payouts.audReceivedCents)],

@@ -32,6 +32,9 @@ importers:
       archiver:
         specifier: ^8.0.0
         version: 8.0.0
+      better-sqlite3:
+        specifier: 13.0.3
+        version: 13.0.3
       croner:
         specifier: ^10.0.1
         version: 10.0.1
@@ -54,6 +57,9 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^9.6.0
+        version: 9.6.0
       '@types/luxon':
         specifier: ^3.7.6
         version: 3.7.6

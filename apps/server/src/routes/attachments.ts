@@ -2,6 +2,7 @@ import { createReadStream, existsSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { formatZodError } from '../http';
 import {
   attachmentPath,
   attachmentsFor,
@@ -42,7 +43,7 @@ export const attachmentRoutes = new Hono()
   })
   .post('/links', async (c) => {
     const parsed = linkSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: z.prettifyError(parsed.error) }, 400);
+    if (!parsed.success) return c.json({ error: formatZodError(parsed.error) }, 400);
     if (!getAttachment(parsed.data.attachmentId)) return c.json({ error: 'Attachment not found' }, 404);
     const { attachmentId, ownerType, ownerId, role } = parsed.data;
     return c.json(linkAttachment(attachmentId, ownerType, ownerId, role ?? null), 201);

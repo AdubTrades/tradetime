@@ -6,6 +6,8 @@ import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui
 import { api, type BackupStatus, type Settings } from '../lib/api';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { AccountSettings } from './settings/AccountSettings';
+import { DataHealth } from './settings/DataHealth';
+import { RestoreBackup } from './settings/RestoreBackup';
 import { CalendarSettings } from './settings/CalendarSettings';
 import { CheckInSettings } from './settings/CheckInSettings';
 import { ExpenseSettings } from './settings/ExpenseSettings';
@@ -37,6 +39,7 @@ export function SettingsPage() {
         <JournalSettings />
         <ExpenseSettings settings={settings} />
         <BackupSettings settings={settings} />
+        <DataHealth />
       </div>
     </div>
   );
@@ -60,6 +63,23 @@ function GeneralSettings({ settings }: { settings: Settings }) {
             value={rollover}
             onChange={(e) => setRollover(e.target.value)}
             onBlur={() => rollover !== settings.rolloverTime && update.mutate({ rolloverTime: rollover })}
+          />
+        </Field>
+        <Field label="Name on reports" hint="Shown on the printable hours and expenses reports">
+          <Input
+            defaultValue={settings.reportName ?? ''}
+            key={settings.reportName ?? ''}
+            placeholder="Your name or business name"
+            onBlur={(e) => e.target.value !== (settings.reportName ?? '') && update.mutate({ reportName: e.target.value.trim() || null })}
+          />
+        </Field>
+        <Field label="ABN on reports" hint="Optional" error={update.error?.message?.includes('ABN') ? update.error.message : undefined}>
+          <Input
+            defaultValue={settings.reportAbn ?? ''}
+            key={settings.reportAbn ?? ''}
+            inputMode="numeric"
+            placeholder="11 digits"
+            onBlur={(e) => e.target.value !== (settings.reportAbn ?? '') && update.mutate({ reportAbn: e.target.value.trim() || null })}
           />
         </Field>
         <Field label="Theme">
@@ -183,6 +203,7 @@ function BackupSettings({ settings }: { settings: Settings }) {
             <Download size={16} aria-hidden /> Export everything (.zip)
           </a>
         </div>
+        <RestoreBackup />
       </div>
     </Card>
   );

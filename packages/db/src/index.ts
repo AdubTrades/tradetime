@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
@@ -21,3 +22,9 @@ export function openDb(file: string): { db: Db; sqlite: Database.Database } {
 }
 export type { ReadingAnswer } from './schema';
 export type { Recurrence } from './schema';
+
+/** Number of migrations this version of the app knows about (to reject backups from a newer version). */
+export function knownMigrationCount(): number {
+  const journal = JSON.parse(readFileSync(fileURLToPath(new URL('../migrations/meta/_journal.json', import.meta.url)), 'utf8')) as { entries: unknown[] };
+  return journal.entries.length;
+}

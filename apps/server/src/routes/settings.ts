@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { formatZodError } from '../http';
 import { checkWritableFolder, detectCloudFolders } from '../backup';
 import { refreshMarketEvents } from '../marketEvents';
 import { recomputeTradingDays } from '../sessions';
@@ -16,7 +17,7 @@ export const settingsRoutes = new Hono()
   .get('/', (c) => c.json(forClient(getSettings())))
   .patch('/', async (c) => {
     const parsed = settingsPatchSchema.safeParse(await c.req.json());
-    if (!parsed.success) return c.json({ error: z.prettifyError(parsed.error) }, 400);
+    if (!parsed.success) return c.json({ error: formatZodError(parsed.error) }, 400);
     if (parsed.data.backupFolder) {
       const problem = await checkWritableFolder(parsed.data.backupFolder);
       if (problem) return c.json({ error: problem }, 400);

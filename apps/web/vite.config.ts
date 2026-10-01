@@ -4,6 +4,8 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Served from your own Mac, so a ~200 KB gzipped main bundle is fine; charts load separately.
+  build: { chunkSizeWarningLimit: 800 },
   server: {
     host: '127.0.0.1',
     port: 5173,

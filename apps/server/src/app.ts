@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
+import { dataHealth } from './health';
 import { calendarRoutes } from './routes/calendar';
 import { checkInRoutes, questionRoutes, readingRoutes } from './routes/checkins';
 import { backupRoutes } from './routes/backup';
@@ -28,7 +29,9 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
-app.get('/api/health', (c) => c.json({ ok: true }));
+const startedAt = new Date().toISOString();
+app.get('/api/health', (c) => c.json({ ok: true, startedAt }));
+app.get('/api/health/data', (c) => c.json(dataHealth()));
 app.route('/api/settings', settingsRoutes);
 app.route('/api/attachments', attachmentRoutes);
 app.route('/api/backup', backupRoutes);

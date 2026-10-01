@@ -1,4 +1,5 @@
-import { Link, Outlet } from '@tanstack/react-router';
+import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { ErrorBoundary } from './ErrorBoundary';
 import { BookOpen, CalendarDays, Monitor, Moon, Receipt, Settings as SettingsIcon, Sun, Target, Timer } from 'lucide-react';
 import type { Theme } from '../lib/api';
 import { useSettings, useUpdateSettings } from '../lib/settings';
@@ -27,6 +28,7 @@ export function AppShell() {
   const updateSettings = useUpdateSettings();
   useThemeSync(settings?.theme);
   const theme = themeCycle[settings?.theme ?? 'system'];
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
     <div className="flex min-h-screen">
@@ -57,7 +59,9 @@ export function AppShell() {
         </div>
       </aside>
       <main className="min-w-0 flex-1 px-8 py-6">
-        <Outlet />
+        <ErrorBoundary resetKey={pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
       <CheckInPrompt />
     </div>

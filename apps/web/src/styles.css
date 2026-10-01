@@ -57,3 +57,31 @@ body {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Printable reports: A4, light, with table headers repeated on each page. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+  :root,
+  :root.dark {
+    color-scheme: light;
+  }
+  body {
+    background: #fff !important;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr,
+  h2 {
+    break-inside: avoid;
+  }
+  h2 {
+    break-after: avoid;
+  }
+}

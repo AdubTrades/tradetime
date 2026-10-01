@@ -12,6 +12,8 @@ export const paths = {
   localBackups: path.join(dataDir, 'backups-local'),
   logs: path.join(dataDir, 'logs'),
   tmp: path.join(dataDir, 'tmp'),
+  /** A restore staged here is swapped in on the next start, before the database opens. */
+  restorePending: path.join(dataDir, 'restore-pending'),
 };
 
 export const webDist = path.resolve(import.meta.dirname, '../../web/dist');

@@ -1,11 +1,13 @@
 import { DateTime } from 'luxon';
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useMemo, type ReactNode } from 'react';
 import { GRADES, stats } from '@tc/domain';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
-import { LineChart } from '../../components/LineChart';
 import type { TradeRow } from '../../lib/api';
 import { useAccounts, useList } from '../../lib/expenses';
 import { useContracts, usePlays } from '../../lib/journal';
+
+// ECharts is large; load it only when stats are shown.
+const LineChart = lazy(() => import('../../components/LineChart').then((m) => ({ default: m.LineChart })));
 
 const usd = (c: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 0 }).format(c / 100);
 const pct = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
@@ -78,9 +80,11 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
             Max drawdown <span className="tabular text-text">{usd(stats.maxDrawdown(curve))}</span> · <N n={curve.length} />
           </span>
         </div>
-        <LineChart points={equityPoints} colorVar="--accent" yFormat={yFormat} ariaLabel="Equity curve: cumulative P&L by trade" />
-        <h3 className="mt-4 mb-1 text-sm font-medium text-muted">Drawdown from peak</h3>
-        <LineChart points={ddPoints} colorVar="--loss" area height={120} yFormat={yFormat} ariaLabel="Drawdown from running peak by trade" />
+        <Suspense fallback={<div className="h-[352px]" />}>
+          <LineChart points={equityPoints} colorVar="--accent" yFormat={yFormat} ariaLabel="Equity curve: cumulative P&L by trade" />
+          <h3 className="mt-4 mb-1 text-sm font-medium text-muted">Drawdown from peak</h3>
+          <LineChart points={ddPoints} colorVar="--loss" area height={120} yFormat={yFormat} ariaLabel="Drawdown from running peak by trade" />
+        </Suspense>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -99,6 +103,8 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
         <Breakdown title="By time of day (entry, Perth)" rows={stats.summariseBy([...trades].sort((a, b) => stats.hourBucket(a.openedAt).localeCompare(stats.hourBucket(b.openedAt))), (t) => stats.hourBucket(t.openedAt))} />
         <Breakdown title="By day of week" rows={stats.summariseBy(trades, (t) => stats.weekdayOf(t.tradingDay), stats.WEEKDAYS)} />
       </div>
+
+      <DisciplinePanels trades={trades} />
 
       <StateBreakdowns trades={trades} />
 
@@ -228,6 +234,77 @@ function StateBreakdowns({ trades }: { trades: TradeRow[] }) {
           )}
         />
       ))}
+    </div>
+  );
+}
+
+/** Plan vs outcome, streaks, fatigue (time into session) and trades taken against a check-in decision. */
+function DisciplinePanels({ trades }: { trades: TradeRow[] }) {
+  const plan = stats.planAdherence(trades);
+  const streak = stats.streaks(trades.map((t) => ({ ...t, at: t.openedAt })));
+  const inSession = trades.filter((t) => t.sessionStart);
+  const afterCheckIn = trades.filter((t) => t.state?.kind === 'checkin' && t.state.decision);
+  const against = afterCheckIn.filter((t) => t.state!.decision !== 'keep_trading');
+  const decisionLabel: Record<string, string> = { keep_trading: 'After “keep trading”', take_break: 'After “take a break”', stop: 'After “stop for the day”' };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-lg border border-border bg-surface p-4">
+          <h2 className="mb-3 text-sm font-semibold">Plan vs outcome</h2>
+          <dl className="grid grid-cols-[1fr_auto] gap-y-1.5 text-sm">
+            <dt className="text-muted">Average planned R:R</dt>
+            <dd className="tabular">{plan.avgPlannedRR === null ? '—' : `${plan.avgPlannedRR}:1`}</dd>
+            <dt className="text-muted">Average actual R (same trades)</dt>
+            <dd className="tabular">{plan.avgActualR === null ? '—' : `${plan.avgActualR}R`}</dd>
+            <dt className="text-muted">Reached the planned target</dt>
+            <dd className="tabular">
+              {pct(plan.reachedPlan)} <N n={plan.n} />
+            </dd>
+            <dt className="text-muted">Losses bigger than planned risk (worse than −1.1R)</dt>
+            <dd className="tabular">
+              {plan.oversizedLosses} of {plan.losersWithR}
+              {plan.oversizedLosses > 0 && (
+                <>
+                  {' '}
+                  · <Pnl cents={plan.oversizedLossCents} />
+                </>
+              )}
+            </dd>
+          </dl>
+          <p className="mt-3 text-xs text-muted">Only trades with a target and a stop (or risk in points) count towards planned R:R.</p>
+        </section>
+        <section className="rounded-lg border border-border bg-surface p-4">
+          <h2 className="mb-3 text-sm font-semibold">Streaks</h2>
+          <dl className="grid grid-cols-[1fr_auto] gap-y-1.5 text-sm">
+            <dt className="text-muted">Longest winning streak</dt>
+            <dd className="tabular">{streak.longestWin}</dd>
+            <dt className="text-muted">Longest losing streak</dt>
+            <dd className="tabular">{streak.longestLoss}</dd>
+            <dt className="text-muted">Current</dt>
+            <dd className={`tabular ${streak.current > 0 ? 'text-profit' : streak.current < 0 ? 'text-loss' : ''}`}>
+              {streak.current === 0 ? '—' : `${Math.abs(streak.current)} ${streak.current > 0 ? (streak.current === 1 ? 'win' : 'wins') : streak.current === -1 ? 'loss' : 'losses'} in a row`}
+            </dd>
+          </dl>
+          <p className="mt-3 text-xs text-muted">In order of entry across the trades shown. Breakeven trades end a streak.</p>
+        </section>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Breakdown
+          title="By time into the session"
+          rows={stats.summariseBy(inSession, (t) => stats.sessionBucket(t.sessionStart!, t.openedAt), stats.SESSION_BUCKETS)}
+          note={`Screen time from pressing Start to entry. ${inSession.length} of ${trades.length} trades are linked to a session.`}
+        />
+        <Breakdown
+          title="After a check-in decision"
+          rows={stats.summariseBy(afterCheckIn, (t) => decisionLabel[t.state!.decision!] ?? '?', Object.values(decisionLabel))}
+          note={
+            against.length
+              ? `${against.length} trade${against.length === 1 ? '' : 's'} taken after deciding to take a break or stop.`
+              : 'Trades whose latest reading was a check-in, grouped by the decision you made.'
+          }
+        />
+      </div>
     </div>
   );
 }

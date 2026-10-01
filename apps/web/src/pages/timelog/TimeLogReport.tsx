@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Printer } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { decimalHours, durationMinutes, formatDuration, formatLocal, summarise, type FinancialYear } from '@tc/domain';
-import { Button } from '../../components/ui';
+import { ReportHeader } from '../../components/ReportHeader';
 import { api, type Session } from '../../lib/api';
 import { useSessionTypes } from '../../lib/sessions';
 
@@ -26,19 +25,10 @@ export function TimeLogReport({ fy: fyYear }: { fy: number }) {
 
   return (
     <div className="mx-auto max-w-4xl bg-white p-8 text-[13px] text-black print:p-0">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Business hours log — FY {fy.label}</h1>
-          <p className="text-black/60">
-            {DateTime.fromISO(fy.start).toFormat('d LLLL yyyy')} to {DateTime.fromISO(fy.end).toFormat('d LLLL yyyy')} · times in Perth (AWST) · generated{' '}
-            {DateTime.now().toFormat('d LLL yyyy HH:mm')}
-          </p>
-        </div>
-        <Button className="print:hidden" onClick={() => window.print()}>
-          <Printer size={16} aria-hidden /> Print / Save as PDF
-        </Button>
-      </div>
-
+      <ReportHeader
+        title={`Business hours log — FY ${fy.label}`}
+        subtitle={`${DateTime.fromISO(fy.start).toFormat('d LLLL yyyy')} to ${DateTime.fromISO(fy.end).toFormat('d LLLL yyyy')} · times in Perth (AWST)`}
+      />
       <div className="mb-6 grid grid-cols-3 gap-4">
         <div className="rounded border border-black/20 p-3">
           <div className="text-black/60">Total hours</div>

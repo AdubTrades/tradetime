@@ -25,6 +25,9 @@ const settingsShape = z.object({
   fredApiKey: z.string().trim().regex(/^[a-z0-9]{32}$/i, 'A FRED API key is 32 letters and numbers').nullable(),
   /** Show medium-impact releases as well as high-impact ones. */
   includeMediumEvents: z.boolean(),
+  /** Shown on printable reports for your accountant. */
+  reportName: z.string().trim().max(120).nullable(),
+  reportAbn: z.string().trim().regex(/^(\d\s?){11}$/, 'An ABN is 11 digits').nullable(),
 });
 
 export type Settings = z.infer<typeof settingsShape>;
@@ -43,6 +46,8 @@ export const defaultSettings: Settings = {
   checkInSnoozeMinutes: 15,
   fredApiKey: null,
   includeMediumEvents: false,
+  reportName: null,
+  reportAbn: null,
 };
 
 // No defaults here: a patch must only touch the keys it names.

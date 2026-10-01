@@ -10,3 +10,5 @@
 - To update the installed app after a phase: `pnpm build`, then `launchctl kickstart -k gui/$(id -u)/com.tradingcompanion.server`. Migrations apply on restart.
 - Stay on `@tanstack/react-table` v8 (v9 has a different API).
 - Dialog forms reset in a `useEffect` keyed on `[open, record]` only. Don't add query data (lists, types) to the deps, or a refetch wipes what the user is typing.
+- Restore: `apps/server/src/restore.ts` validates and stages a backup into `restore-pending/`, writes a `pre-restore` safety zip, then exits. launchd restarts the app, and `restoreApply.ts` swaps the data in before the database opens. In dev (tsx watch) you restart by hand.
+- FOMC dates are a curated list in `packages/domain/src/calendar.ts` (`FOMC_MEETINGS`). Extend it each year from federalreserve.gov. Don't use FRED rid 101: it's updated daily.
