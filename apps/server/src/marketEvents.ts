@@ -1,7 +1,7 @@
-import { and, asc, gte, inArray, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { DateTime } from 'luxon';
 import { schema } from '@tc/db';
-import { FRED_RELEASES, fredToEvents, newId, type MarketEventInput } from '@tc/domain';
+import { FRED_RELEASES, fomcEvents, fredToEvents, newId, zonedToUtc, type MarketEventInput } from '@tc/domain';
 import { db } from './context';
 import { AppError } from './errors';
 import { getSettings, getState, setState } from './settings';
@@ -42,9 +42,24 @@ export async function fetchFredEvents(apiKey: string, from: string, to: string, 
   return fredToEvents(dates);
 }
 
-export function upsertMarketEvents(events: MarketEventInput[]): number {
+/**
+ * Store events, and soft-delete stored events from the same providers within the window that the source
+ * no longer lists (rescheduled or withdrawn releases), so nothing doubles up.
+ */
+export function upsertMarketEvents(events: MarketEventInput[], window?: { fromInstant: string; toInstant: string; providers: string[] }): number {
   const now = new Date().toISOString();
   db.transaction((tx) => {
+    if (window) {
+      const keep = new Set(events.map((e) => `${e.provider}|${e.providerId}`));
+      const stored = tx
+        .select({ id: marketEvent.id, provider: marketEvent.provider, providerId: marketEvent.providerId })
+        .from(marketEvent)
+        .where(and(isNull(marketEvent.deletedAt), inArray(marketEvent.provider, window.providers), gte(marketEvent.at, window.fromInstant), lte(marketEvent.at, window.toInstant)))
+        .all();
+      for (const r of stored) {
+        if (!keep.has(`${r.provider}|${r.providerId}`)) tx.update(marketEvent).set({ deletedAt: now }).where(eq(marketEvent.id, r.id)).run();
+      }
+    }
     for (const e of events) {
       tx.insert(marketEvent)
         .values({ id: newId(), ...e, fetchedAt: now })
@@ -66,8 +81,16 @@ export function refreshMarketEvents(fetcher?: Fetcher): Promise<MarketFetchStatu
     try {
       if (!fredApiKey) throw new Error('Add your FRED API key in Settings to fetch economic events');
       const today = DateTime.now().setZone('America/New_York');
-      const events = await fetchFredEvents(fredApiKey, today.minus({ days: 30 }).toISODate()!, today.plus({ days: 120 }).toISODate()!, fetcher);
-      const count = upsertMarketEvents(events);
+      const from = today.minus({ days: 30 }).toISODate()!;
+      const to = today.plus({ days: 120 }).toISODate()!;
+      const events = [...(await fetchFredEvents(fredApiKey, from, to, fetcher)), ...fomcEvents(from, to)];
+      // Window covers the whole New York days fetched, so everything stored in it is re-checked.
+      const window = {
+        fromInstant: zonedToUtc(from, '00:00', 'America/New_York'),
+        toInstant: zonedToUtc(DateTime.fromISO(to).plus({ days: 1 }).toISODate()!, '00:00', 'America/New_York'),
+        providers: ['fred', 'fomc'],
+      };
+      const count = upsertMarketEvents(events, window);
       const status = { lastSuccessAt: new Date().toISOString(), lastAttemptAt: attemptAt, lastError: null, count };
       setState('market', status);
       return status;

@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Plus, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { formatLocal } from '@tc/domain';
+import { DateTime } from 'luxon';
+import { FOMC_SCHEDULE_ENDS, formatLocal } from '@tc/domain';
 import { Button, Card, Field, Input, Select } from '../../components/ui';
 import { api, type CalendarEventType, type MarketStatus, type Settings } from '../../lib/api';
 import { useEventTypes, useMarketStatus } from '../../lib/calendar';
@@ -84,8 +85,10 @@ export function CalendarSettings({ settings }: { settings: Settings }) {
             Also show medium-impact releases (jobless claims, JOLTS)
           </label>
           <p className="text-xs text-muted">
-            Covered: CPI, Non-Farm Payrolls, FOMC statements, PPI, GDP, PCE and Retail Sales (high); jobless claims and JOLTS (medium). Times are the
-            standard US release times converted to Perth, with US daylight saving handled. This product uses the FRED® API but is not endorsed or
+            Covered: CPI, Non-Farm Payrolls, PPI, GDP, PCE and Retail Sales (high); jobless claims and JOLTS (medium). Times are the standard US
+            release times converted to Perth, with US daylight saving handled. FOMC statements come from the Federal Reserve's published meeting
+            schedule, built in through {DateTime.fromISO(FOMC_SCHEDULE_ENDS).toFormat('LLLL yyyy')}
+            {FOMC_SCHEDULE_ENDS < DateTime.now().plus({ months: 3 }).toISODate()! && <strong className="text-warn"> — the app needs updating with next year's dates</strong>}. This product uses the FRED® API but is not endorsed or
             certified by the Federal Reserve Bank of St. Louis.{' '}
             <a href="https://fred.stlouisfed.org/docs/api/terms_of_use.html" target="_blank" rel="noreferrer" className="underline">
               FRED API terms of use

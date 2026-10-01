@@ -140,11 +140,13 @@ export interface ReleaseSpec {
 /**
  * FRED release ids for major US releases that move index futures, with their fixed release times.
  * Ids verified against fred.stlouisfed.org/release?rid=N.
+ *
+ * Not FOMC: FRED's "FOMC Press Release" (rid 101) is a data series updated every day, so its
+ * dates aren't meeting dates. FOMC comes from FOMC_MEETINGS below instead.
  */
 export const FRED_RELEASES: Record<number, ReleaseSpec> = {
   10: { title: 'CPI', timeNY: '08:30', impact: 'high' },
   50: { title: 'Non-Farm Payrolls (Employment Situation)', timeNY: '08:30', impact: 'high' },
-  101: { title: 'FOMC Statement', timeNY: '14:00', impact: 'high' },
   46: { title: 'PPI', timeNY: '08:30', impact: 'high' },
   53: { title: 'GDP', timeNY: '08:30', impact: 'high' },
   54: { title: 'PCE (Personal Income and Outlays)', timeNY: '08:30', impact: 'high' },
@@ -181,3 +183,45 @@ export function fredToEvents(releaseDates: readonly { release_id: number; date: 
   }
   return out;
 }
+
+// ---------- FOMC (Federal Reserve schedule) ----------
+
+/**
+ * Second (statement) day of each scheduled FOMC meeting, from federalreserve.gov/monetarypolicy/fomccalendars.htm.
+ * `sep` marks meetings with a Summary of Economic Projections. Dates are tentative until confirmed at the
+ * preceding meeting — update this list when the Fed publishes a new year.
+ */
+export const FOMC_MEETINGS: { date: IsoDate; sep: boolean }[] = [
+  { date: '2026-01-28', sep: false },
+  { date: '2026-03-18', sep: true },
+  { date: '2026-04-29', sep: false },
+  { date: '2026-06-17', sep: true },
+  { date: '2026-07-29', sep: false },
+  { date: '2026-09-16', sep: true },
+  { date: '2026-10-28', sep: false },
+  { date: '2026-12-09', sep: true },
+  { date: '2027-01-27', sep: false },
+  { date: '2027-03-17', sep: true },
+  { date: '2027-04-28', sep: false },
+  { date: '2027-06-09', sep: true },
+  { date: '2027-07-28', sep: false },
+  { date: '2027-09-15', sep: true },
+  { date: '2027-10-27', sep: false },
+  { date: '2027-12-08', sep: true },
+];
+
+/** FOMC statements (14:00 New York) between two New York dates. */
+export function fomcEvents(from: IsoDate, to: IsoDate): MarketEventInput[] {
+  return FOMC_MEETINGS.filter((m) => m.date >= from && m.date <= to).map((m) => ({
+    provider: 'fomc',
+    providerId: m.date,
+    title: m.sep ? 'FOMC Statement + projections' : 'FOMC Statement',
+    at: zonedToUtc(m.date, '14:00', 'America/New_York'),
+    impact: 'high',
+    country: 'US',
+    currency: 'USD',
+  }));
+}
+
+/** The last FOMC date in the built-in schedule, so the app can warn when it needs updating. */
+export const FOMC_SCHEDULE_ENDS = FOMC_MEETINGS[FOMC_MEETINGS.length - 1]!.date;

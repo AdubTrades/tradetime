@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { blockMinutes, expandOccurrences, fredToEvents, monthWeeks, recurrenceDatesBetween } from './calendar';
+import { DateTime } from 'luxon';
+import { blockMinutes, expandOccurrences, FOMC_MEETINGS, fomcEvents, fredToEvents, monthWeeks, recurrenceDatesBetween } from './calendar';
 import { formatLocal } from './time';
 
 describe('recurrence', () => {
@@ -73,14 +74,31 @@ describe('fredToEvents', () => {
     const events = fredToEvents([
       { release_id: 10, date: '2026-10-14' },
       { release_id: 10, date: '2026-11-12' },
-      { release_id: 101, date: '2026-10-28' },
       { release_id: 999, date: '2026-10-01' },
     ]);
     expect(events.map((e) => [e.title, formatLocal(e.at, 'd LLL HH:mm'), e.impact])).toEqual([
       ['CPI', '14 Oct 20:30', 'high'],
       ['CPI', '12 Nov 21:30', 'high'],
-      ['FOMC Statement', '29 Oct 02:00', 'high'],
     ]);
     expect(events[0]!.providerId).toBe('10:2026-10-14');
+  });
+
+  it("ignores FRED's daily FOMC Press Release series", () => {
+    expect(fredToEvents([{ release_id: 101, date: '2026-10-03' }])).toEqual([]);
+  });
+});
+
+describe('fomcEvents', () => {
+  it('lists statement days at 14:00 New York, shown in Perth', () => {
+    const events = fomcEvents('2026-09-01', '2026-12-31');
+    expect(events.map((e) => [e.title, formatLocal(e.at, 'ccc d LLL HH:mm')])).toEqual([
+      ['FOMC Statement + projections', 'Thu 17 Sep 02:00'],
+      ['FOMC Statement', 'Thu 29 Oct 02:00'],
+      ['FOMC Statement + projections', 'Thu 10 Dec 03:00'],
+    ]);
+  });
+
+  it('never falls on a weekend', () => {
+    expect(FOMC_MEETINGS.every((m) => [3, 4, 5].includes(DateTime.fromISO(m.date).weekday) || DateTime.fromISO(m.date).weekday === 2)).toBe(true);
   });
 });

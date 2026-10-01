@@ -1,7 +1,9 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { DateTime } from 'luxon';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { fomcEvents } from '@tc/domain';
 
 let cal: typeof import('./calendar');
 let market: typeof import('./marketEvents');
@@ -30,7 +32,7 @@ const KEY = 'abcdefabcdefabcdefabcdefabcdef12';
 /** Stand-in for the FRED API: CPI and jobless claims dates, keyed by release id. */
 const fakeFred = (failWith?: string) => async (url: string) => {
   const rid = Number(new URL(url).searchParams.get('release_id'));
-  const dates: Record<number, string[]> = { 10: ['2026-10-14'], 180: ['2026-10-15'], 101: ['2026-10-28'] };
+  const dates: Record<number, string[]> = { 10: ['2026-10-14'], 180: ['2026-10-15'], 101: ['2026-10-03', '2026-10-04', '2026-10-05'] };
   if (failWith) return { ok: false, status: 400, json: async () => ({ error_message: failWith }) };
   return { ok: true, status: 200, json: async () => ({ release_dates: (dates[rid] ?? []).map((date) => ({ release_id: rid, date })) }) };
 };
@@ -40,7 +42,10 @@ describe('market events', () => {
     expect((await market.refreshMarketEvents(fakeFred())).lastError).toMatch(/FRED API key/);
     settings.updateSettings({ fredApiKey: KEY });
     const s = await market.refreshMarketEvents(fakeFred());
-    expect(s).toMatchObject({ lastError: null, count: 3 });
+    // 2 FRED releases (rid 101's daily dates are ignored) + FOMC meetings from the Fed schedule in the fetch window.
+    const ny = DateTime.now().setZone('America/New_York');
+    const fomc = fomcEvents(ny.minus({ days: 30 }).toISODate()!, ny.plus({ days: 120 }).toISODate()!).length;
+    expect(s).toMatchObject({ lastError: null, count: 2 + fomc });
     await market.refreshMarketEvents(fakeFred());
     const all = market.listMarketEvents('2026-10-01T00:00:00Z', '2026-11-01T00:00:00Z', ['high', 'medium']);
     expect(all.map((e) => e.title)).toEqual(['CPI', 'Unemployment Claims', 'FOMC Statement']);
@@ -55,6 +60,22 @@ describe('market events', () => {
     const failed = await market.refreshMarketEvents(fakeFred('Bad Request. The value for variable api_key is not registered.'));
     expect(failed.lastError).toMatch(/not registered/);
     expect(failed.lastSuccessAt).not.toBeNull(); // keeps the last good fetch
+  });
+
+  it('removes stale events on refresh, including the old daily FOMC series', async () => {
+    // What the previous version stored: FRED rid 101 every day, plus a CPI date that has since moved.
+    market.upsertMarketEvents([
+      { provider: 'fred', providerId: '101:2026-10-03', title: 'FOMC Statement', at: '2026-10-03T18:00:00Z', impact: 'high', country: 'US', currency: 'USD' },
+      { provider: 'fred', providerId: '101:2026-10-04', title: 'FOMC Statement', at: '2026-10-04T18:00:00Z', impact: 'high', country: 'US', currency: 'USD' },
+      { provider: 'fred', providerId: '10:2026-10-13', title: 'CPI', at: '2026-10-13T12:30:00Z', impact: 'high', country: 'US', currency: 'USD' },
+    ]);
+    settings.updateSettings({ fredApiKey: KEY });
+    await market.refreshMarketEvents(fakeFred());
+    const oct = market.listMarketEvents('2026-10-01T00:00:00Z', '2026-11-01T00:00:00Z', ['high']);
+    expect(oct.map((e) => [e.title, e.at])).toEqual([
+      ['CPI', '2026-10-14T12:30:00Z'],
+      ['FOMC Statement', '2026-10-28T18:00:00Z'],
+    ]);
   });
 
   it('rejects malformed keys', () => {
