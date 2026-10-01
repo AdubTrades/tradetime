@@ -7,3 +7,6 @@
 - archiver v8 has no published types; `apps/server/src/types/archiver.d.ts` covers the subset in use.
 - Migrations may be hand-extended after `drizzle-kit generate` for things Drizzle can't express (seed rows, partial indexes such as `session_one_running_idx` in `0001_sessions.sql`). Never edit a migration that has already shipped. Add a new one instead.
 - Server errors: throw `AppError(status, message, detail?)` from `apps/server/src/errors.ts`. Overlap conflicts return 409 with `detail.overlaps`, and the UI then offers "Save anyway" (`force: true`).
+- To update the installed app after a phase: `pnpm build`, then `launchctl kickstart -k gui/$(id -u)/com.tradingcompanion.server`. Migrations apply on restart.
+- Stay on `@tanstack/react-table` v8 (v9 has a different API).
+- Dialog forms reset in a `useEffect` keyed on `[open, record]` only. Don't add query data (lists, types) to the deps, or a refetch wipes what the user is typing.
