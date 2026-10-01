@@ -62,3 +62,33 @@ export const auditLog = sqliteTable(
   },
   (t) => [index('audit_log_entity_idx').on(t.entity, t.entityId)],
 );
+
+/** Editable list of session types. All count as business hours; `isTrading` ones get the check-in flow. */
+export const sessionType = sqliteTable('session_type', {
+  ...recordColumns,
+  name: text('name').notNull(),
+  isTrading: integer('is_trading', { mode: 'boolean' }).notNull().default(false),
+  color: text('color').notNull().default('#64748b'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+});
+
+/** A block of business time. A running timer is a session with `end` = null (at most one). */
+export const session = sqliteTable(
+  'session',
+  {
+    ...recordColumns,
+    typeId: text('type_id')
+      .notNull()
+      .references(() => sessionType.id),
+    start: text('start').notNull(),
+    end: text('end'),
+    /** Derived from `start` and the rollover setting; recomputed if the rollover changes. */
+    tradingDay: text('trading_day').notNull(),
+    source: text('source', { enum: ['timer', 'manual'] }).notNull(),
+    notes: text('notes'),
+    /** Set whenever start/end/type are changed after recording; full detail is in audit_log. */
+    editedAt: text('edited_at'),
+  },
+  (t) => [index('session_trading_day_idx').on(t.tradingDay), index('session_start_idx').on(t.start)],
+);

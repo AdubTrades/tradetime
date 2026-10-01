@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { checkWritableFolder, detectCloudFolders } from '../backup';
+import { recomputeTradingDays } from '../sessions';
 import { getSettings, settingsPatchSchema, updateSettings } from '../settings';
 
 const execFileAsync = promisify(execFile);
@@ -16,7 +17,10 @@ export const settingsRoutes = new Hono()
       const problem = await checkWritableFolder(parsed.data.backupFolder);
       if (problem) return c.json({ error: problem }, 400);
     }
-    return c.json(updateSettings(parsed.data));
+    const before = getSettings();
+    const after = updateSettings(parsed.data);
+    if (after.rolloverTime !== before.rolloverTime) recomputeTradingDays(after.rolloverTime);
+    return c.json(after);
   })
   .get('/backup-folders', (c) => c.json(detectCloudFolders()))
   /** Open the native macOS folder picker on the Mac running the server. */

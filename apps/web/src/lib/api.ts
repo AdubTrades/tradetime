@@ -2,6 +2,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly detail?: unknown,
   ) {
     super(message);
   }
@@ -17,7 +18,10 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   const res = await fetch(`/api${url}`, init);
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError((data as { error?: string }).error ?? res.statusText, res.status);
+  if (!res.ok) {
+    const { error, detail } = data as { error?: string; detail?: unknown };
+    throw new ApiError(error ?? res.statusText, res.status, detail);
+  }
   return data as T;
 }
 
@@ -36,6 +40,7 @@ export interface Settings {
   backupFolder: string | null;
   backupIntervalHours: 0 | 6 | 12 | 24 | 168;
   backupRetention: number;
+  longSessionHours: number;
 }
 export interface BackupStatus {
   lastSuccessAt: string | null;
@@ -58,4 +63,32 @@ export interface AttachmentLink {
   ownerType: string;
   ownerId: string;
   role: string | null;
+}
+export interface SessionType {
+  id: string;
+  name: string;
+  isTrading: boolean;
+  color: string;
+  sortOrder: number;
+  archived: boolean;
+}
+export interface Session {
+  id: string;
+  typeId: string;
+  start: string;
+  end: string | null;
+  tradingDay: string;
+  source: 'timer' | 'manual';
+  notes: string | null;
+  editedAt: string | null;
+  createdAt: string;
+}
+export interface AuditEntry {
+  id: string;
+  action: 'create' | 'update' | 'delete' | 'restore';
+  field: string | null;
+  oldValue: unknown;
+  newValue: unknown;
+  reason: string | null;
+  at: string;
 }

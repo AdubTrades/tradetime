@@ -5,6 +5,7 @@ import { formatLocal } from '@tc/domain';
 import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui';
 import { api, type BackupStatus, type Settings } from '../lib/api';
 import { useSettings, useUpdateSettings } from '../lib/settings';
+import { TimeLogSettings } from './settings/TimeLogSettings';
 
 const intervals: { value: Settings['backupIntervalHours']; label: string }[] = [
   { value: 0, label: 'Off (manual only)' },
@@ -24,6 +25,7 @@ export function SettingsPage() {
       <PageHeader title="Settings" />
       <div className="space-y-6">
         <GeneralSettings settings={settings} />
+        <TimeLogSettings settings={settings} />
         <BackupSettings settings={settings} />
       </div>
     </div>

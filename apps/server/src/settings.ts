@@ -12,6 +12,8 @@ const settingsShape = z.object({
   backupFolder: z.string().nullable(),
   backupIntervalHours: z.union([z.literal(0), z.literal(6), z.literal(12), z.literal(24), z.literal(168)]),
   backupRetention: z.number().int().min(1).max(365),
+  /** A running session longer than this triggers a "still going?" prompt. */
+  longSessionHours: z.number().min(1).max(24),
 });
 
 export type Settings = z.infer<typeof settingsShape>;
@@ -22,6 +24,7 @@ export const defaultSettings: Settings = {
   backupFolder: null,
   backupIntervalHours: 24,
   backupRetention: 30,
+  longSessionHours: 6,
 };
 
 // No defaults here: a patch must only touch the keys it names.
