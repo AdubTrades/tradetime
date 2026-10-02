@@ -19,3 +19,6 @@
   - Utilities: `panel` (Ash, 6px top-left radius) for cards/sections, `tile` (20px) for stat tiles and data widgets, `font-display` (Inter Tight 400, −0.02em) for headings, figures and button labels, `link-ember` for key links.
   - Buttons and fields are square (`rounded-none`); nav, tags and toggles are pills. No shadows.
   - Use `swatch()` for user-chosen colours so graphite stays visible in dark mode.
+- Demo mode runs a separate copy of the server (`TC_DEMO=1`, data in `<dataDir>/demo`, port = real port + 3, so 4320 for the installed app). It's started and stopped by the real app via `apps/server/src/demo/manager.ts` and the `/demo-switch` page, and it fills itself from `demo/seed.ts` on first start.
+  - The demo copy never runs jobs or notifications, and blocks backups, restore, folder pickers, FRED and demo start/stop (`app.ts`).
+  - When adding a feature, extend `seed.ts` so the demo shows it, using fictional names only.

@@ -1,4 +1,5 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { DemoBanner } from './DemoBanner';
 import { ErrorBoundary } from './ErrorBoundary';
 import { cn } from './ui';
 import {
@@ -105,11 +106,14 @@ export function AppShell() {
           />
         </div>
       </aside>
-      <main className={cn('min-w-0 flex-1 py-10 transition-[padding] duration-200', collapsed ? 'px-12' : 'px-10')}>
-        <ErrorBoundary resetKey={pathname}>
-          <Outlet />
-        </ErrorBoundary>
-      </main>
+      <div className="min-w-0 flex-1">
+        <DemoBanner />
+        <main className={cn('py-10 transition-[padding] duration-200', collapsed ? 'px-12' : 'px-10')}>
+          <ErrorBoundary resetKey={pathname}>
+            <Outlet />
+          </ErrorBoundary>
+        </main>
+      </div>
       <CheckInPrompt />
     </div>
   );

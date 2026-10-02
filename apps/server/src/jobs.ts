@@ -1,6 +1,7 @@
 import { Cron } from 'croner';
 import { formatDuration, localDate } from '@tc/domain';
 import { isBackupDue, runBackup } from './backup';
+import { isDemo } from './config';
 import { dueReminders } from './calendar';
 import { checkInToNotify } from './checkins';
 import { isMarketRefreshDue, refreshMarketEvents } from './marketEvents';
@@ -11,6 +12,8 @@ import { getSettings, getState, setState } from './settings';
 
 /** Background jobs. Each one checks "is it due?" so missed runs (e.g. Mac asleep) catch up on wake. */
 export function startJobs(): Cron[] {
+  // The demo copy runs no background work: no backups, fetches, reminders or notifications.
+  if (isDemo) return [];
   const backupCheck = new Cron('*/10 * * * *', { protect: true }, async () => {
     if (!isBackupDue()) return;
     const status = await runBackup();

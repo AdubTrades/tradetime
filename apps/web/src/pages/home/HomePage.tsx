@@ -23,6 +23,7 @@ import { decisionLabels, useDayReadings } from '../../lib/checkins';
 import { useFySummary, useRecurring } from '../../lib/expenses';
 import { useContracts, usePlays, useTrades } from '../../lib/journal';
 import { useNow, useSessions, useSessionTypes } from '../../lib/sessions';
+import { useHealth } from '../../lib/demo';
 import { useSettings } from '../../lib/settings';
 import { swatch } from '../../lib/theme';
 import { EventDialog } from '../calendar/EventDialog';
@@ -115,6 +116,7 @@ function SectionHead({ title, to, linkLabel, children }: { title: string; to: st
 
 function Alerts() {
   const { data: settings } = useSettings();
+  const { data: appHealth } = useHealth();
   const { data: backup } = useQuery({
     queryKey: ['backup-status'],
     queryFn: () => api.get<{ lastSuccessAt: string | null; lastError: string | null }>('/backup/status'),
@@ -129,7 +131,8 @@ function Alerts() {
     items.push({ text: 'No backup in the last 3 days', to: '/settings' });
   for (const c of health?.checks ?? []) if (c.status === 'fail' || (c.id === 'timer' && c.status === 'warn')) items.push({ text: c.detail, to: c.id === 'timer' ? '/time-log' : '/settings' });
   if (settings && !settings.fredApiKey) items.push({ text: 'Add your FRED API key to see economic events', to: '/settings' });
-  if (items.length === 0) return null;
+  // The demo copy has no backups or FRED key by design, so its alerts would only confuse.
+  if (items.length === 0 || appHealth?.demo) return null;
   return (
     <ul className="space-y-1.5">
       {items.map((i) => (

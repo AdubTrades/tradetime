@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react';
 import { formatLocal } from '@tc/domain';
 import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui';
 import { api, type BackupStatus, type Settings } from '../lib/api';
+import { useHealth } from '../lib/demo';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { AccountSettings } from './settings/AccountSettings';
+import { DemoSettings } from './settings/DemoSettings';
 import { DataHealth } from './settings/DataHealth';
 import { RestoreBackup } from './settings/RestoreBackup';
 import { CalendarSettings } from './settings/CalendarSettings';
@@ -26,19 +28,27 @@ const formatBytes = (n: number) => (n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} 
 
 export function SettingsPage() {
   const { data: settings } = useSettings();
+  const demo = !!useHealth().data?.demo;
   if (!settings) return null;
   return (
     <div className="max-w-4xl">
       <PageHeader title="Settings" />
       <div className="space-y-6">
+        <DemoSettings />
         <GeneralSettings settings={settings} />
         <TimeLogSettings settings={settings} />
         <CheckInSettings settings={settings} />
-        <CalendarSettings settings={settings} />
+        <CalendarSettings settings={settings} demo={demo} />
         <AccountSettings />
         <JournalSettings />
         <ExpenseSettings settings={settings} />
-        <BackupSettings settings={settings} />
+        {demo ? (
+          <Card title="Backups">
+            <p className="text-sm text-muted">Backups and restore are switched off in demo mode.</p>
+          </Card>
+        ) : (
+          <BackupSettings settings={settings} />
+        )}
         <DataHealth />
       </div>
     </div>

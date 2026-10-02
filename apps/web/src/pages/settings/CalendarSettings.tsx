@@ -9,7 +9,7 @@ import { useEventTypes, useMarketStatus } from '../../lib/calendar';
 import { useSessionTypes } from '../../lib/sessions';
 import { useUpdateSettings } from '../../lib/settings';
 
-export function CalendarSettings({ settings }: { settings: Settings }) {
+export function CalendarSettings({ settings, demo = false }: { settings: Settings; demo?: boolean }) {
   const qc = useQueryClient();
   const update = useUpdateSettings();
   const { data: status } = useMarketStatus();
@@ -34,6 +34,10 @@ export function CalendarSettings({ settings }: { settings: Settings }) {
     <Card title="Calendar" description="High-impact US economic releases are fetched from FRED and stored locally, so past and upcoming events work offline.">
       <div className="space-y-6">
         <div className="space-y-2">
+          {demo ? (
+            <p className="text-sm text-muted">The demo shows sample economic releases; fetching from FRED is switched off.</p>
+          ) : (
+            <>
           <Field
             label="FRED API key"
             hint={
@@ -80,6 +84,8 @@ export function CalendarSettings({ settings }: { settings: Settings }) {
               <RefreshCw size={14} aria-hidden className={refresh.isPending ? 'animate-spin' : ''} /> Refresh now
             </Button>
           </div>
+            </>
+          )}
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={settings.includeMediumEvents} onChange={(e) => update.mutate({ includeMediumEvents: e.target.checked })} />
             Also show medium-impact releases (jobless claims, JOLTS)

@@ -16,4 +16,12 @@ export const paths = {
   restorePending: path.join(dataDir, 'restore-pending'),
 };
 
+/** This process is the demo copy: sample data only, no notifications, backups or outside connections. */
+export const isDemo = process.env.TC_DEMO === '1';
+/** Where the real app keeps the demo copy's data, and the port the demo serves on. */
+export const demoDataDir = path.join(dataDir, 'demo');
+export const demoPort = port + 3;
+/** Set on the demo copy so its "Exit demo" link can find the real app. */
+export const realAppUrl = process.env.TC_REAL_URL ?? null;
+
 export const webDist = path.resolve(import.meta.dirname, '../../web/dist');
