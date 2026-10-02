@@ -252,6 +252,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
       ...(form.state === 'auto' ? {} : { stateReadingId: form.state || null }),
       fills,
       accounts: form.accounts.map((a) => ({ accountId: a.accountId, multiplier: a.multiplier, feesCents: a.feesCents })),
+      ...(imported ? { keepFills: true } : {}),
     };
     if (trade) return api.put(`/trades/${trade.id}`, { ...payload, reason: form.reason || null });
     const created = await api.post('/trades', payload);
@@ -259,7 +260,9 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
     return created;
   });
 
-  const canSave = !!fills && !!preview && !preview.error && form.accounts.length > 0 && offTick.length === 0;
+  // Imported trades keep their broker fills; reviewing only adds the Play, checklist, plan and notes.
+  const imported = trade?.source === 'import';
+  const canSave = imported || (!!fills && !!preview && !preview.error && form.accounts.length > 0 && offTick.length === 0);
   const saveAndNext = () =>
     save.mutate(undefined, {
       onSuccess: () => {
@@ -292,7 +295,12 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
       footer={
         <>
           <span className="mr-auto self-center text-sm">
-            {preview && !preview.error && (
+            {imported ? (
+              <>
+                Net <Pnl cents={trade!.netCents} className="font-semibold" />
+              </>
+            ) : null}
+            {!imported && preview && !preview.error && (
               <>
                 Net <Pnl cents={preview.net!} className="font-semibold" />
                 {preview.r !== null && <span className="text-muted"> · {preview.r}R</span>}
@@ -323,10 +331,10 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
         {/* Carried context */}
         <section className="grid gap-3 rounded-md bg-surface-2 p-3 sm:grid-cols-[10rem_8rem_1fr]">
           <Field label="Trading day">
-            <Input type="date" value={form.tradingDay} onChange={(e) => set('tradingDay', e.target.value)} />
+            <Input type="date" value={form.tradingDay} disabled={imported} onChange={(e) => set('tradingDay', e.target.value)} />
           </Field>
           <Field label="Contract">
-            <Select value={form.contractId} onChange={(e) => set('contractId', e.target.value)}>
+            <Select value={form.contractId} disabled={imported} onChange={(e) => set('contractId', e.target.value)}>
               {contracts
                 .filter((c) => !c.archived || c.id === form.contractId)
                 .map((c) => (
@@ -336,7 +344,14 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                 ))}
             </Select>
           </Field>
-          <AccountsPicker value={form.accounts} onChange={(v) => set('accounts', v)} />
+          {imported ? (
+            <div className="space-y-1">
+              <span className="text-sm font-medium">Accounts</span>
+              <p className="text-sm text-muted">{trade!.accounts.length} account{trade!.accounts.length === 1 ? '' : 's'}, from your broker export</p>
+            </div>
+          ) : (
+            <AccountsPicker value={form.accounts} onChange={(v) => set('accounts', v)} />
+          )}
         </section>
 
         {/* 1. Setup — before the result, to limit hindsight bias */}
@@ -439,6 +454,10 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
         </section>
 
         {/* 3. Execution */}
+        {imported ? (
+          <ImportedExecution trade={trade!} title={sectionTitle} />
+        ) : (
+          <>
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h3 className={sectionTitle + ' mb-0'}>3 · Execution (Perth time, size for ×1 accounts)</h3>
@@ -476,8 +495,11 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
           <p className="mt-1 text-xs text-muted">Times before {rollover} count as after midnight on this trading day.</p>
         </section>
 
+          </>
+        )}
+
         {/* 4. Result */}
-        {preview && !preview.error && (
+        {!imported && preview && !preview.error && (
           <section>
             <h3 className={sectionTitle}>4 · Result ({direction})</h3>
             <table className="w-full text-sm">
@@ -736,6 +758,44 @@ function StatePicker({ day, value, onChange, entryAt }: { day: string; value: st
         </Select>
         {shown && <ReadingChips answers={shown.answers} decision={shown.decision} />}
       </div>
+    </section>
+  );
+}
+
+/** Read-only view of an imported trade's broker fills, per account. */
+function ImportedExecution({ trade, title }: { trade: TradeDetail; title: string }) {
+  const { data: accounts = [] } = useAccounts();
+  return (
+    <section>
+      <h3 className={title}>3 · Execution (imported from your broker)</h3>
+      <table className="w-full text-sm">
+        <thead className="text-left text-xs text-muted">
+          <tr>
+            <th className="pb-1 font-medium">Account</th>
+            <th className="pb-1 font-medium">Fills</th>
+            <th className="pb-1 text-right font-medium">Fees</th>
+            <th className="pb-1 text-right font-medium">Net</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {trade.accounts.map((a) => (
+            <tr key={a.id}>
+              <td className="py-1.5">{accounts.find((x) => x.id === a.accountId)?.name ?? 'Unknown'}</td>
+              <td className="tabular py-1.5 text-muted">
+                {[...a.fills]
+                  .sort((x, y) => x.at.localeCompare(y.at))
+                  .map((f) => `${f.side === 'buy' ? 'B' : 'S'} ${f.qty} @ ${f.price} ${instantToLocalTime(f.at)}`)
+                  .join(' · ')}
+              </td>
+              <td className="tabular py-1.5 text-right text-muted">${(a.feesCents / 100).toFixed(2)}</td>
+              <td className="py-1.5 text-right">
+                <Pnl cents={a.netCents} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-1 text-xs text-muted">Fills, prices and fees come from the export and aren't edited here.</p>
     </section>
   );
 }

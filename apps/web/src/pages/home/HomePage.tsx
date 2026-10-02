@@ -250,6 +250,7 @@ function DisciplinePanel({ today, trades }: { today: string; trades: TradeRow[] 
   const followed = answered.filter((t) => t.followedPlan === 'yes').length;
   const outside = recent.filter((t) => t.outsidePlan).length;
   const mistakes = recent.filter((t) => t.mistakeIds.length > 0).length;
+  const imports = trades.filter((t) => t.needsReview).length;
 
   // The most recent earlier trading day with trades, and whether it has a review.
   const lastDay = useMemo(() => [...new Set(trades.map((t) => t.tradingDay))].filter((d) => d < today).sort().at(-1), [trades, today]);
@@ -277,6 +278,11 @@ function DisciplinePanel({ today, trades }: { today: string; trades: TradeRow[] 
           <Metric label="With mistakes" value={String(mistakes)} n={recent.length} />
         </dl>
         <p className="text-xs text-muted">Last {recent.length} trades.</p>
+        {imports > 0 && (
+          <a href="/journal?review=1" className="link-ember block text-sm">
+            {imports} imported trade{imports === 1 ? '' : 's'} to review
+          </a>
+        )}
         {needsReview && (
           <Link to="/journal/day/$day" params={{ day: lastDay! }} className="link-ember inline-block text-sm">
             Write your review for {DateTime.fromISO(lastDay!).toFormat('cccc d LLL')}

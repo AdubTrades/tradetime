@@ -303,6 +303,10 @@ export const trade = sqliteTable(
     /** The state reading in effect at entry: latest before entry in the same session, unless overridden. */
     stateReadingId: text('state_reading_id'),
     stateOverridden: integer('state_overridden', { mode: 'boolean' }).notNull().default(false),
+    /** How the trade's fills got here: typed in, or imported from a broker export. */
+    source: text('source', { enum: ['manual', 'import'] }).notNull().default('manual'),
+    /** Imported trades start here until you add the Play, checklist and notes. */
+    needsReview: integer('needs_review', { mode: 'boolean' }).notNull().default(false),
     /** Cached from fills across accounts. */
     openedAt: text('opened_at').notNull(),
     closedAt: text('closed_at').notNull(),
@@ -376,8 +380,10 @@ export const fill = sqliteTable(
     side: text('side', { enum: ['buy', 'sell'] }).notNull(),
     qty: integer('qty').notNull(),
     price: real('price').notNull(),
+    /** Broker's execution id for imported fills, so re-importing the same export skips them. */
+    externalId: text('external_id'),
   },
-  (t) => [index('fill_trade_account_idx').on(t.tradeAccountId)],
+  (t) => [index('fill_trade_account_idx').on(t.tradeAccountId), index('fill_external_idx').on(t.externalId)],
 );
 
 export const dailyReview = sqliteTable('daily_review', {
@@ -503,3 +509,12 @@ export const calendarEventException = sqliteTable(
   },
   (t) => [uniqueIndex('calendar_event_exception_idx').on(t.eventId, t.occurrenceDate)],
 );
+
+/** Broker account name as it appears in exports (e.g. a NinjaTrader account id) → TradeTime account. */
+export const accountAlias = sqliteTable('account_alias', {
+  alias: text('alias').primaryKey(),
+  accountId: text('account_id')
+    .notNull()
+    .references(() => account.id),
+  createdAt: text('created_at').notNull().default(nowIso),
+});

@@ -50,6 +50,13 @@
       "when": 1790867034331,
       "tag": "0006_tradetime_palette",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790950008866,
+      "tag": "0007_trade_import",
+      "breakpoints": true
     }
   ]
 }

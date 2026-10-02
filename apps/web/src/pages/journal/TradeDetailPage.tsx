@@ -78,6 +78,19 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
         }
       />
 
+      {t.needsReview && (
+        <div className="flex flex-wrap items-center gap-3 rounded-[6px_0_0_0] bg-ivory px-5 py-4 text-sm">
+          <span className="flex-1">
+            <span className="font-medium">Imported from your broker.</span>{' '}
+            <span className="text-muted">Add the Play, tick what you saw before entry, and note how you felt — the fills and P&L are already in.</span>
+          </span>
+          <Button variant="primary" onClick={() => setEditing(true)}>
+            Review trade
+          </Button>
+        </div>
+      )}
+      {!t.needsReview && t.source === 'import' && <p className="-mt-4 text-xs text-muted">Fills imported from your broker.</p>}
+
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         <Stat label="Net (USD)" value={<Pnl cents={t.netCents} />} />
         <Stat label="R multiple" value={t.r === null ? '—' : `${t.r}R`} />

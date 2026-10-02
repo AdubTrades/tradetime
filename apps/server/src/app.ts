@@ -6,6 +6,7 @@ import { isDemo, realAppUrl } from './config';
 import { dataHealth } from './health';
 import { calendarRoutes } from './routes/calendar';
 import { demoRoutes } from './routes/demo';
+import { tradeImportRoutes } from './routes/tradeImport';
 import { checkInRoutes, questionRoutes, readingRoutes } from './routes/checkins';
 import { backupRoutes } from './routes/backup';
 import { expenseRoutes, payoutRoutes, recurringRoutes } from './routes/expenses';
@@ -73,6 +74,7 @@ app.route('/api/readings', readingRoutes);
 app.route('/api/check-ins', checkInRoutes);
 app.route('/api/calendar', calendarRoutes);
 app.route('/api/demo', demoRoutes);
+app.route('/api/trade-import', tradeImportRoutes);
 
 app.onError((err, c) => {
   if (err instanceof AppError) return c.json({ error: err.message, detail: err.detail }, err.status);

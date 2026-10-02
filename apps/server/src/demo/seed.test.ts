@@ -25,7 +25,9 @@ describe('demo data', () => {
     await seed.seedDemo();
     const all = trades.listTrades({ from: '2000-01-01', to: '2100-01-01' });
     expect(all.length).toBeGreaterThan(40);
-    expect(all.every((t) => t.accounts.length === 2 && t.sessionId && t.state)).toBe(true);
+    expect(all.every((t) => t.accounts.length === 2)).toBe(true);
+    expect(all.filter((t) => t.needsReview)).toHaveLength(2);
+    expect(all.filter((t) => !t.needsReview).every((t) => t.sessionId && t.state)).toBe(true);
     expect(new Set(all.map((t) => t.grade ?? 'outside')).size).toBeGreaterThan(3);
     expect(all.every((t) => Date.parse(t.closedAt) < Date.now())).toBe(true);
     expect(plays.listPlays().map((p) => p.exampleCount).every((n) => n > 0)).toBe(true);

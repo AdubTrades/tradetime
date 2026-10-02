@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Plus } from 'lucide-react';
+import { FileUp, Plus } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
 import { financialYear, financialYearOf, formatLocal, GRADES, tradingDay } from '@tc/domain';
@@ -7,9 +7,10 @@ import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import { Button, cn, PageHeader, Select } from '../../components/ui';
 import type { TradeRow } from '../../lib/api';
 import { useAccounts } from '../../lib/expenses';
-import { useContracts, usePlays, useTrades } from '../../lib/journal';
+import { useContracts, usePlays, useReviewCount, useTrades } from '../../lib/journal';
 import { useSettings } from '../../lib/settings';
 import { StatsView } from './StatsView';
+import { ImportTradesDialog } from './ImportTradesDialog';
 import { TradeForm } from './TradeForm';
 
 type Range = 'month' | 'last30' | 'fy' | 'all';
@@ -20,8 +21,9 @@ export interface TradeFilters {
   contractId: string;
   accountId: string;
   result: '' | 'win' | 'loss';
+  review: boolean;
 }
-const noFilters: TradeFilters = { playId: '', grade: '', contractId: '', accountId: '', result: '' };
+const noFilters: TradeFilters = { playId: '', grade: '', contractId: '', accountId: '', result: '', review: false };
 
 /** Apply filters. When filtering by account, results are recomputed for that account only. */
 export function applyFilters(trades: TradeRow[], f: TradeFilters): TradeRow[] {
@@ -38,7 +40,8 @@ export function applyFilters(trades: TradeRow[], f: TradeFilters): TradeRow[] {
         (!f.playId || (f.playId === 'none' ? !t.playId : t.playId === f.playId)) &&
         (!f.grade || (f.grade === 'outside' ? t.outsidePlan : t.grade === f.grade)) &&
         (!f.contractId || t.contractId === f.contractId) &&
-        (!f.result || (f.result === 'win' ? t.netCents > 0 : t.netCents < 0)),
+        (!f.result || (f.result === 'win' ? t.netCents > 0 : t.netCents < 0)) &&
+        (!f.review || t.needsReview),
     );
 }
 
@@ -47,8 +50,10 @@ export function JournalPage() {
   const today = tradingDay(new Date(), settings?.rolloverTime);
   const [tab, setTab] = useState<'trades' | 'stats'>('trades');
   const [range, setRange] = useState<Range>('last30');
-  const [filters, setFilters] = useState<TradeFilters>(noFilters);
+  // Home links here with ?review=1 to show imported trades that still need a Play and checklist.
+  const [filters, setFilters] = useState<TradeFilters>(() => ({ ...noFilters, review: new URLSearchParams(window.location.search).get('review') === '1' }));
   const [logging, setLogging] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const { from, to } = useMemo(() => {
     const d = DateTime.fromISO(today);
@@ -74,9 +79,14 @@ export function JournalPage() {
       <PageHeader
         title="Journal"
         actions={
-          <Button variant="primary" onClick={() => setLogging(true)}>
-            <Plus size={16} aria-hidden /> Log trades
-          </Button>
+          <>
+            <Button onClick={() => setImporting(true)}>
+              <FileUp size={16} aria-hidden /> Import
+            </Button>
+            <Button variant="primary" onClick={() => setLogging(true)}>
+              <Plus size={16} aria-hidden /> Log trades
+            </Button>
+          </>
         }
       />
       <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-border">
@@ -96,6 +106,7 @@ export function JournalPage() {
       <FilterBar range={range} onRange={setRange} filters={filters} onFilters={setFilters} />
       {tab === 'trades' ? <TradeList trades={filtered} loading={isLoading} /> : <StatsView trades={filtered} />}
       <TradeForm open={logging} onClose={() => setLogging(false)} />
+      <ImportTradesDialog open={importing} onClose={() => setImporting(false)} />
     </div>
   );
 }
@@ -106,6 +117,7 @@ function FilterBar({ range, onRange, filters, onFilters }: { range: Range; onRan
   const { data: accounts = [] } = useAccounts();
   const set = <K extends keyof TradeFilters>(k: K, v: TradeFilters[K]) => onFilters({ ...filters, [k]: v });
   const active = Object.values(filters).some(Boolean);
+  const { data: reviewCount = 0 } = useReviewCount();
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -154,6 +166,16 @@ function FilterBar({ range, onRange, filters, onFilters }: { range: Range; onRan
         <option value="win">Wins</option>
         <option value="loss">Losses</option>
       </Select>
+      {(reviewCount > 0 || filters.review) && (
+        <button
+          type="button"
+          aria-pressed={filters.review}
+          onClick={() => set('review', !filters.review)}
+          className={cn('rounded-full border px-3 py-1 text-xs', filters.review ? 'border-accent bg-accent text-accent-text' : 'border-ember text-ember')}
+        >
+          Needs review{reviewCount ? ` (${reviewCount})` : ''}
+        </button>
+      )}
       {active && (
         <Button variant="ghost" onClick={() => onFilters(noFilters)}>
           Clear
@@ -207,7 +229,11 @@ function TradeList({ trades, loading }: { trades: TradeRow[]; loading: boolean }
                     <td className={'w-16 py-2 capitalize text-muted'}>{t.direction}</td>
                     <td className="py-2">{playName(t.playId)}</td>
                     <td className="w-28 py-2">
-                      <GradeBadge grade={t.grade} outsidePlan={t.outsidePlan} />
+                      {t.needsReview ? (
+                        <span className="rounded-full px-2 py-0.5 text-xs text-ember ring-1 ring-inset ring-ember">Needs review</span>
+                      ) : (
+                        <GradeBadge grade={t.grade} outsidePlan={t.outsidePlan} />
+                      )}
                     </td>
                     <td className="hidden max-w-48 truncate py-2 text-muted lg:table-cell">{accountNames(t)}</td>
                     <td className="tabular w-16 py-2 text-right text-muted">{t.r === null ? '' : `${t.r}R`}</td>

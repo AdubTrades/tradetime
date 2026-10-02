@@ -22,3 +22,8 @@
 - Demo mode runs a separate copy of the server (`TC_DEMO=1`, data in `<dataDir>/demo`, port = real port + 3, so 4320 for the installed app). It's started and stopped by the real app via `apps/server/src/demo/manager.ts` and the `/demo-switch` page, and it fills itself from `demo/seed.ts` on first start.
   - The demo copy never runs jobs or notifications, and blocks backups, restore, folder pickers, FRED and demo start/stop (`app.ts`).
   - When adding a feature, extend `seed.ts` so the demo shows it, using fictional names only.
+- Trade import (`apps/server/src/tradeImport.ts`, domain `tradeImport.ts`):
+  - NinjaTrader 8 Executions is the main format (the user trades Lucid on NinjaTrader). Tradovate Performance and generic column mapping are also supported.
+  - Fills are grouped flat-to-flat per account, and copies are merged across accounts (each account keeps its own fills).
+  - Duplicates are skipped by `fill.external_id` (unique). Broker account names map to accounts via `account_alias`.
+  - Imported trades get `source: 'import'` and `needsReview: true`. Editing with `keepFills` keeps their broker fills.

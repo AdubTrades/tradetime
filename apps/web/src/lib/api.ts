@@ -274,6 +274,8 @@ export interface TradeBase {
   mistakeIds: string[];
   stateReadingId: string | null;
   stateOverridden: boolean;
+  source: 'manual' | 'import';
+  needsReview: boolean;
   state: Pick<StateReading, 'id' | 'kind' | 'at' | 'answers'> & { decision?: StateReading['decision'] } | null;
 }
 export interface TradeRow extends TradeBase {

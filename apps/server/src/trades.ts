@@ -41,10 +41,17 @@ export interface TradeInput {
   sessionId?: string | null;
   /** Override the state reading (null = none). Omit to use the latest reading before entry. */
   stateReadingId?: string | null;
-  /** Fills at base size (multiplier 1). Each account gets them × its multiplier. */
-  fills: Fill[];
-  accounts: { accountId: string; multiplier: number; feesCents?: number | null }[];
+  /** Fills at base size (multiplier 1). Each account gets them × its multiplier unless it has its own. */
+  fills: InputFill[];
+  /** `fills` on an account: its actual fills (imported copy trades can fill at slightly different prices). */
+  accounts: { accountId: string; multiplier: number; feesCents?: number | null; fills?: InputFill[] }[];
+  source?: 'manual' | 'import';
+  needsReview?: boolean;
+  /** On update: keep each account's existing fills (used when reviewing an imported trade). */
+  keepFills?: boolean;
 }
+
+type InputFill = Fill & { externalId?: string | null };
 
 /** Everything derived from the input, ready to write. Throws AppError on invalid input. */
 function build(input: TradeInput, tradeId: string) {
@@ -55,7 +62,7 @@ function build(input: TradeInput, tradeId: string) {
     if (!Number.isInteger(a.multiplier) || a.multiplier < 1) throw new AppError(422, 'Size multipliers must be whole numbers of 1 or more');
     if (!db.select({ id: account.id }).from(account).where(eq(account.id, a.accountId)).get()) throw new AppError(422, 'Unknown account');
   }
-  for (const f of input.fills) {
+  for (const f of [...input.fills, ...input.accounts.flatMap((a) => a.fills ?? [])]) {
     if (Date.parse(f.at) > Date.now() + 5 * 60_000) throw new AppError(422, 'A fill time is in the future');
     if (!isOnTick(f.price, c.tickSize)) throw new AppError(422, `${f.price} isn't a valid ${c.symbol} price (tick size ${c.tickSize})`);
   }
@@ -98,8 +105,14 @@ function build(input: TradeInput, tradeId: string) {
 
   const plan = riskPlan(firstEntry, 1, c.pointValueCents, { stopPrice: input.stopPrice, targetPrice: input.targetPrice, riskPoints: input.riskPoints });
   const accounts = input.accounts.map((a) => {
-    const fills = replicateFills(input.fills, a.multiplier);
-    const r = pnlFromFills(fills, c.pointValueCents);
+    const fills: InputFill[] = a.fills ?? replicateFills(input.fills, a.multiplier);
+    let r;
+    try {
+      r = pnlFromFills(fills, c.pointValueCents);
+    } catch (err) {
+      if (err instanceof FillError) throw new AppError(422, err.message);
+      throw err;
+    }
     const feesCents = a.feesCents ?? r.totalQty * c.feePerSideCents;
     const risk = riskPlan(firstEntry, r.maxQty, c.pointValueCents, { stopPrice: input.stopPrice, riskPoints: input.riskPoints });
     return {
@@ -146,6 +159,8 @@ function build(input: TradeInput, tradeId: string) {
     sessionId,
     stateReadingId: overridden ? (input.stateReadingId ?? null) : autoReadingFor(sessionId, base.openedAt),
     stateOverridden: overridden,
+    source: input.source ?? 'manual',
+    needsReview: input.needsReview ?? false,
     openedAt: base.openedAt,
     closedAt: base.closedAt,
   };
@@ -219,8 +234,21 @@ export function createTrade(input: TradeInput) {
 }
 
 export function updateTrade(id: string, input: TradeInput, reason: string | null) {
-  getTradeRow(id);
+  const existing = getTradeRow(id);
   const before = auditView(id);
+  if (input.keepFills) {
+    // Reviewing an imported trade: keep its broker fills, fees and accounts exactly as imported.
+    const current = getTrade(id);
+    const strip = (fs: (typeof current.accounts)[number]['fills']) => fs.map(({ at, side, qty, price, externalId }) => ({ at, side, qty, price, externalId }));
+    input = {
+      ...input,
+      contractId: current.contractId,
+      tradingDay: current.tradingDay,
+      fills: strip(current.accounts[0]!.fills),
+      accounts: current.accounts.map((a) => ({ accountId: a.accountId, multiplier: a.multiplier, feesCents: a.feesCents, fills: strip(a.fills) })),
+    };
+  }
+  input = { ...input, source: input.source ?? existing.source, needsReview: input.needsReview ?? false };
   const b = build(input, id);
   db.transaction((tx) => {
     deleteChildren(tx, id);

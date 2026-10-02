@@ -120,6 +120,7 @@ const tradeSchema = z.object({
   mistakeIds: z.array(z.string()).optional(),
   sessionId: z.string().nullable().optional(),
   stateReadingId: z.string().nullable().optional(),
+  keepFills: z.boolean().optional(),
   fills: z.array(z.object({ at: instant, side: z.enum(['buy', 'sell']), qty: z.number().int().positive(), price })).min(2),
   accounts: z.array(z.object({ accountId: z.string().min(1), multiplier: z.number().int().min(1).max(100), feesCents: cents.min(0).nullable().optional() })).min(1),
 });

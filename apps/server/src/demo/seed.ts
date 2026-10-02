@@ -209,6 +209,27 @@ export async function seedDemo(): Promise<void> {
     if (r() < 0.45) createManualSession({ typeId: 'st_daily_review', start: plusMin(sStart, length + 10), end: plusMin(sStart, length + 35) }, true);
   }
 
+  // Two trades from yesterday's session imported from the broker and still waiting for review.
+  const yesterday = now.minus({ days: now.weekday === 1 ? 3 : now.weekday === 7 ? 2 : 1 }).toISODate()!;
+  for (const [time, entry, exit, dir] of [
+    ['22:42', 21310, 21322.5, 'long'],
+    ['23:05', 21336, 21342.25, 'short'],
+  ] as const) {
+    const at = perth(yesterday, time);
+    const fills = simpleFills(dir, 2, { at, price: entry }, { at: plusMin(at, 6), price: exit });
+    createTrade({
+      tradingDay: yesterday,
+      contractId: 'ct_mnq',
+      fills,
+      accounts: [
+        { accountId: a1.id, multiplier: 1, fills },
+        { accountId: a2.id, multiplier: 1, fills: fills.map((f) => ({ ...f, price: f.price + (f.side === 'buy' ? 0.25 : 0) })) },
+      ],
+      source: 'import',
+      needsReview: true,
+    });
+  }
+
   // ---------- Expenses and payouts (this financial year) ----------
   const fy = financialYear(financialYearOf(today).startYear);
   const cat = (n: string) => findOrCreateListItem('expense_category', n);
