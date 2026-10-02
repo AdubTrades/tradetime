@@ -1,12 +1,13 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { ErrorBoundary } from './ErrorBoundary';
-import { BookOpen, CalendarDays, Monitor, Moon, Receipt, Settings as SettingsIcon, Sun, Target, Timer } from 'lucide-react';
+import { BookOpen, CalendarDays, House, Monitor, Moon, Receipt, Settings as SettingsIcon, Sun, Target, Timer } from 'lucide-react';
 import type { Theme } from '../lib/api';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { useThemeSync } from '../lib/theme';
 import { CheckInPrompt } from '../pages/checkins/CheckInPrompt';
 
 const nav = [
+  { to: '/home', label: 'Home', icon: House },
   { to: '/journal', label: 'Journal', icon: BookOpen },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/time-log', label: 'Time log', icon: Timer },
@@ -34,7 +35,7 @@ export function AppShell() {
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-bg px-4 py-6">
-        <Link to="/journal" className="mb-10 px-4" aria-label="TradeTime home">
+        <Link to="/home" className="mb-10 px-4" aria-label="TradeTime home">
           <Wordmark />
         </Link>
         <nav className="flex flex-1 flex-col gap-1">

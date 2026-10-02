@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter, Outlet, redirect, useParams
 import { financialYearOf, localDate } from '@tc/domain';
 import { AppShell } from './components/AppShell';
 import { CalendarPage } from './pages/calendar/CalendarPage';
+import { HomePage } from './pages/home/HomePage';
 import { DevAttachments } from './pages/DevAttachments';
 import { ExpensesPage } from './pages/expenses/ExpensesPage';
 import { DayPage } from './pages/journal/DayPage';
@@ -24,7 +25,8 @@ const page = <TPath extends string>(path: TPath, title: string, phase: string) =
   createRoute({ getParentRoute: () => shellRoute, path, component: () => <Placeholder title={title} phase={phase} /> });
 
 const shellRoutes = [
-  createRoute({ getParentRoute: () => shellRoute, path: '/', beforeLoad: () => redirect({ to: '/journal' }) }),
+  createRoute({ getParentRoute: () => shellRoute, path: '/', beforeLoad: () => redirect({ to: '/home' }) }),
+  createRoute({ getParentRoute: () => shellRoute, path: '/home', component: HomePage }),
   createRoute({ getParentRoute: () => shellRoute, path: '/journal', component: JournalPage }),
   createRoute({
     getParentRoute: () => shellRoute,

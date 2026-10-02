@@ -82,6 +82,13 @@ function GeneralSettings({ settings }: { settings: Settings }) {
             onBlur={(e) => e.target.value !== (settings.reportAbn ?? '') && update.mutate({ reportAbn: e.target.value.trim() || null })}
           />
         </Field>
+        <label className="flex items-start gap-3 text-sm sm:col-span-2">
+          <input type="checkbox" className="mt-1" checked={settings.homeHidePnl} onChange={(e) => update.mutate({ homeHidePnl: e.target.checked })} />
+          <span>
+            <span className="font-medium">Hide P&L on Home until I reveal it</span>
+            <span className="block text-muted">Results stay hidden each trading day until you press Reveal, so a red or green week doesn't colour your next session.</span>
+          </span>
+        </label>
         <Field label="Theme">
           <Select value={settings.theme} onChange={(e) => update.mutate({ theme: e.target.value as Settings['theme'] })}>
             <option value="system">Match system</option>

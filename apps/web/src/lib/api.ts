@@ -52,6 +52,7 @@ export interface Settings {
   includeMediumEvents: boolean;
   reportName: string | null;
   reportAbn: string | null;
+  homeHidePnl: boolean;
 }
 export interface BackupStatus {
   lastSuccessAt: string | null;

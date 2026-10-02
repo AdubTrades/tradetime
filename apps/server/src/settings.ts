@@ -28,6 +28,8 @@ const settingsShape = z.object({
   /** Shown on printable reports for your accountant. */
   reportName: z.string().trim().max(120).nullable(),
   reportAbn: z.string().trim().regex(/^(\d\s?){11}$/, 'An ABN is 11 digits').nullable(),
+  /** Keep P&L figures on Home hidden until revealed, so results don't colour the next session. */
+  homeHidePnl: z.boolean(),
 });
 
 export type Settings = z.infer<typeof settingsShape>;
@@ -48,6 +50,7 @@ export const defaultSettings: Settings = {
   includeMediumEvents: false,
   reportName: null,
   reportAbn: null,
+  homeHidePnl: true,
 };
 
 // No defaults here: a patch must only touch the keys it names.
