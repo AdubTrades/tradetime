@@ -22,7 +22,7 @@ export function CheckInPrompt() {
   return (
     <>
       {due && !open && (
-        <div role="alertdialog" aria-label="Time to check in" className="fixed right-6 bottom-6 z-40 w-80 rounded-[6px_0_0_0] border border-ember bg-bg p-5">
+        <div role="alertdialog" aria-label="Time to check in" className="fixed right-6 bottom-6 z-40 w-80 rounded-lg border border-ember bg-bg p-5">
           <div className="flex items-start gap-3">
             <BellRing className="mt-0.5 shrink-0 text-ember" size={20} aria-hidden />
             <div className="flex-1">

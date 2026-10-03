@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calendar · Calm</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f5f3}
+a{color:#1c1c1c}a:hover{color:#6b6b6b}
+</style>
+</helmet>
+<div style="font-family: 'Geist', system-ui, sans-serif; color: #1c1c1c; background: #f6f5f3; min-height: 100vh; display: flex; flex-wrap: wrap; font-variant-numeric: tabular-nums; letter-spacing: -0.005em">
+
+<aside style="flex: 1 1 200px; max-width: 232px; box-sizing: border-box; padding: 28px 16px; display: flex; flex-direction: column; gap: 28px; border-right: 1px solid #e8e7e4; background: #fafaf9">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 12px; font-weight: 600; font-size: 15px"><span style="width: 10px; height: 10px; border-radius: 50%; background: #e8590c; display: inline-block"></span>[App name]</div>
+<nav aria-label="Main" style="display: flex; flex-direction: column; gap: 2px">
+<a href="01-dashboard.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"></path></svg>Home</a>
+<a href="04-journal.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z"></path><path d="M8 7h6"></path></svg>Journal</a>
+<a href="#" aria-current="page" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; background: #efeeeb; text-decoration: none; color: #1c1c1c; font-weight: 500; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Calendar</a>
+<a href="03-time-log.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2M10 2h4"></path></svg>Time log</a>
+<a href="06-expenses.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg>Expenses</a>
+<a href="05-playbook.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg>Playbook</a>
+</nav>
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 2px">
+<a href="#" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; text-decoration: none; color: #5c5c5a; font-size: 14px">Settings</a>
+<a href="#" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; text-decoration: none; color: #5c5c5a; font-size: 14px">Theme: system</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 48px 64px">
+<div style="max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+<h1 style="margin: 0; font-size: 32px; font-weight: 500; letter-spacing: -0.025em">Calendar</h1>
+<button type="button" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: none; background: #1c1c1c; color: #ffffff; font: 500 14px 'Geist', sans-serif; cursor: pointer">+ New event</button>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+<div style="flex: 3 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+<div style="display: flex; align-items: center; gap: 4px">
+<button type="button" aria-label="Previous month" style="width: 40px; height: 40px; border-radius: 10px; border: 1px solid #e7e5e4; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #1c1c1c"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"></path></svg></button>
+<h2 style="margin: 0 12px; font-size: 20px; font-weight: 500; letter-spacing: -0.02em; min-width: 150px; text-align: center">September 2026</h2>
+<button type="button" aria-label="Next month" style="width: 40px; height: 40px; border-radius: 10px; border: 1px solid #e7e5e4; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #1c1c1c"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"></path></svg></button>
+<button type="button" style="margin-left: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #e7e5e4; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); font: 500 13px 'Geist', sans-serif; cursor: pointer; color: #1c1c1c">Today</button>
+</div>
+<div role="group" aria-label="Show on calendar" style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{layers}}" as="l" hint-placeholder-count="6">
+<button type="button" onClick="{{l.toggle}}" aria-pressed="{{l.pressed}}" style="min-height: 36px; padding: 0 12px; border-radius: 9999px; font: 500 13px 'Geist', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 6px; background: {{l.bg}}; color: {{l.fg}}; border: 1px solid {{l.border}}"><span style="width: 7px; height: 7px; border-radius: 50%; background: {{l.dot}}"></span>{{l.name}}</button>
+</sc-for>
+</div>
+</div>
+
+<section aria-label="September summary" style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; padding: 12px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; align-items: baseline; gap: 12px 0; overflow-x: auto; white-space: nowrap; font-size: 13px; color: #7a7a77">
+<span style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; padding: 0 24px; border-left: none"><span>Net P&amp;L · USD</span><strong style="font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: #157f3c">+$2,436.22</strong></span>
+<span style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; padding: 0 24px; border-left: 1px solid #ececea"><span>Days traded</span><strong style="font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: #1c1c1c">20 <span style="font-size: 13px; font-weight: 400; color: #7a7a77; letter-spacing: 0">of 22</span></strong></span>
+<span style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; padding: 0 24px; border-left: 1px solid #ececea"><span>Trading hours</span><strong style="font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: #1c1c1c">42.8h</strong></span>
+<span style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; padding: 0 24px; border-left: 1px solid #ececea"><span>Other business hours</span><strong style="font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: #1c1c1c">13.9h</strong></span>
+</section>
+
+<section aria-label="Month grid" style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.05)">
+<div style="overflow-x: auto">
+<div style="min-width: 760px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.1fr); gap: 6px; font-size: 12px; color: #7a7a77; padding: 0 4px 4px">
+<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span>Week</span>
+</div>
+<sc-for list="{{weeks}}" as="wk" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.1fr); gap: 6px">
+<sc-for list="{{wk.days}}" as="c" hint-placeholder-count="7">
+<a href="#" aria-label="{{c.label}}" style="min-height: 128px; box-sizing: border-box; padding: 8px 9px; border-radius: 10px; text-decoration: none; color: #1c1c1c; display: flex; flex-direction: column; gap: 3px; background: {{c.bg}}; border: {{c.border}}; opacity: {{c.opacity}}">
+<span style="display: flex; align-items: center; gap: 5px; height: 22px">
+<span style="font-size: 12px; font-weight: 500; min-width: 22px; height: 22px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; background: {{c.numBg}}; color: {{c.numFg}}">{{c.num}}</span>
+<sc-if value="{{c.showDot}}" hint-placeholder-val="{{false}}"><span style="width: 7px; height: 7px; border-radius: 50%; background: {{c.dot}}"></span></sc-if>
+<span style="flex: 1"></span>
+<sc-if value="{{c.showJournal}}" hint-placeholder-val="{{false}}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a8984" stroke-width="2" aria-label="Journal entry"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></sc-if>
+</span>
+<sc-if value="{{c.showPnl}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 15px; font-weight: 500; letter-spacing: -0.02em; color: {{c.pnlColor}}">{{c.pnl}}</span>
+<span style="font-size: 11px; color: #7a7a77">{{c.trades}}</span>
+</sc-if>
+<sc-if value="{{c.showHours}}" hint-placeholder-val="{{false}}">
+<span style="font: 400 11px 'Geist Mono', monospace; color: #8a8984">{{c.hours}}</span>
+</sc-if>
+<sc-if value="{{c.showExpense}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 11px; color: #5c5c5a">{{c.expense}}</span>
+</sc-if>
+<span style="flex: 1"></span>
+<sc-for list="{{c.events}}" as="e" hint-placeholder-count="1">
+<span style="font-size: 11px; line-height: 1.3; background: #f1f0ed; border-radius: 5px; padding: 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #3a3a38">{{e}}</span>
+</sc-for>
+<sc-if value="{{c.hasTodo}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 11px; line-height: 1.3; border: 1px solid #f3b48c; color: #9a3a07; border-radius: 5px; padding: 1px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.todo}}</span>
+</sc-if>
+</a>
+</sc-for>
+<div style="min-height: 128px; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; background: #f6f5f3; display: flex; flex-direction: column; justify-content: center; gap: 3px">
+<span style="font-size: 16px; font-weight: 500; letter-spacing: -0.02em; color: {{wk.color}}">{{wk.total}}</span>
+<span style="font-size: 11px; color: #7a7a77">{{wk.days_n}}</span>
+<span style="font: 400 11px 'Geist Mono', monospace; color: #8a8984">{{wk.hours}}</span>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; padding: 14px 4px 2px; font-size: 12px; color: #7a7a77">
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 50%; background: #e8590c"></span>High-impact release</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 50%; background: #a16207"></span>Medium</span>
+<span style="display: flex; align-items: center; gap: 6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8a8984" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>Journal entry</span>
+</div>
+</section>
+</div>
+
+<section aria-labelledby="up-h" style="flex: 1 1 280px; max-width: 380px; min-width: 0; background: #1b1b1a; color: #f5f5f4; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h2 id="up-h" style="margin: 0; font-size: 16px; font-weight: 500">Next 7 days</h2>
+<span style="font-size: 12px; color: #8a8984">Perth time</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 12px; font-weight: 500; color: #fb923c">Today · Fri 2 Oct</div>
+<label style="display: flex; gap: 10px; align-items: center; min-height: 40px; background: #2a2a28; border-radius: 10px; padding: 0 12px; cursor: pointer">
+<input type="checkbox" style="width: 16px; height: 16px; margin: 0; accent-color: #e8590c">
+<span style="flex: 1; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Send receipts to accountant</span>
+<span style="font-size: 11px; font-weight: 500; color: #fb923c">Overdue</span>
+</label>
+<div style="display: flex; gap: 12px; align-items: center; min-height: 36px; font-size: 14px"><span style="font: 400 12px 'Geist Mono', monospace; color: #a3a29e; width: 40px">20:30</span><span style="width: 7px; height: 7px; border-radius: 50%; background: #f76b1c"></span><span>Non-Farm Payrolls</span></div>
+<div style="display: flex; gap: 12px; align-items: center; min-height: 36px; font-size: 14px; color: #a3a29e"><span style="font: 400 12px 'Geist Mono', monospace; width: 40px">21:15</span><span style="width: 7px; height: 7px; border-radius: 50%; background: #5c5b57"></span><span>NY open session</span></div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #2e2e2c; padding-top: 16px">
+<div style="font-size: 12px; font-weight: 500; color: #a3a29e">Sun 4 Oct</div>
+<div style="display: flex; gap: 12px; align-items: center; min-height: 36px; font-size: 14px"><span style="font: 400 12px 'Geist Mono', monospace; color: #a3a29e; width: 40px">09:30</span><span style="width: 7px; height: 7px; border-radius: 50%; background: #d6d5d1"></span><span>Weekly review</span></div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #2e2e2c; padding-top: 16px">
+<div style="font-size: 12px; font-weight: 500; color: #a3a29e">Mon 5 Oct</div>
+<a href="#" style="display: flex; gap: 12px; align-items: center; min-height: 36px; font-size: 14px; color: #f5f5f4; text-decoration: none"><span style="font: 400 12px 'Geist Mono', monospace; color: #a3a29e; width: 40px">09:00</span><span style="width: 7px; height: 7px; border-radius: 50%; background: #d6d5d1"></span><span>Mentor live stream</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a3a29e" stroke-width="2"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></a>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #2e2e2c; padding-top: 16px">
+<div style="font-size: 12px; font-weight: 500; color: #a3a29e">Thu 8 Oct</div>
+<div style="display: flex; gap: 12px; align-items: center; min-height: 36px; font-size: 14px"><span style="font: 400 12px 'Geist Mono', monospace; color: #a3a29e; width: 40px">20:30</span><span style="width: 7px; height: 7px; border-radius: 50%; background: #d4a017"></span><span>Unemployment Claims</span></div>
+</div>
+
+<div style="border-top: 1px solid #2e2e2c; padding-top: 16px; display: flex; gap: 12px; align-items: center; font-size: 13px; color: #a3a29e">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 2l4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg>
+<span>NY open session, 21:15 every weekday</span>
+</div>
+
+<p style="margin: auto 0 0; font-size: 11px; line-height: 1.5; color: #8a8984">Economic events from FRED®. This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.</p>
+</section>
+</div>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const defaults = { pnl: true, screen: true, market: true, journal: true, events: true, expenses: false };
+    const on = Object.assign({}, defaults, s.layers || {});
+    const toggle = (k) => () => this.setState({ layers: Object.assign({}, on, { [k]: !on[k] }) });
+    const layerDefs = [
+      ['pnl', 'P&L', '#157f3c'], ['screen', 'Screen time', '#8a8984'], ['market', 'Market events', '#e8590c'],
+      ['journal', 'Journal', '#5c5c5a'], ['events', 'My events', '#1c1c1c'], ['expenses', 'Expenses', '#a16207']
+    ];
+    const layers = layerDefs.map(([k, name, dot]) => ({
+      name, toggle: toggle(k), pressed: on[k] ? 'true' : 'false',
+      bg: on[k] ? '#1c1c1c' : '#ffffff', fg: on[k] ? '#ffffff' : '#5c5c5a',
+      border: on[k] ? '#1c1c1c' : '#e2e1de', dot: on[k] ? dot : '#d4d3cf'
+    }));
+    const fmt = (v) => (v >= 0 ? '+' : '-') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const D = {
+      '2': { p: 157.04, t: 1, w: 100, h: 2.6, j: 1 }, '3': { p: -196.84, t: 3, w: 33, h: 2.9, m: 'med', x: 89.95 },
+      '4': { p: -122.96, t: 1, w: 0, h: 2.4, m: 'high', j: 1 }, '5': { h: 2.8 },
+      '7': { p: 479.12, t: 2, w: 100, h: 2.2 }, '8': { p: 172.60, t: 2, w: 50, h: 1.6 },
+      '9': { p: -148.44, t: 1, w: 0, h: 2.6, j: 1 }, '10': { p: -67.40, t: 2, w: 50, h: 2.5, m: 'med', j: 1, x: 16.50 },
+      '11': { p: 33.60, t: 2, w: 50, h: 2.9 }, '12': { h: 2.8 },
+      '14': { p: 92.04, t: 1, w: 100, h: 2.8, m: 'high' }, '15': { p: 453.64, t: 3, w: 100, h: 2.7, m: 'high', j: 1, x: 90.00 },
+      '16': { p: 157.04, t: 1, w: 100, h: 1.8, m: 'high', j: 1 }, '17': { p: 285.10, t: 2, w: 50, h: 2.8, m: 'med', j: 1 },
+      '18': { p: 235.56, t: 1, w: 100, h: 1.3 }, '19': { h: 2.8 },
+      '21': { p: -100.44, t: 1, w: 0, h: 2.5, j: 1 }, '22': { p: 157.04, t: 1, w: 100, h: 2.6 },
+      '23': { p: 297.04, t: 1, w: 100, h: 1.9 }, '24': { m: 'med' }, '25': { p: 363.12, t: 2, w: 50, h: 2.7 }, '26': { h: 2.8 },
+      '28': { p: 189.64, t: 2, w: 50, h: 1.8, j: 1 }, '29': { p: -234.36, t: 2, w: 0, h: 1.4 },
+      '30': { p: 234.08, t: 1, w: 100, h: 1.6, j: 1, todo: 'Send receipts' },
+      'o1': { p: 322.14, t: 3, w: 67, h: 2.3, m: 'low', j: 1 }, 'o2': { m: 'high', today: 1 }
+    };
+    const dots = { high: '#e8590c', med: '#a16207', low: '#c8c7c3' };
+    const seq = [['a', 31]];
+    for (let d = 1; d <= 30; d++) seq.push(['s', d]);
+    for (let d = 1; d <= 4; d++) seq.push(['o', d]);
+    const cells = seq.map(([m, d], i) => {
+      const key = m === 's' ? String(d) : m + d;
+      const r = D[key] || {};
+      const dow = i % 7;
+      const weekend = dow >= 5;
+      const out = m !== 's';
+      const ev = [];
+      if (on.events) {
+        if (!weekend) ev.push('21:15 NY open');
+        if (dow === 6) ev.push('09:30 Weekly review');
+      }
+      const traded = r.p !== undefined;
+      const tint = !on.pnl || !traded ? (weekend ? '#fbfbfa' : '#ffffff') : (r.p >= 0 ? '#f1f7f2' : '#fbf1f0');
+      return {
+        num: d,
+        label: (out ? (m === 'a' ? 'August ' : 'October ') : 'September ') + d,
+        bg: tint,
+        border: r.today ? '1.5px solid #e8590c' : '1px solid #efeeeb',
+        opacity: out && !r.today ? '0.5' : '1',
+        numBg: r.today ? '#e8590c' : 'transparent',
+        numFg: r.today ? '#ffffff' : '#1c1c1c',
+        showDot: on.market && !!r.m, dot: dots[r.m] || 'transparent',
+        showJournal: on.journal && !!r.j,
+        showPnl: on.pnl && traded,
+        pnl: traded ? fmt(r.p) : '', pnlColor: traded && r.p < 0 ? '#b42318' : '#157f3c',
+        trades: traded ? r.t + (r.t === 1 ? ' trade' : ' trades') + ' · ' + r.w + '%' : '',
+        showHours: on.screen && !!r.h, hours: r.h ? r.h + 'h' : '',
+        showExpense: on.expenses && !!r.x, expense: r.x ? 'Expense $' + r.x.toFixed(2) : '',
+        events: ev,
+        hasTodo: on.events && !!r.todo, todo: r.todo || ''
+      };
+    });
+    const W = [[-162.76, 3, 10.6], [469.48, 5, 14.7], [1223.38, 5, 14.2], [716.76, 4, 12.4], [511.50, 4, 7.2]];
+    const weeks = W.map(([t, n, h], i) => ({
+      days: cells.slice(i * 7, i * 7 + 7),
+      total: fmt(t), color: t < 0 ? '#b42318' : '#157f3c',
+      days_n: n + ' days traded', hours: h + 'h'
+    }));
+    return { layers, weeks };
+  }
+}
+</script>
+</body>
+</html>

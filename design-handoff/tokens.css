@@ -1,0 +1,87 @@
+/* Design tokens for the trading journal redesign ("Calm").
+   Plain CSS custom properties so they work with any stack.
+   Map these into Tailwind, CSS modules, styled-components, etc. as needed. */
+
+:root {
+  /* Surfaces */
+  --bg-page: #f6f5f3;        /* app background */
+  --bg-sidebar: #fafaf9;
+  --bg-card: #ffffff;
+  --bg-muted: #fafaf9;       /* inset panels, row cards, table/group headers */
+  --bg-hover: #f5f5f4;       /* button/option hover */
+  --bg-nav-active: #efeeeb;
+  --bg-tabs-track: #ecebe8;  /* segmented tabs background */
+
+  /* Dark "tonight" panel (dashboard agenda + timer, time log timer) */
+  --dark-bg: #1b1b1a;
+  --dark-bg-raised: #222220; /* timer column inside the dark card */
+  --dark-border: #3a3936;
+  --dark-divider: #2e2e2c;
+  --dark-text: #f5f5f4;
+  --dark-text-muted: #a3a29e;
+  --dark-text-faint: #8a8984;
+
+  /* Text */
+  --text: #1c1c1c;
+  --text-secondary: #5c5c5a;
+  --text-muted: #78716c;     /* card descriptions, labels */
+  --text-faint: #a8a29e;
+
+  /* Borders */
+  --border: #e7e5e4;         /* card + control borders */
+  --border-subtle: #f0efed;  /* inner dividers */
+  --border-strong: #a8a29e;  /* active filter */
+
+  /* Accent: one orange, used sparingly (Start button, focus ring, high-impact events, overdue) */
+  --accent: #e8590c;
+  --accent-on-dark: #f76b1c;
+  --warning-text: #b4470a;      /* overdue on light */
+  --warning-text-dark: #fb923c; /* overdue on dark */
+
+  /* P&L */
+  --positive: #157f3c;
+  --negative: #b42318;
+  --positive-on-dark: #4ade80;
+  --positive-tint: #f1f7f2;  /* calendar winning day */
+  --negative-tint: #fbf1f0;  /* calendar losing day */
+
+  /* Grade pills */
+  --grade-a-plus-bg: #1b1b1a;  --grade-a-plus-fg: #ffffff;
+  --grade-a-bg: #3a3a38;       --grade-a-fg: #ffffff;
+  --grade-b-bg: #ffffff;       --grade-b-fg: #3a3a38;  --grade-b-border: #d4d3cf;
+
+  /* Expense category pills (muted, warm) */
+  --cat-internet-bg: #e4eaf1;  --cat-internet-fg: #34495f;
+  --cat-data-bg: #ebe5ee;      --cat-data-fg: #5a4566;
+  --cat-software-bg: #e3ece4;  --cat-software-fg: #3b5843;
+  --cat-education-bg: #f2e9d8; --cat-education-fg: #755622;
+  --cat-office-bg: #ebe8e4;    --cat-office-fg: #57534e;
+  --cat-propfirm-bg: #f6e3d7;  --cat-propfirm-fg: #93441a;
+
+  /* Type */
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace; /* timers and times only */
+  --text-xs: 12px;  --text-sm: 13px;  --text-base: 14px;
+  --text-md: 16px;  --text-lg: 20px;  --text-xl: 24px;
+  --text-2xl: 32px; --text-3xl: 48px;
+  --tracking-tight: -0.025em;
+
+  /* Shape */
+  --radius-sm: 8px;    /* small buttons, list options */
+  --radius-md: 10px;   /* buttons, inputs, row cards */
+  --radius-lg: 12px;   /* cards, dropdown menus */
+  --radius-xl: 16px;   /* dark hero card */
+  --radius-pill: 9999px;
+
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-menu: 0 12px 32px -12px rgba(0, 0, 0, 0.3), 0 4px 8px -4px rgba(0, 0, 0, 0.1);
+  --focus-ring: 0 0 0 2px var(--accent);
+
+  /* Layout */
+  --sidebar-width: 232px;
+  --content-max: 1120px;   /* calendar uses 1240px */
+  --page-padding: 32px 48px 64px;
+  --gap-section: 24px;
+  --card-padding: 24px;
+}

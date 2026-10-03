@@ -159,7 +159,7 @@ function DailyReviewEditor({ day }: { day: string }) {
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="What went well, what didn't, what to change tomorrow."
-        className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-2 focus:outline-ember"
+        className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
       />
       <p className="mt-1 text-xs text-muted">{status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : status === 'error' ? 'Couldn’t save — check the app is running' : 'Saves automatically'}</p>
     </Card>

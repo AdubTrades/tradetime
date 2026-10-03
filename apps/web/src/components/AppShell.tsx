@@ -1,7 +1,4 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
-import { DemoBanner } from './DemoBanner';
-import { ErrorBoundary } from './ErrorBoundary';
-import { cn } from './ui';
 import {
   BookOpen,
   CalendarDays,
@@ -22,6 +19,9 @@ import type { Theme } from '../lib/api';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { useThemeSync } from '../lib/theme';
 import { CheckInPrompt } from '../pages/checkins/CheckInPrompt';
+import { DemoBanner } from './DemoBanner';
+import { ErrorBoundary } from './ErrorBoundary';
+import { cn } from './ui';
 
 const nav = [
   { to: '/home', label: 'Home', icon: House },
@@ -76,29 +76,44 @@ export function AppShell() {
   const theme = themeCycle[settings?.theme ?? 'system'];
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
+  // The calendar grid gets a wider column than the other screens.
+  const wide = pathname.startsWith('/calendar');
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen md:flex">
       <aside
         className={cn(
-          'sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-bg py-6 transition-[width,padding] duration-200',
-          collapsed ? 'w-[76px] px-3' : 'w-60 px-4',
+          'flex shrink-0 flex-col border-border bg-sidebar transition-[width] duration-200',
+          // Narrow screens: a bar above the content. Wider: a sticky sidebar.
+          'border-b px-4 py-3 md:sticky md:top-0 md:h-screen md:border-r md:border-b-0 md:py-7',
+          collapsed ? 'md:w-[76px] md:px-3' : 'md:w-[232px] md:px-4',
         )}
       >
-        <Link to="/home" className={cn('mb-10', collapsed ? 'flex justify-center' : 'px-4')} aria-label="TradeTime home" title={collapsed ? 'TradeTime' : undefined}>
-          {collapsed ? <Monogram /> : <Wordmark />}
+        <Link
+          to="/home"
+          aria-label="TradeTime home"
+          title={collapsed ? 'TradeTime' : undefined}
+          className={cn('flex items-center gap-2.5 self-start rounded-md', collapsed ? 'px-3 md:self-center md:px-0' : 'px-3')}
+        >
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-ember" aria-hidden />
+          <span className={cn(collapsed && 'md:hidden')}>
+            <Wordmark />
+          </span>
         </Link>
-        <nav className="flex flex-1 flex-col gap-1" aria-label="Main">
+        <nav aria-label="Main" className="mt-3 flex gap-0.5 overflow-x-auto md:mt-7 md:flex-1 md:flex-col md:overflow-visible">
           {nav.map(({ to, label, icon }) => (
             <NavItem key={to} to={to} label={label} icon={icon} collapsed={collapsed} />
           ))}
+          <span className="md:hidden">
+            <NavItem to="/settings" label="Settings" icon={SettingsIcon} collapsed={false} />
+          </span>
         </nav>
-        <div className="flex flex-col gap-1 border-t border-border pt-4">
-          <NavItem to="/settings" label="Settings" icon={SettingsIcon} collapsed={collapsed} />
+        <div className="mt-auto hidden flex-col gap-0.5 md:flex">
+          <NavItem to="/settings" label="Settings" icon={SettingsIcon} collapsed={collapsed} textOnly />
           <RailButton label={theme.label} icon={theme.icon} collapsed={collapsed} onClick={() => updateSettings.mutate({ theme: theme.next })} />
           <RailButton
             label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            hint={"⌘\\"}
+            hint="⌘\"
             icon={collapsed ? PanelLeftOpen : PanelLeftClose}
             collapsed={collapsed}
             onClick={toggleCollapsed}
@@ -108,10 +123,12 @@ export function AppShell() {
       </aside>
       <div className="min-w-0 flex-1">
         <DemoBanner />
-        <main className={cn('py-10 transition-[padding] duration-200', collapsed ? 'px-12' : 'px-10')}>
-          <ErrorBoundary resetKey={pathname}>
-            <Outlet />
-          </ErrorBoundary>
+        <main className="px-4 pt-6 pb-12 sm:px-8 md:px-12 md:pt-8 md:pb-16">
+          <div className={cn('mx-auto', wide ? 'max-w-[1240px]' : 'max-w-[1120px]')}>
+            <ErrorBoundary resetKey={pathname}>
+              <Outlet />
+            </ErrorBoundary>
+          </div>
         </main>
       </div>
       <CheckInPrompt />
@@ -119,12 +136,12 @@ export function AppShell() {
   );
 }
 
-// Pill-shaped nav items; the active page sits in an Ash capsule with a small Ember marker.
+// 44px rows with a 10px radius; the active page gets the nav-active fill and medium weight.
 const itemClass = (collapsed: boolean) =>
   cn(
-    'font-display group relative flex items-center rounded-full py-2 text-[15px] text-muted transition hover:text-text [&.active]:bg-surface [&.active]:text-text',
-    'focus-visible:outline-2 focus-visible:outline-ember',
-    collapsed ? 'h-10 w-[52px] justify-center px-0' : 'gap-3 px-4',
+    'group relative flex min-h-11 shrink-0 items-center gap-3 rounded-md px-3 text-sm whitespace-nowrap text-secondary transition hover:bg-hover hover:text-text',
+    '[&.active]:bg-nav-active [&.active]:font-medium [&.active]:text-text',
+    collapsed && 'md:w-[52px] md:justify-center md:px-0',
   );
 
 /** Label shown beside an icon when the rail is collapsed (on hover or keyboard focus). */
@@ -132,22 +149,20 @@ function RailTip({ children }: { children: ReactNode }) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none absolute top-1/2 left-full z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-full bg-text px-3 py-1 font-sans text-xs text-bg group-hover:block group-focus-visible:block"
+      className="pointer-events-none absolute top-1/2 left-full z-50 ml-3 hidden -translate-y-1/2 rounded-md bg-text px-2.5 py-1 text-xs whitespace-nowrap text-card shadow-menu md:group-hover:block md:group-focus-visible:block"
     >
       {children}
     </span>
   );
 }
 
-function NavItem({ to, label, icon: Icon, collapsed }: { to: string; label: string; icon: LucideIcon; collapsed: boolean }) {
+function NavItem({ to, label, icon: Icon, collapsed, textOnly = false }: { to: string; label: string; icon: LucideIcon; collapsed: boolean; textOnly?: boolean }) {
   return (
     <Link to={to} className={itemClass(collapsed)} aria-label={collapsed ? label : undefined}>
-      <Icon size={17} strokeWidth={1.6} aria-hidden />
-      {collapsed ? <RailTip>{label}</RailTip> : label}
-      <span
-        className={cn('hidden h-1.5 w-1.5 rounded-full bg-ember group-[.active]:block', collapsed ? 'absolute top-1.5 right-2.5' : 'ml-auto')}
-        aria-hidden
-      />
+      {/* Settings is plain text in the full sidebar (as in the design); icons appear on the collapsed rail. */}
+      <Icon size={18} strokeWidth={1.6} aria-hidden className={cn(textOnly && !collapsed && 'hidden')} />
+      <span className={cn(collapsed && 'md:hidden')}>{label}</span>
+      {collapsed && <RailTip>{label}</RailTip>}
     </Link>
   );
 }
@@ -168,37 +183,32 @@ function RailButton({
   ariaExpanded?: boolean;
 }) {
   return (
-    <button type="button" className={itemClass(collapsed)} onClick={onClick} aria-label={collapsed ? label : undefined} aria-expanded={ariaExpanded} title={!collapsed && hint ? `${label} (${hint})` : undefined}>
-      <Icon size={17} strokeWidth={1.6} aria-hidden />
-      {collapsed ? (
+    <button
+      type="button"
+      className={cn(itemClass(collapsed), 'w-full text-left')}
+      onClick={onClick}
+      aria-label={collapsed ? label : undefined}
+      aria-expanded={ariaExpanded}
+      title={!collapsed && hint ? `${label} (${hint})` : undefined}
+    >
+      <Icon size={18} strokeWidth={1.6} aria-hidden className={cn(!collapsed && 'hidden')} />
+      {!collapsed && label}
+      {collapsed && (
         <RailTip>
           {label}
           {hint && <span className="ml-1.5 opacity-60">{hint}</span>}
         </RailTip>
-      ) : (
-        label
       )}
     </button>
   );
 }
 
-/** TradeTime wordmark: one word, "Trade" in bold, set in the display face. */
-export function Wordmark({ className = 'text-[22px]' }: { className?: string }) {
+/** TradeTime wordmark: one word, "Trade" in bold. */
+export function Wordmark({ className = 'text-[15px]' }: { className?: string }) {
   return (
-    <span className={`font-display leading-none tracking-[-0.03em] ${className}`}>
-      <span className="font-semibold">Trade</span>
-      <span>Time</span>
-    </span>
-  );
-}
-
-/** Compact mark for the collapsed rail: bold T, regular t, with the Ember dot. */
-function Monogram() {
-  return (
-    <span className="font-display relative flex h-10 w-10 items-center justify-center rounded-[6px_0_0_0] bg-text text-[19px] leading-none tracking-[-0.04em] text-bg">
-      <span className="font-semibold">T</span>
-      <span>t</span>
-      <span className="absolute right-1.5 bottom-1.5 h-1.5 w-1.5 rounded-full bg-ember" aria-hidden />
+    <span className={`leading-none tracking-[-0.01em] ${className}`}>
+      <span className="font-bold">Trade</span>
+      <span className="font-normal">Time</span>
     </span>
   );
 }

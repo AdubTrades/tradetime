@@ -79,7 +79,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
       />
 
       {t.needsReview && (
-        <div className="flex flex-wrap items-center gap-3 rounded-[6px_0_0_0] bg-ivory px-5 py-4 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-ivory px-5 py-4 text-sm">
           <span className="flex-1">
             <span className="font-medium">Imported from your broker.</span>{' '}
             <span className="text-muted">Add the Play, tick what you saw before entry, and note how you felt — the fills and P&L are already in.</span>

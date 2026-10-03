@@ -26,18 +26,18 @@ export function Dialog({ open, onClose, title, children, footer, width = 'max-w-
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className={`m-auto w-[calc(100%-2rem)] ${width} rounded-[6px_0_0_0] border border-border bg-bg p-0 text-text backdrop:bg-[#202020]/45`}
+      className={`m-auto w-[calc(100%-2rem)] ${width} rounded-lg border border-border bg-card p-0 text-text shadow-menu backdrop:bg-[#1c1c1c]/40`}
     >
       {open && (
         <div className="flex max-h-[85vh] flex-col">
           <header className="flex items-center justify-between border-b border-border px-6 py-4">
-            <h2 className="text-xl">{title}</h2>
-            <button type="button" onClick={onClose} className="p-1 text-muted hover:bg-surface hover:text-text" aria-label="Close">
+            <h2 className="text-lg font-semibold">{title}</h2>
+            <button type="button" onClick={onClose} className="rounded-sm p-1.5 text-muted hover:bg-hover hover:text-text" aria-label="Close">
               <X size={18} />
             </button>
           </header>
           <div className="overflow-y-auto px-6 py-5">{children}</div>
-          {footer && <footer className="flex justify-end gap-2 border-t border-border bg-surface-2 px-6 py-3">{footer}</footer>}
+          {footer && <footer className="flex flex-wrap justify-end gap-2 border-t border-border bg-inset px-6 py-3">{footer}</footer>}
         </div>
       )}
     </dialog>

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { GRADES } from '@tc/domain';
 import { FileDropTarget } from '../../components/FileDropTarget';
 import { GradeBadge } from '../../components/GradeBadge';
-import { Button, Card, Input, PageHeader } from '../../components/ui';
+import { Button, Card, Input, PageHeader, Select } from '../../components/ui';
 import { api, type Attachment, type GradeRule, type PlayDetail, type PlayExample } from '../../lib/api';
 import { useJournalMutation, usePlay } from '../../lib/journal';
 
@@ -39,7 +39,7 @@ export function PlayDetailPage({ playId }: { playId: string }) {
               key={play.description ?? ''}
               defaultValue={play.description ?? ''}
               rows={2}
-              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-ember"
+              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm"
               placeholder="What this setup is and when it applies"
               onBlur={(e) => e.target.value !== (play.description ?? '') && update.mutate({ description: e.target.value || null })}
             />
@@ -248,7 +248,7 @@ function GradeShelf({ play, grade, examples }: { play: PlayDetail; grade: string
                 key={ex.caption ?? ''}
                 defaultValue={ex.caption ?? ''}
                 placeholder="Add a caption"
-                className="w-full bg-transparent text-sm focus:outline-none"
+                className="w-full bg-transparent text-sm"
                 onBlur={(e) => e.target.value !== (ex.caption ?? '') && updateEx.mutate({ id: ex.id, caption: e.target.value || null })}
               />
               <div className="flex items-center gap-2 text-muted">
@@ -259,16 +259,11 @@ function GradeShelf({ play, grade, examples }: { play: PlayDetail; grade: string
                     · trade
                   </Link>
                 )}
-                <select
-                  aria-label="Move to grade"
-                  value={ex.grade}
-                  onChange={(e) => updateEx.mutate({ id: ex.id, grade: e.target.value })}
-                  className="ml-auto rounded border border-border bg-surface px-1 text-xs opacity-0 group-hover:opacity-100 focus:opacity-100"
-                >
+                <Select aria-label="Move to grade" size="sm" className="ml-auto w-20" value={ex.grade} onChange={(e) => updateEx.mutate({ id: ex.id, grade: e.target.value })}>
                   {GRADES.map((g) => (
                     <option key={g}>{g}</option>
                   ))}
-                </select>
+                </Select>
                 <button
                   type="button"
                   aria-label="Remove example"

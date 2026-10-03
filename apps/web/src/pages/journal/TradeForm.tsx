@@ -614,7 +614,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
               rows={5}
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
-              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-ember"
+              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm"
             />
           </Field>
           <div>
@@ -645,9 +645,10 @@ function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Accounts</span>
         {groups.length > 0 && (
-          <select
+          <Select
             aria-label="Use account group"
-            className="rounded border border-border bg-surface px-1 text-xs text-muted"
+            size="sm"
+            className="w-40"
             value=""
             onChange={(e) => {
               const g = groups.find((x) => x.id === e.target.value);
@@ -660,34 +661,36 @@ function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (
                 {g.name}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {value.map((a, i) => (
-          <span key={a.accountId} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface py-0.5 pr-1 pl-2.5 text-xs">
+          <span key={a.accountId} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card py-0.5 pr-1.5 pl-2.5 text-xs shadow-card">
             {name(a.accountId)}
-            <select
+            <Select
               aria-label={`Size multiplier for ${name(a.accountId)}`}
+              size="sm"
+              className="w-16"
               value={a.multiplier}
               onChange={(e) => onChange(value.map((x, j) => (j === i ? { ...x, multiplier: Number(e.target.value) } : x)))}
-              className="rounded bg-surface-2 px-0.5 text-xs"
             >
               {[1, 2, 3, 4, 5, 10].map((n) => (
                 <option key={n} value={n}>
                   ×{n}
                 </option>
               ))}
-            </select>
+            </Select>
             <button type="button" aria-label={`Remove ${name(a.accountId)}`} onClick={() => onChange(value.filter((_, j) => j !== i))} className="text-muted hover:text-loss">
               <X size={12} />
             </button>
           </span>
         ))}
         {unused.length > 0 && (
-          <select
+          <Select
             aria-label="Add account"
-            className="rounded-full border border-dashed border-border bg-transparent px-2 py-0.5 text-xs text-muted"
+            size="sm"
+            className="w-40"
             value=""
             onChange={(e) => e.target.value && onChange([...value, { accountId: e.target.value, multiplier: 1, feesCents: null }])}
           >
@@ -697,7 +700,7 @@ function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (
                 {a.name}
               </option>
             ))}
-          </select>
+          </Select>
         )}
         {accounts.length === 0 && <span className="text-xs text-loss">Add a trading account in Settings first.</span>}
       </div>

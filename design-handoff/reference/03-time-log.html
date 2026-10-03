@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time log · Calm</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f5f3}
+a{color:#1c1c1c}a:hover{color:#6b6b6b}
+.sel:focus{outline:none}.sel:focus-visible{outline:none;box-shadow:0 0 0 2px #e8590c}
+.opt:hover,.opt:focus-visible{outline:none;background:#f5f5f4}
+.btn-o:hover{background:#f5f5f4 !important}
+.row:hover{background:#fafaf9}
+</style>
+</helmet>
+<div style="font-family: 'Geist', system-ui, sans-serif; color: #1c1c1c; background: #f6f5f3; min-height: 100vh; display: flex; flex-wrap: wrap; font-variant-numeric: tabular-nums; letter-spacing: -0.005em">
+
+<aside style="flex: 1 1 200px; max-width: 232px; box-sizing: border-box; padding: 28px 16px; display: flex; flex-direction: column; gap: 28px; border-right: 1px solid #e8e7e4; background: #fafaf9">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 12px; font-weight: 600; font-size: 15px"><span style="width: 10px; height: 10px; border-radius: 50%; background: #e8590c; display: inline-block"></span>[App name]</div>
+<nav aria-label="Main" style="display: flex; flex-direction: column; gap: 2px">
+<a href="01-dashboard.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"></path></svg>Home</a>
+<a href="04-journal.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z"></path><path d="M8 7h6"></path></svg>Journal</a>
+<a href="02-calendar.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Calendar</a>
+<a href="#" aria-current="page" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; background: #efeeeb; text-decoration: none; color: #1c1c1c; font-weight: 500; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2M10 2h4"></path></svg>Time log</a>
+<a href="06-expenses.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg>Expenses</a>
+<a href="05-playbook.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg>Playbook</a>
+</nav>
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 2px">
+<a href="#" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; text-decoration: none; color: #5c5c5a; font-size: 14px">Settings</a>
+<a href="#" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; text-decoration: none; color: #5c5c5a; font-size: 14px">Theme: system</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 48px 64px">
+<div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+<div>
+<h1 style="margin: 0; font-size: 32px; font-weight: 500; letter-spacing: -0.025em">Time log</h1>
+<p style="margin: 6px 0 0; font-size: 14px; color: #78716c">Track trading and business hours for your records.</p>
+</div>
+<button type="button" class="btn-o" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #e7e5e4; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #1c1c1c; font: 500 14px 'Geist', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>Add manually</button>
+</div>
+
+<section aria-label="Session timer" style="background: #1b1b1a; color: #f5f5f4; border-radius: 16px; padding: 24px 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 13px; color: #a3a29e; display: flex; align-items: center; gap: 8px"><span style="width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: {{dotColor}}"></span>{{statusText}}</div>
+<div style="font: 400 56px/1 'Geist Mono', monospace; letter-spacing: -0.04em">{{clock}}</div>
+</div>
+<div style="display: flex; gap: 8px; flex: 0 1 360px; min-width: 260px">
+<div style="flex: 1; position: relative">
+<button type="button" class="sel" aria-haspopup="listbox" aria-expanded="{{actOpenStr}}" aria-label="Activity" onClick="{{toggleAct}}" style="width: 100%; min-height: 44px; border-radius: 10px; border: 1px solid #3a3936; background: #1b1b1a; color: #f5f5f4; font: 500 14px 'Geist', sans-serif; padding: 0 12px 0 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer">{{activity}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.6; flex: none"><path d="M6 9l6 6 6-6"></path></svg></button>
+<sc-if value="{{actOpen}}" hint-placeholder-val="{{false}}">
+<div role="listbox" aria-label="Activity" style="position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; box-shadow: 0 12px 32px -12px rgba(0,0,0,0.35), 0 4px 8px -4px rgba(0,0,0,0.12); padding: 4px">
+<sc-for list="{{activities}}" as="o" hint-placeholder-count="3">
+<button type="button" role="option" class="opt" aria-selected="{{o.selStr}}" onClick="{{o.pick}}" style="width: 100%; min-height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border: none; border-radius: 8px; background: transparent; font: 400 14px 'Geist', sans-serif; color: #1c1917; cursor: pointer; text-align: left">{{o.name}}<sc-if value="{{o.sel}}" hint-placeholder-val="{{false}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+<button type="button" onClick="{{toggleRun}}" style="min-height: 44px; padding: 0 20px; border-radius: 10px; border: none; font: 600 14px 'Geist', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 8px; background: {{runBg}}; color: {{runFg}}">
+<sc-if value="{{running}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg></sc-if>
+<sc-if value="{{notRunning}}" hint-placeholder-val="{{true}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"></path></svg></sc-if>
+{{runLabel}}</button>
+</div>
+</section>
+
+<section aria-label="Totals" style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap">
+<div style="flex: 1 1 160px; padding: 18px 24px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #78716c">Today</span><span style="font-size: 24px; font-weight: 500; letter-spacing: -0.02em">0m</span></div>
+<div style="flex: 1 1 160px; padding: 18px 24px; border-left: 1px solid #ececea; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #78716c">This week</span><span style="font-size: 24px; font-weight: 500; letter-spacing: -0.02em">7h 10m</span></div>
+<div style="flex: 1 1 160px; padding: 18px 24px; border-left: 1px solid #ececea; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #78716c">This month</span><span style="font-size: 24px; font-weight: 500; letter-spacing: -0.02em">2h 19m</span></div>
+<div style="flex: 1 1 160px; padding: 18px 24px; border-left: 1px solid #ececea; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 13px; color: #78716c">FY 2026–27</span><span style="font-size: 24px; font-weight: 500; letter-spacing: -0.02em">104h 28m</span></div>
+</section>
+
+<section aria-labelledby="sess-h" style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); padding: 24px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px">
+<div>
+<h2 id="sess-h" style="margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.015em">Sessions</h2>
+<p style="margin: 4px 0 0; font-size: 13px; color: #78716c">1 session · 2h 19m this month</p>
+</div>
+<div style="display: flex; align-items: center; gap: 4px">
+<button type="button" aria-label="Previous month" class="btn-o" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e7e5e4; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #1c1c1c"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"></path></svg></button>
+<span style="min-width: 120px; text-align: center; font-size: 14px; font-weight: 500">October 2026</span>
+<button type="button" aria-label="Next month" class="btn-o" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e7e5e4; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #1c1c1c"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"></path></svg></button>
+</div>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #fafaf9; border: 1px solid #f0efed; border-radius: 10px; font-size: 13px">
+<span style="font-weight: 500">Thursday 1 October</span>
+<span style="color: #78716c">2h 19m</span>
+</div>
+<div style="overflow-x: auto">
+<div class="row" style="min-width: 520px; display: grid; grid-template-columns: 1fr 140px 80px 80px 40px; gap: 12px; align-items: center; min-height: 52px; padding: 0 12px; border-bottom: 1px solid #f0efed; border-radius: 8px; font-size: 14px">
+<span style="display: flex; align-items: center; gap: 10px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #1c1c1c"></span>Trading</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #5c5c5a">21:25 – 23:44</span>
+<span style="font-weight: 500">2h 19m</span>
+<span style="justify-self: start; font-size: 12px; border: 1px solid #e7e5e4; border-radius: 9999px; padding: 1px 9px; color: #5c5c5a">Manual</span>
+<button type="button" aria-label="Session options" class="btn-o" style="width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; cursor: pointer; color: #78716c; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button>
+</div>
+</div>
+<p style="margin: 16px 0 0; font-size: 13px; color: #78716c">That's everything for October so far. Sessions you start with the timer show up here automatically.</p>
+</section>
+
+<section aria-labelledby="acc-h" style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); padding: 24px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+<div>
+<h2 id="acc-h" style="margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.015em">Records for your accountant</h2>
+<p style="margin: 4px 0 0; font-size: 13px; color: #78716c">Export every logged session for the financial year.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<div style="position: relative; width: 150px">
+<button type="button" class="sel" aria-haspopup="listbox" aria-expanded="{{fyOpenStr}}" aria-label="Financial year" onClick="{{toggleFy}}" style="width: 100%; min-height: 40px; border-radius: 10px; border: 1px solid #e7e5e4; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #1c1c1c; font: 500 14px 'Geist', sans-serif; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer">{{fy}}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.5; flex: none"><path d="M6 9l6 6 6-6"></path></svg></button>
+<sc-if value="{{fyOpen}}" hint-placeholder-val="{{false}}">
+<div role="listbox" aria-label="Financial year" style="position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; box-shadow: 0 12px 32px -12px rgba(0,0,0,0.3), 0 4px 8px -4px rgba(0,0,0,0.1); padding: 4px">
+<sc-for list="{{fys}}" as="o" hint-placeholder-count="2">
+<button type="button" role="option" class="opt" aria-selected="{{o.selStr}}" onClick="{{o.pick}}" style="width: 100%; min-height: 38px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border: none; border-radius: 8px; background: transparent; font: 400 14px 'Geist', sans-serif; color: #1c1917; cursor: pointer; text-align: left">{{o.name}}<sc-if value="{{o.sel}}" hint-placeholder-val="{{false}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+<button type="button" class="btn-o" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #e7e5e4; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #1c1c1c; font: 500 14px 'Geist', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>CSV</button>
+<button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: none; background: #1c1c1c; color: #ffffff; font: 500 14px 'Geist', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="7" y="14" width="10" height="7" rx="1"></rect></svg>PDF report</button>
+</div>
+</section>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    this._t = setInterval(() => {
+      const s = this.state || {};
+      if (s.running) this.setState({ secs: (s.secs || 0) + 1 });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this._t); }
+  renderVals() {
+    const s = this.state || {};
+    const act = s.act || 'Trading';
+    const fy = s.fy || 'FY 2026–27';
+    const secs = s.secs || 0;
+    const pad = (n) => String(n).padStart(2, '0');
+    const clock = pad(Math.floor(secs / 3600)) + ':' + pad(Math.floor(secs / 60) % 60) + ':' + pad(secs % 60);
+    const running = !!s.running;
+    return {
+      clock,
+      running, notRunning: !running,
+      statusText: running ? 'Running · ' + act : 'No session running',
+      dotColor: running ? '#4ade80' : '#5c5b57',
+      runLabel: running ? 'Stop' : 'Start',
+      runBg: running ? '#f5f5f4' : '#e8590c',
+      runFg: running ? '#1b1b1a' : '#ffffff',
+      toggleRun: () => this.setState(running ? { running: false, secs: 0 } : { running: true, secs: 0, actOpen: false }),
+      activity: act,
+      actOpen: !!s.actOpen, actOpenStr: s.actOpen ? 'true' : 'false',
+      toggleAct: () => this.setState({ actOpen: !s.actOpen, fyOpen: false }),
+      activities: ['Trading', 'Research', 'Admin'].map((name) => ({
+        name, sel: name === act, selStr: name === act ? 'true' : 'false',
+        pick: () => this.setState({ act: name, actOpen: false })
+      })),
+      fy,
+      fyOpen: !!s.fyOpen, fyOpenStr: s.fyOpen ? 'true' : 'false',
+      toggleFy: () => this.setState({ fyOpen: !s.fyOpen, actOpen: false }),
+      fys: ['FY 2026–27', 'FY 2025–26'].map((name) => ({
+        name, sel: name === fy, selStr: name === fy ? 'true' : 'false',
+        pick: () => this.setState({ fy: name, fyOpen: false })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

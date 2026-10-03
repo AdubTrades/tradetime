@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Journal · Calm</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f6f5f3}
+a{color:#1c1c1c}a:hover{color:#6b6b6b}
+.sel:focus{outline:none}.sel:focus-visible{outline:none;box-shadow:0 0 0 2px #e8590c}
+.opt:hover,.opt:focus-visible{outline:none;background:#f5f5f4}
+.btn-o:hover{background:#f5f5f4 !important}
+.trow{color:#1c1c1c;text-decoration:none}.trow:hover{background:#fafaf9;color:#1c1c1c}
+.tab:focus-visible{outline:none;box-shadow:0 0 0 2px #e8590c}
+</style>
+</helmet>
+<div style="font-family: 'Geist', system-ui, sans-serif; color: #1c1c1c; background: #f6f5f3; min-height: 100vh; display: flex; flex-wrap: wrap; font-variant-numeric: tabular-nums; letter-spacing: -0.005em">
+
+<aside style="flex: 1 1 200px; max-width: 232px; box-sizing: border-box; padding: 28px 16px; display: flex; flex-direction: column; gap: 28px; border-right: 1px solid #e8e7e4; background: #fafaf9">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 12px; font-weight: 600; font-size: 15px"><span style="width: 10px; height: 10px; border-radius: 50%; background: #e8590c; display: inline-block"></span>[App name]</div>
+<nav aria-label="Main" style="display: flex; flex-direction: column; gap: 2px">
+<a href="01-dashboard.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"></path></svg>Home</a>
+<a href="#" aria-current="page" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; background: #efeeeb; text-decoration: none; color: #1c1c1c; font-weight: 500; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z"></path><path d="M8 7h6"></path></svg>Journal</a>
+<a href="02-calendar.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Calendar</a>
+<a href="03-time-log.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2M10 2h4"></path></svg>Time log</a>
+<a href="06-expenses.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg><span>Expenses</span></a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #5c5c5a; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg><span>Playbook</span></a>
+</nav>
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 2px">
+<a href="#" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; text-decoration: none; color: #5c5c5a; font-size: 14px">Settings</a>
+<a href="#" style="display: flex; align-items: center; min-height: 44px; padding: 0 12px; text-decoration: none; color: #5c5c5a; font-size: 14px">Theme: system</a>
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 48px 64px">
+<div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px">
+<div>
+<h1 style="margin: 0; font-size: 32px; font-weight: 500; letter-spacing: -0.025em">Journal</h1>
+<p style="margin: 6px 0 0; font-size: 14px; color: #78716c">P&amp;L in USD, after fees, summed across copied accounts.</p>
+</div>
+<button type="button" style="min-height: 40px; padding: 0 16px; border-radius: 10px; border: none; background: #1c1c1c; color: #ffffff; font: 500 14px 'Geist', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>Log trades</button>
+</div>
+
+<div role="tablist" aria-label="Journal view" style="align-self: flex-start; display: flex; gap: 2px; background: #ecebe8; border-radius: 10px; padding: 3px">
+<button type="button" role="tab" class="tab" aria-selected="{{tradesSel}}" onClick="{{showTrades}}" style="min-height: 34px; padding: 0 16px; border-radius: 8px; border: none; font: 500 14px 'Geist', sans-serif; cursor: pointer; background: {{tradesBg}}; color: {{tradesFg}}; box-shadow: {{tradesShadow}}">Trades</button>
+<button type="button" role="tab" class="tab" aria-selected="{{statsSel}}" onClick="{{showStats}}" style="min-height: 34px; padding: 0 16px; border-radius: 8px; border: none; font: 500 14px 'Geist', sans-serif; cursor: pointer; background: {{statsBg}}; color: {{statsFg}}; box-shadow: {{statsShadow}}">Stats</button>
+</div>
+
+<sc-if value="{{isTrades}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+<div style="position: relative">
+<button type="button" class="sel" aria-haspopup="listbox" aria-expanded="{{f.openStr}}" aria-label="{{f.label}}" onClick="{{f.toggle}}" style="min-height: 38px; min-width: {{f.minW}}; border-radius: 10px; border: 1px solid {{f.border}}; background: {{f.bg}}; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #1c1c1c; font: 500 13px 'Geist', sans-serif; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; white-space: nowrap">{{f.value}}<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.5; flex: none"><path d="M6 9l6 6 6-6"></path></svg></button>
+<sc-if value="{{f.open}}" hint-placeholder-val="{{false}}">
+<div role="listbox" aria-label="{{f.label}}" style="position: absolute; left: 0; min-width: 100%; top: calc(100% + 6px); z-index: 30; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; box-shadow: 0 12px 32px -12px rgba(0,0,0,0.3), 0 4px 8px -4px rgba(0,0,0,0.1); padding: 4px; box-sizing: border-box">
+<sc-for list="{{f.options}}" as="o" hint-placeholder-count="3">
+<button type="button" role="option" class="opt" aria-selected="{{o.selStr}}" onClick="{{o.pick}}" style="width: 100%; min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 10px; border: none; border-radius: 8px; background: transparent; font: 400 14px 'Geist', sans-serif; color: #1c1917; cursor: pointer; text-align: left; white-space: nowrap">{{o.name}}<sc-if value="{{o.sel}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{hasActive}}" hint-placeholder-val="{{false}}">
+<button type="button" onClick="{{clearAll}}" style="min-height: 38px; padding: 0 10px; border: none; background: transparent; color: #5c5c5a; font: 500 13px 'Geist', sans-serif; cursor: pointer; text-decoration: underline; text-underline-offset: 3px">Clear filters</button>
+</sc-if>
+</div>
+
+<section aria-label="Summary" style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); padding: 14px 0; display: flex; flex-wrap: wrap; gap: 12px 0; font-size: 13px; color: #78716c">
+<span style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; padding: 0 24px; border-left: none"><span>Net P&amp;L</span><strong style="font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: {{sumColor}}">{{sumPnl}}</strong></span>
+<span style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; padding: 0 24px; border-left: 1px solid #ececea"><span>Trades</span><strong style="font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: #1c1c1c">{{sumTrades}}</strong></span>
+<span style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; padding: 0 24px; border-left: 1px solid #ececea"><span>Win rate</span><strong style="font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: #1c1c1c">{{sumWin}}</strong></span>
+<span style="flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; padding: 0 24px; border-left: 1px solid #ececea"><span>Avg R</span><strong style="font-size: 20px; font-weight: 500; letter-spacing: -0.02em; color: #1c1c1c">{{sumR}}</strong></span>
+</section>
+
+<sc-if value="{{noResults}}" hint-placeholder-val="{{false}}">
+<section style="background: #ffffff; border: 1px dashed #d6d3d1; border-radius: 12px; padding: 40px 24px; text-align: center">
+<p style="margin: 0; font-size: 15px; font-weight: 500">No trades match these filters</p>
+<button type="button" onClick="{{clearAll}}" class="btn-o" style="margin-top: 14px; min-height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #e7e5e4; background: #ffffff; font: 500 13px 'Geist', sans-serif; cursor: pointer">Clear filters</button>
+</section>
+</sc-if>
+
+<sc-for list="{{days}}" as="d" hint-placeholder-count="4">
+<section aria-label="{{d.date}}" style="background: #ffffff; border: 1px solid #e7e5e4; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #f0efed">
+<div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap"><h2 style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em">{{d.date}}</h2><span style="font-size: 13px; color: #78716c">{{d.count}}</span></div>
+<span style="font-size: 15px; font-weight: 500; color: {{d.color}}">{{d.total}}</span>
+</div>
+<div style="overflow-x: auto">
+<div style="min-width: 720px; padding: 4px 8px">
+<sc-for list="{{d.trades}}" as="t" hint-placeholder-count="2">
+<a href="#" class="trow" style="display: grid; grid-template-columns: 52px 52px 64px minmax(0, 1fr) 48px 190px 64px 96px; gap: 12px; align-items: center; min-height: 50px; padding: 0 12px; border-radius: 8px; font-size: 14px">
+<span style="font: 400 13px 'Geist Mono', monospace; color: #78716c">{{t.time}}</span>
+<span style="font-weight: 500">{{t.contract}}</span>
+<span style="display: flex; align-items: center; gap: 4px; color: #5c5c5a; font-size: 13px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="transform: rotate({{t.rot}})"><path d="M7 17L17 7M9 7h8v8"></path></svg>{{t.side}}</span>
+<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.play}}</span>
+<span style="justify-self: start; font-size: 12px; font-weight: 600; border-radius: 9999px; padding: 1px 9px; background: {{t.gBg}}; color: {{t.gFg}}; border: 1px solid {{t.gBorder}}">{{t.grade}}</span>
+<span style="font-size: 12px; color: #78716c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Summit 50K · Funded #1, #2</span>
+<span style="text-align: right; font-size: 13px; color: #5c5c5a">{{t.r}}</span>
+<span style="text-align: right; font-weight: 500; color: {{t.color}}">{{t.pnl}}</span>
+</a>
+</sc-for>
+</div>
+</div>
+</section>
+</sc-for>
+
+<p style="margin: 0; font-size: 13px; color: #78716c; text-align: center">Showing the 6 most recent trading days. <a href="#" style="color: #1c1c1c; font-weight: 500">Load more</a></p>
+</div>
+</sc-if>
+
+<sc-if value="{{isStats}}" hint-placeholder-val="{{false}}">
+<section style="background: #ffffff; border: 1px dashed #d6d3d1; border-radius: 12px; padding: 48px 24px; text-align: center; color: #78716c; font-size: 14px">Stats view: next to design.</section>
+</sc-if>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const sel = s.sel || {};
+    const tab = s.tab || 'trades';
+    const fmt = (v) => (v >= 0 ? '+' : '-') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const T = [
+      ['Thursday 1 October 2026', '21:35', 'MNQ', 'Long', 'VWAP reclaim', 'A', 2.45, 314.08],
+      ['Thursday 1 October 2026', '21:54', 'MES', 'Long', 'Opening range breakout', 'A', 0.93, 42.04],
+      ['Thursday 1 October 2026', '22:02', 'MES', 'Short', 'Failed breakout fade', 'B+', -1.05, -33.98],
+      ['Wednesday 30 September 2026', '21:27', 'MNQ', 'Long', 'VWAP reclaim', 'A', 1.46, 234.08],
+      ['Tuesday 29 September 2026', '21:29', 'MNQ', 'Short', 'VWAP reclaim', 'A+', -1.05, -133.92],
+      ['Tuesday 29 September 2026', '22:05', 'MNQ', 'Short', 'Opening range breakout', 'A+', -1.05, -100.44],
+      ['Monday 28 September 2026', '21:27', 'MNQ', 'Long', 'VWAP reclaim', 'B+', -1.3, -165.92],
+      ['Monday 28 September 2026', '21:46', 'MNQ', 'Long', 'Failed breakout fade', 'A', 1.98, 355.56],
+      ['Friday 25 September 2026', '21:27', 'MNQ', 'Short', 'VWAP reclaim', 'A+', -0.54, -64.44],
+      ['Friday 25 September 2026', '21:47', 'MNQ', 'Long', 'Opening range breakout', 'A+', 2.97, 427.56],
+      ['Wednesday 23 September 2026', '21:33', 'MNQ', 'Long', 'Opening range breakout', 'A+', 2.48, 297.04]
+    ].map(([date, time, contract, side, play, grade, r, pnl]) => ({ date, time, contract, side, play, grade, r, pnl }));
+    const defs = [
+      { key: 'range', label: 'Date range', opts: ['Last 30 days', 'Last 7 days', 'This month', 'FY 2026–27'], minW: '150px' },
+      { key: 'play', label: 'Play', opts: ['All plays', 'Opening range breakout', 'VWAP reclaim', 'Failed breakout fade'], minW: '130px' },
+      { key: 'grade', label: 'Grade', opts: ['All grades', 'A+', 'A', 'B+'], minW: '120px' },
+      { key: 'contract', label: 'Contract', opts: ['All contracts', 'MNQ', 'MES'], minW: '130px' },
+      { key: 'account', label: 'Account', opts: ['All accounts', 'Summit 50K Funded #1', 'Summit 50K Funded #2'], minW: '130px' },
+      { key: 'outcome', label: 'Outcome', opts: ['Wins & losses', 'Wins only', 'Losses only'], minW: '130px' }
+    ];
+    const val = (k) => sel[k] || defs.find((d) => d.key === k).opts[0];
+    const filters = defs.map((d) => {
+      const v = val(d.key);
+      const active = v !== d.opts[0];
+      return {
+        label: d.label, value: v, minW: d.minW,
+        open: s.open === d.key, openStr: s.open === d.key ? 'true' : 'false',
+        bg: active ? '#f5f5f4' : '#ffffff', border: active ? '#a8a29e' : '#e7e5e4',
+        toggle: () => this.setState({ open: s.open === d.key ? null : d.key }),
+        options: d.opts.map((name) => ({
+          name, sel: name === v, selStr: name === v ? 'true' : 'false',
+          pick: () => this.setState({ sel: Object.assign({}, sel, { [d.key]: name }), open: null })
+        }))
+      };
+    });
+    const hasActive = defs.some((d) => val(d.key) !== d.opts[0]);
+    const rows = T.filter((t) =>
+      (val('play') === 'All plays' || t.play === val('play')) &&
+      (val('grade') === 'All grades' || t.grade === val('grade')) &&
+      (val('contract') === 'All contracts' || t.contract === val('contract')) &&
+      (val('outcome') === 'Wins & losses' || (val('outcome') === 'Wins only' ? t.pnl > 0 : t.pnl < 0))
+    );
+    const gradeStyle = (g) => g === 'A+' ? ['#1b1b1a', '#ffffff', '#1b1b1a'] : g === 'A' ? ['#3a3a38', '#ffffff', '#3a3a38'] : ['#ffffff', '#3a3a38', '#d4d3cf'];
+    const order = [];
+    const byDay = {};
+    rows.forEach((t) => { if (!byDay[t.date]) { byDay[t.date] = []; order.push(t.date); } byDay[t.date].push(t); });
+    const days = order.map((date) => {
+      const list = byDay[date];
+      const total = list.reduce((a, t) => a + t.pnl, 0);
+      return {
+        date, count: list.length + (list.length === 1 ? ' trade' : ' trades'),
+        total: fmt(total), color: total < 0 ? '#b42318' : '#157f3c',
+        trades: list.map((t) => {
+          const g = gradeStyle(t.grade);
+          return Object.assign({}, t, {
+            r: t.r.toFixed(2) + 'R', pnl: fmt(t.pnl), color: t.pnl < 0 ? '#b42318' : '#157f3c',
+            rot: t.side === 'Long' ? '0deg' : '90deg', gBg: g[0], gFg: g[1], gBorder: g[2]
+          });
+        })
+      };
+    });
+    const total = rows.reduce((a, t) => a + t.pnl, 0);
+    const wins = rows.filter((t) => t.pnl > 0).length;
+    const avgR = rows.length ? rows.reduce((a, t) => a + t.r, 0) / rows.length : 0;
+    const on = '0 1px 2px rgba(0,0,0,0.1)';
+    return {
+      isTrades: tab === 'trades', isStats: tab === 'stats',
+      showTrades: () => this.setState({ tab: 'trades' }), showStats: () => this.setState({ tab: 'stats', open: null }),
+      tradesSel: tab === 'trades' ? 'true' : 'false', statsSel: tab === 'stats' ? 'true' : 'false',
+      tradesBg: tab === 'trades' ? '#ffffff' : 'transparent', tradesFg: tab === 'trades' ? '#1c1c1c' : '#78716c', tradesShadow: tab === 'trades' ? on : 'none',
+      statsBg: tab === 'stats' ? '#ffffff' : 'transparent', statsFg: tab === 'stats' ? '#1c1c1c' : '#78716c', statsShadow: tab === 'stats' ? on : 'none',
+      filters, hasActive,
+      clearAll: () => this.setState({ sel: {}, open: null }),
+      days, noResults: rows.length === 0,
+      sumPnl: fmt(total), sumColor: total < 0 ? '#b42318' : '#157f3c',
+      sumTrades: String(rows.length),
+      sumWin: rows.length ? Math.round((wins / rows.length) * 100) + '%' : '–',
+      sumR: rows.length ? avgR.toFixed(2) + 'R' : '–'
+    };
+  }
+}
+</script>
+</body>
+</html>

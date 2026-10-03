@@ -144,7 +144,7 @@ export function CalendarPage() {
                       onOpen={() => setOpenDay(d)}
                     />
                   )),
-                  <div key={`${week[0]}-sum`} className="flex flex-col justify-center gap-0.5 rounded-[6px_0_0_0] bg-surface p-2">
+                  <div key={`${week[0]}-sum`} className="flex flex-col justify-center gap-0.5 rounded-lg bg-surface p-2">
                     {layers.has('pnl') && <Pnl cents={w.net} className="font-display text-base" />}
                     <span className="text-muted">{w.traded} days traded</span>
                     {layers.has('screen') && <span className="tabular text-muted">{hoursLabel(w.minutes)}</span>}
@@ -196,7 +196,7 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
       aria-label={DateTime.fromISO(date).toFormat('cccc d LLLL')}
       className={cn(
-        'relative flex min-h-28 cursor-pointer flex-col gap-0.5 rounded-[6px_0_0_0] border p-1.5 transition hover:border-text/30 focus:outline-2 focus:outline-ember',
+        'relative flex min-h-28 cursor-pointer flex-col gap-0.5 rounded-lg border p-1.5 transition hover:border-text/30',
         tone,
         !showPnl && 'border-border',
         !inMonth && 'opacity-45',

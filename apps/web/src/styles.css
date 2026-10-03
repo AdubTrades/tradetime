@@ -1,113 +1,277 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/inter';
-@import '@fontsource-variable/inter-tight';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * TradeTime design tokens, after the Ventriloc style reference: warm paper, graphite type,
- * a single Ember accent for highlights and links, Brass as the quiet second accent.
- * Muted green/red are the one exception, reserved for P&L.
+ * TradeTime design tokens — "Calm" redesign (design-handoff/tokens.css is the source of truth).
+ * Handoff variable names are kept as-is. Older names used across the app are aliased onto them
+ * at the end of each block, so every screen follows the same values.
  */
 :root {
-  --bg: #ffffff; /* Canvas White */
-  --surface: #efefef; /* Ash — panels and tiles */
-  --surface-2: #f5f5f5; /* Fog — nested surfaces, hovers */
-  --ivory: #ebe6dd; /* warm feature wash */
-  --border: #e8e8e8; /* Mist — hairlines */
-  --text: #202020; /* Graphite */
-  --muted: #6e6e6e; /* between Steel and Slate, for readable helper text */
-  --accent: #202020; /* primary actions are graphite, never orange */
-  --accent-text: #ffffff;
-  --ember: #ff682c;
-  --brass: #816729;
-  --profit: #2e7a4e;
-  --loss: #b8382c;
-  --warn: #816729;
+  /* Surfaces */
+  --bg-page: #f6f5f3;
+  --bg-sidebar: #fafaf9;
+  --bg-card: #ffffff;
+  --bg-muted: #fafaf9;
+  --bg-hover: #f5f5f4;
+  --bg-nav-active: #efeeeb;
+  --bg-tabs-track: #ecebe8;
+
+  /* Dark "tonight" panel (dashboard agenda + timer, time log timer) */
+  --dark-bg: #1b1b1a;
+  --dark-bg-raised: #222220;
+  --dark-border: #3a3936;
+  --dark-divider: #2e2e2c;
+  --dark-text: #f5f5f4;
+  --dark-text-muted: #a3a29e;
+  --dark-text-faint: #8a8984;
+
+  /* Text */
+  --text: #1c1c1c;
+  --text-secondary: #5c5c5a;
+  --text-muted: #78716c;
+  --text-faint: #a8a29e;
+
+  /* Borders */
+  --border: #e7e5e4;
+  --border-subtle: #f0efed;
+  --border-strong: #a8a29e;
+
+  /* Accent: one orange, used sparingly */
+  --accent: #e8590c;
+  --accent-on-dark: #f76b1c;
+  --warning-text: #b4470a;
+  --warning-text-dark: #fb923c;
+  --medium-impact: #d97706;
+
+  /* P&L */
+  --positive: #157f3c;
+  --negative: #b42318;
+  --positive-on-dark: #4ade80;
+  --positive-tint: #f1f7f2;
+  --negative-tint: #fbf1f0;
+
+  /* Grade pills */
+  --grade-a-plus-bg: #1b1b1a;
+  --grade-a-plus-fg: #ffffff;
+  --grade-a-bg: #3a3a38;
+  --grade-a-fg: #ffffff;
+  --grade-b-bg: #ffffff;
+  --grade-b-fg: #3a3a38;
+  --grade-b-border: #d4d3cf;
+
+  /* Expense category pills */
+  --cat-internet-bg: #e4eaf1;
+  --cat-internet-fg: #34495f;
+  --cat-data-bg: #ebe5ee;
+  --cat-data-fg: #5a4566;
+  --cat-software-bg: #e3ece4;
+  --cat-software-fg: #3b5843;
+  --cat-education-bg: #f2e9d8;
+  --cat-education-fg: #755622;
+  --cat-office-bg: #ebe8e4;
+  --cat-office-fg: #57534e;
+  --cat-propfirm-bg: #f6e3d7;
+  --cat-propfirm-fg: #93441a;
+
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-menu: 0 12px 32px -12px rgba(0, 0, 0, 0.3), 0 4px 8px -4px rgba(0, 0, 0, 0.1);
+  --focus-ring: 0 0 0 2px var(--accent);
+
+  /* Layout */
+  --sidebar-width: 232px;
+  --content-max: 1120px;
+  --content-max-wide: 1240px;
+
+  /* Aliases for older names used around the app */
+  --bg: var(--bg-card);
+  --surface: var(--bg-muted);
+  --surface-2: var(--bg-hover);
+  --ivory: var(--bg-nav-active);
+  --muted: var(--text-muted);
+  --primary: #1c1c1c;
+  --primary-text: #ffffff;
+  --ember: var(--accent);
+  --brass: var(--warning-text);
+  --profit: var(--positive);
+  --loss: var(--negative);
+  --warn: var(--warning-text);
   color-scheme: light;
 }
 
+/* Warm dark theme derived from the same palette (the handoff is light-only). */
 :root.dark {
-  --bg: #141413;
-  --surface: #1e1d1b;
-  --surface-2: #252421;
-  --ivory: #2c2923;
-  --border: #302e2a;
-  --text: #ecebe7;
-  --muted: #a19d95;
-  --accent: #ecebe7;
-  --accent-text: #141413;
-  --ember: #ff7a45;
-  --brass: #c4a35a;
-  --profit: #62b383;
-  --loss: #e3705f;
-  --warn: #c4a35a;
+  --bg-page: #121211;
+  --bg-sidebar: #161615;
+  --bg-card: #1c1c1b;
+  --bg-muted: #222220;
+  --bg-hover: #272725;
+  --bg-nav-active: #2a2a28;
+  --bg-tabs-track: #262624;
+  --dark-bg: #0e0e0d;
+  --dark-bg-raised: #171716;
+  --dark-border: #34332f;
+  --dark-divider: #292926;
+  --text: #f2f1ee;
+  --text-secondary: #c4c2bc;
+  --text-muted: #a3a29e;
+  --text-faint: #75736e;
+  --border: #31302d;
+  --border-subtle: #282826;
+  --border-strong: #6b6a65;
+  --accent: #f76b1c;
+  --warning-text: #fb923c;
+  --medium-impact: #f59e0b;
+  --positive: #4ade80;
+  --negative: #f87171;
+  --positive-tint: #16251b;
+  --negative-tint: #2a1817;
+  --grade-a-plus-bg: #f2f1ee;
+  --grade-a-plus-fg: #1b1b1a;
+  --grade-a-bg: #c4c2bc;
+  --grade-a-fg: #1b1b1a;
+  --grade-b-bg: #1c1c1b;
+  --grade-b-fg: #d6d4ce;
+  --grade-b-border: #45443f;
+  --cat-internet-bg: #23303d;
+  --cat-internet-fg: #b9cde2;
+  --cat-data-bg: #2e2533;
+  --cat-data-fg: #d8c4e2;
+  --cat-software-bg: #22302a;
+  --cat-software-fg: #b8d6bf;
+  --cat-education-bg: #352c1c;
+  --cat-education-fg: #e6cf9f;
+  --cat-office-bg: #2c2a27;
+  --cat-office-fg: #d2cdc6;
+  --cat-propfirm-bg: #3a261b;
+  --cat-propfirm-fg: #f0b48e;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-menu: 0 12px 32px -12px rgba(0, 0, 0, 0.7), 0 4px 8px -4px rgba(0, 0, 0, 0.5);
+  --primary: #f2f1ee;
+  --primary-text: #1b1b1a;
   color-scheme: dark;
 }
 
 @theme inline {
+  --color-page: var(--bg-page);
+  --color-sidebar: var(--bg-sidebar);
+  --color-card: var(--bg-card);
+  --color-inset: var(--bg-muted);
+  --color-hover: var(--bg-hover);
+  --color-nav-active: var(--bg-nav-active);
+  --color-tabs-track: var(--bg-tabs-track);
+  --color-dark: var(--dark-bg);
+  --color-dark-raised: var(--dark-bg-raised);
+  --color-dark-border: var(--dark-border);
+  --color-dark-divider: var(--dark-divider);
+  --color-dark-text: var(--dark-text);
+  --color-dark-muted: var(--dark-text-muted);
+  --color-dark-faint: var(--dark-text-faint);
+  --color-text: var(--text);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-ember: var(--accent);
+  --color-ember-dark: var(--accent-on-dark);
+  --color-warning: var(--warning-text);
+  --color-warning-dark: var(--warning-text-dark);
+  --color-medium: var(--medium-impact);
+  --color-profit: var(--positive);
+  --color-profit-dark: var(--positive-on-dark);
+  --color-loss: var(--negative);
+  --color-profit-tint: var(--positive-tint);
+  --color-loss-tint: var(--negative-tint);
+  /* Older names */
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-ivory: var(--ivory);
-  --color-border: var(--border);
-  --color-text: var(--text);
-  --color-muted: var(--muted);
-  --color-accent: var(--accent);
-  --color-accent-text: var(--accent-text);
-  --color-ember: var(--ember);
+  --color-accent: var(--primary);
+  --color-accent-text: var(--primary-text);
   --color-brass: var(--brass);
-  --color-profit: var(--profit);
-  --color-loss: var(--loss);
   --color-warn: var(--warn);
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Inter Tight Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --font-sans: 'Geist Variable', 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-card: var(--shadow-card);
+  --shadow-menu: var(--shadow-menu);
 }
 
 body {
-  background: var(--bg);
+  background: var(--bg-page);
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Headings: display face at regular weight with tight tracking — never bold. */
-h1,
+h1 {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
 h2,
 h3 {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
-/* Signature card: Ash surface, soft top-left corner, no border or shadow. */
+/* Focus: a 2px orange ring only — never the browser outline. */
+:where(a, button, input, select, textarea, summary, [tabindex], [role='button'], [role='switch'], [role='tab'], [role='option']):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* Card: white, hairline border, 12px radius, soft shadow. `panel` is the older name. */
+@utility card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+}
 @utility panel {
-  background-color: var(--surface);
-  border-radius: 6px 0 0 0;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
 }
-
-/* Data widgets (stat tiles, charts): Ash surface with a 20px radius. */
+/* Muted inset tile (stat tiles, row cards inside a card). */
 @utility tile {
-  background-color: var(--surface);
-  border-radius: 20px;
+  background-color: var(--bg-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
 }
 
-/* Display type for numbers and labels that should read as headings. */
+/* Medium-weight figures and labels with tight tracking (kept for older call sites). */
 @utility font-display {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
-/* Inline link with the Ember underline — for the one or two links that matter on a page. */
+/* Inline link with an orange underline. */
 @utility link-ember {
   text-decoration-line: underline;
-  text-decoration-color: var(--ember);
+  text-decoration-color: var(--accent);
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   &:hover {

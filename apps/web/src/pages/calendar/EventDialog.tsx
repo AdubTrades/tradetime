@@ -52,9 +52,11 @@ interface Props {
   occurrence?: OccurrenceView | null;
   defaultDate?: string;
   defaultTypeId?: string;
+  /** Start a new entry as an all-day to-do. */
+  defaultTask?: boolean;
 }
 
-export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTypeId }: Props) {
+export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTypeId, defaultTask = false }: Props) {
   const { data: types = [] } = useEventTypes();
   const [form, setForm] = useState<Form | null>(null);
   const [scope, setScope] = useState<'one' | 'all'>('one');
@@ -77,10 +79,10 @@ export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTyp
             isTask: occurrence.isTask,
           }
         : {
-            typeId: defaultTypeId ?? types.find((t) => !t.archived)?.id ?? 'cet_general',
+            typeId: defaultTypeId ?? (defaultTask ? 'cet_admin' : undefined) ?? types.find((t) => !t.archived)?.id ?? 'cet_general',
             title: '',
             date: defaultDate ?? todayLocal(),
-            allDay: false,
+            allDay: defaultTask,
             startTime: '',
             endTime: '',
             repeat: 'none',
@@ -90,7 +92,7 @@ export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTyp
             reminder: '',
             link: '',
             notes: '',
-            isTask: false,
+            isTask: defaultTask,
           },
     );
   }, [open, occurrence]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -130,7 +132,7 @@ export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTyp
     <Dialog
       open={open}
       onClose={onClose}
-      title={occurrence ? 'Edit event' : 'New event'}
+      title={occurrence ? (occurrence.isTask ? 'Edit to-do' : 'Edit event') : defaultTask ? 'New to-do' : 'New event'}
       footer={
         <>
           {occurrence && (
@@ -266,7 +268,7 @@ export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTyp
             rows={3}
             value={form.notes}
             onChange={(e) => set('notes', e.target.value)}
-            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-ember"
+            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm"
           />
         </Field>
         {seriesFieldsLocked && <p className="text-xs text-muted">Changes apply to this occurrence only. Switch to “All occurrences” to change the repeat, type or reminder.</p>}

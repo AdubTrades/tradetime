@@ -167,7 +167,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
         </div>
       ) : !csv ? (
         <div className="space-y-4 text-sm">
-          <div className="rounded-[6px_0_0_0] bg-surface-2 p-4">
+          <div className="rounded-lg bg-surface-2 p-4">
             <p className="font-medium">From NinjaTrader 8</p>
             <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-muted">
               <li>Control Center → New → Trade Performance.</li>
@@ -179,7 +179,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex w-full flex-col items-center gap-2 rounded-[6px_0_0_0] border border-dashed border-text/25 px-4 py-10 text-muted hover:border-text/50"
+            className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-text/25 px-4 py-10 text-muted hover:border-text/50"
           >
             <FileUp size={24} aria-hidden /> Choose the exported CSV
           </button>

@@ -65,7 +65,7 @@ export function QuestionFields({
               rows={2}
               value={(values[q.id] as string | null) ?? ''}
               onChange={(e) => set(q.id, e.target.value || null)}
-              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm focus:outline-2 focus:outline-ember"
+              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm"
             />
           )}
         </div>
