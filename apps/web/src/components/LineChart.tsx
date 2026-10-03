@@ -47,7 +47,7 @@ export function LineChart({ points, colorVar, area = false, height = 220, yForma
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'line', lineStyle: { color: muted, type: 'dashed' } },
-        backgroundColor: cssVar('--surface'),
+        backgroundColor: cssVar('--bg-card'),
         borderColor: border,
         textStyle: { color: cssVar('--text'), fontSize: 12 },
         formatter: (params: { dataIndex: number }[]) => points[params[0]!.dataIndex]?.tooltip ?? '',
@@ -73,7 +73,7 @@ export function LineChart({ points, colorVar, area = false, height = 220, yForma
           showSymbol: points.length <= 40,
           symbolSize: 8,
           lineStyle: { width: 2, color },
-          itemStyle: { color, borderColor: cssVar('--surface'), borderWidth: 2 },
+          itemStyle: { color, borderColor: cssVar('--bg-card'), borderWidth: 2 },
           areaStyle: area ? { color, opacity: 0.12 } : undefined,
         },
       ],
