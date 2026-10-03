@@ -1,10 +1,11 @@
 import { Link } from '@tanstack/react-router';
 import { MessageCircleQuestion, Play, Square } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { durationMinutes, formatDuration, formatLocal } from '@tc/domain';
 import { api, type Session, type SessionType } from '../lib/api';
 import { latestInstantAt } from '../lib/localTime';
 import { useNow, useRunningSession, useSessionMutation } from '../lib/sessions';
+import { useReportTimerVisible } from '../lib/timerVisibility';
 import { CheckInDialog } from '../pages/checkins/CheckInDialog';
 import { SessionStartDialog } from '../pages/checkins/SessionStartDialog';
 import { cn, Select } from './ui';
@@ -20,7 +21,7 @@ function readLastType(): string | null {
 }
 
 /** hh:mm:ss from the stored start instant (never a running counter, so closing the app doesn't lose time). */
-function elapsedClock(start: string, now: Date): string {
+export function elapsedClock(start: string, now: Date): string {
   const secs = Math.max(0, Math.floor((now.getTime() - Date.parse(start)) / 1000));
   return [Math.floor(secs / 3600), Math.floor((secs % 3600) / 60), secs % 60].map((n) => String(n).padStart(2, '0')).join(':');
 }
@@ -62,8 +63,10 @@ export function SessionTimer({
   const stopAtInstant = running && stopAt ? latestInstantAt(stopAt, running.start, now) : null;
 
   const row = layout === 'row';
+  const rootRef = useRef<HTMLDivElement>(null);
+  useReportTimerVisible(rootRef);
   return (
-    <div className={row ? 'flex flex-wrap items-center justify-between gap-x-8 gap-y-5' : 'flex flex-col gap-[18px]'}>
+    <div ref={rootRef} className={row ? 'flex flex-wrap items-center justify-between gap-x-8 gap-y-5' : 'flex flex-col gap-[18px]'}>
       <div className={cn('flex flex-col', row ? 'gap-2.5' : 'gap-[18px]')}>
         <div className="flex items-center gap-2 text-[13px] text-dark-muted">
           <span className={cn('inline-block h-[7px] w-[7px] rounded-full', running ? 'bg-profit-dark' : 'bg-[#5c5b57]')} aria-hidden />

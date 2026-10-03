@@ -20,6 +20,7 @@ import { useSettings, useUpdateSettings } from '../lib/settings';
 import { useThemeSync } from '../lib/theme';
 import { CheckInPrompt } from '../pages/checkins/CheckInPrompt';
 import { DemoBanner } from './DemoBanner';
+import { MiniTimer } from './MiniTimer';
 import { ErrorBoundary } from './ErrorBoundary';
 import { cn } from './ui';
 
@@ -123,7 +124,7 @@ export function AppShell() {
       </aside>
       <div className="min-w-0 flex-1">
         <DemoBanner />
-        <main className="px-4 pt-6 pb-12 sm:px-8 md:px-12 md:pt-8 md:pb-16">
+        <main className="px-4 pt-6 pb-24 sm:px-8 md:px-12 md:pt-8 md:pb-24">
           <div className={cn('mx-auto', wide ? 'max-w-[1240px]' : 'max-w-[1120px]')}>
             <ErrorBoundary resetKey={pathname}>
               <Outlet />
@@ -131,6 +132,7 @@ export function AppShell() {
           </div>
         </main>
       </div>
+      <MiniTimer />
       <CheckInPrompt />
     </div>
   );
