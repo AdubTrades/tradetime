@@ -236,7 +236,24 @@ export async function seedDemo(): Promise<void> {
   createRecurring({ name: 'TradingView Premium', vendor: 'TradingView', categoryId: cat('Charting & Software'), typeId: 'li_type_digital', paymentMethodId: 'li_pm_credit_card', exGstCents: 8995, gstCents: 0, frequency: 'monthly', interval: 1, startDate: DateTime.fromISO(fy.start).plus({ days: 2 }).toISODate()! });
   createRecurring({ name: 'CME market data (non-pro)', vendor: 'NinjaTrader', categoryId: cat('Market Data / Feeds'), typeId: 'li_type_digital', paymentMethodId: 'li_pm_credit_card', exGstCents: 1650, gstCents: 0, frequency: 'monthly', interval: 1, startDate: DateTime.fromISO(fy.start).plus({ days: 9 }).toISODate()! });
   createRecurring({ name: 'Home internet', vendor: 'Aussie Broadband', categoryId: cat('Internet & Phone'), typeId: 'li_type_service', paymentMethodId: 'li_pm_debit_card', exGstCents: 8182, gstCents: 818, businessUsePct: 40, frequency: 'monthly', interval: 1, startDate: DateTime.fromISO(fy.start).plus({ days: 14 }).toISODate()! });
+
+  // ---------- Previous financial year (so the FY pickers have more than one year) ----------
+  // A yearly subscription that started last FY bills once in each year and shows the "Yearly" pill.
+  const lastFy = financialYear(financialYearOf(today).startYear - 1);
+  createRecurring({ name: 'Journal & tax software', vendor: 'Ledgerly (demo)', categoryId: cat('Charting & Software'), typeId: 'li_type_digital', paymentMethodId: 'li_pm_credit_card', exGstCents: 21818, gstCents: 2182, frequency: 'yearly', interval: 1, startDate: DateTime.fromISO(lastFy.start).plus({ days: 20 }).toISODate()! });
   generateRecurringExpenses(today);
+  const lastFyDay = (daysBeforeEnd: number) => DateTime.fromISO(lastFy.end).minus({ days: daysBeforeEnd }).toISODate()!;
+  createExpense({ name: 'Order flow course', vendor: 'Tape Reading School (demo)', date: lastFyDay(60), categoryId: cat('Education'), typeId: 'li_type_digital', paymentMethodId: 'li_pm_credit_card', exGstCents: 45455, gstCents: 4545 });
+  createExpense({ name: 'Summit 50K evaluation', vendor: 'Summit Funding (demo)', date: lastFyDay(25), categoryId: cat('Prop Firm Fees'), typeId: 'li_type_digital', paymentMethodId: 'li_pm_credit_card', exGstCents: 10900, gstCents: 0 });
+  for (const [back, type, notes] of [
+    [70, 'st_education', 'Order flow course, module 1'],
+    [63, 'st_education', 'Order flow course, module 2'],
+    [40, 'st_backtesting', 'Replay: ORB setups'],
+    [12, 'st_backtesting', 'Replay: VWAP reclaims'],
+  ] as const) {
+    const day = lastFyDay(back);
+    createManualSession({ typeId: type, start: perth(day, '10:00'), end: perth(day, '11:30'), notes }, true);
+  }
   const oneOff = (name: string, vendor: string, category: string, days: number, ex: number, gst: number, pct = 100) =>
     createExpense({ name, vendor, date: now.minus({ days }).toISODate()!, categoryId: cat(category), typeId: 'li_type_digital', paymentMethodId: 'li_pm_credit_card', exGstCents: ex, gstCents: gst, businessUsePct: pct });
   oneOff('Summit 50K evaluation', 'Summit Funding (demo)', 'Prop Firm Fees', 75, 10900, 0);

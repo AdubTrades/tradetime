@@ -33,6 +33,10 @@ describe('demo data', () => {
     expect(plays.listPlays().map((p) => p.exampleCount).every((n) => n > 0)).toBe(true);
     expect(expenses.listExpenses({ from: '2000-01-01', to: '2100-01-01' }).length).toBeGreaterThan(8);
     expect(calendar.upcoming(7).occurrences.length).toBeGreaterThan(0);
+    // The FY pickers and collage have something to show.
+    expect(expenses.expenseFinancialYears(2026).length).toBeGreaterThan(1);
+    expect(plays.listPlays().map((p) => p.coverAttachmentIds.length)).toEqual(expect.arrayContaining([3, 2, 1]));
+    expect(expenses.listRecurring(new Date().toISOString().slice(0, 10)).some((r) => r.frequency === 'yearly')).toBe(true);
     expect(settings.getSettings()).toMatchObject({ reportName: 'Alex Morgan', backupIntervalHours: 0, fredApiKey: null });
   }, 30_000);
 });
