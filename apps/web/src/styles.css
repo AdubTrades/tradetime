@@ -44,7 +44,7 @@
   --accent-on-dark: #f76b1c;
   --warning-text: #b4470a;
   --warning-text-dark: #fb923c;
-  --medium-impact: #d97706;
+  --medium-impact: #e8590c; /* orange, same as the accent */
   /* High-impact releases: red lightning bolt (FinancialJuice-style) */
   --impact-high: #dc2626;
   --impact-high-on-dark: #f04438;
@@ -127,7 +127,7 @@
   --border-strong: #6b6a65;
   --accent: #f76b1c;
   --warning-text: #fb923c;
-  --medium-impact: #f59e0b;
+  --medium-impact: #f76b1c;
   --impact-high: #f04438;
   --impact-high-on-dark: #f04438;
   --positive: #4ade80;

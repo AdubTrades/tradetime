@@ -3,7 +3,7 @@ import { cn } from './ui';
 
 /**
  * Marker for an economic release: a filled red lightning bolt for high impact (FinancialJuice-style),
- * an amber dot for medium. `onDark` uses the brighter red for the dark panels.
+ * an orange dot for medium. `onDark` uses the brighter red for the dark panels.
  */
 export function ImpactMarker({ impact, onDark = false, size = 13, className }: { impact: string; onDark?: boolean; size?: number; className?: string }) {
   if (impact === 'high') {

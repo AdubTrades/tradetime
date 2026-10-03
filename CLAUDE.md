@@ -15,7 +15,8 @@
 - The product name is **TradeTime** (wordmark: "Trade" semibold + "Time" regular, `Wordmark` in `AppShell.tsx`). The repo, data folder (`~/TradingCompanion`) and launchd label keep their old names on purpose. Backups are `tradetime-backup-*`, and the old `trading-companion-*` names are still accepted.
 - Design system ("Calm", from the approved `design-handoff/`, which replaced the Ventriloc look). Tokens live in `apps/web/src/styles.css` under the handoff's variable names, with a warm dark set on `:root.dark`:
   - Warm off-white page (`bg-page`), white cards (`card`/`panel`: border, 12px radius, `shadow-card`), muted insets (`bg-inset`, `tile`). Geist and Geist Mono (bundled); mono for clocks, times and time ranges.
-  - One orange (`ember`) used sparingly: focus ring (global `:focus-visible`), today, high-impact events, the Start button, overdue/must-have hints. Don't add `focus:outline` classes; the global rule handles focus.
+  - One orange (`ember`) used sparingly: focus ring (global `:focus-visible`), today, medium-impact events, the Start button, overdue/must-have hints.
+  - Economic releases use `ImpactMarker`: a filled red lightning bolt (`impact` token) for high impact, an orange dot for medium. The red is the user's choice (FinancialJuice-style) and is only for high-impact news. Don't add `focus:outline` classes; the global rule handles focus.
   - `profit`/`loss` only for P&L (the user chose muted greens/reds). Errors and destructive actions also use `loss`. `warning` for warnings.
   - Dark panels (`bg-dark`, `dark-*` text colours) for the dashboard Tonight card, the time-log timer and the Calendar "Next 7 days".
   - Radii: buttons/fields 10px (`rounded-md`), cards 12px (`rounded-lg`), dark panels 16px (`rounded-xl`); pills fully rounded. Primary buttons are near-black, secondary are white outline.

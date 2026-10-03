@@ -22,7 +22,7 @@ const LAYER_DOT: Record<LayerId, string> = {
   events: 'var(--impact-high)',
   journal: 'var(--text-secondary)',
   mine: 'currentColor',
-  expenses: 'var(--medium-impact)',
+  expenses: 'var(--cat-education-fg)',
 };
 
 const NO_TRADE_HATCH = 'bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,var(--border)_6px,var(--border)_7px)]';
@@ -304,7 +304,7 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
   );
 }
 
-/** Red lightning bolt when any release that day is high impact (amber dot if only medium); hovering lists them. */
+/** Red lightning bolt when any release that day is high impact (orange dot if only medium); hovering lists them. */
 function MarketDot({ events }: { events: MarketEvent[] }) {
   const high = events.some((e) => e.impact === 'high');
   const label = events.map((e) => `${formatLocal(e.at, 'HH:mm')} ${e.title} (${e.impact})`).join('\n');

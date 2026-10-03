@@ -82,7 +82,7 @@ export function DayPage({ day }: { day: string }) {
               ...readings.map((r) => ({
                 at: r.at,
                 el: (
-                  <div className={cn('rounded-md border px-2 py-1.5', r.kind === 'start' ? 'border-ember/30 bg-ember/5' : 'border-medium/30 bg-medium/5')}>
+                  <div className={cn('rounded-md border px-2 py-1.5', r.kind === 'start' ? 'border-ember/30 bg-ember/5' : 'border-border-subtle bg-inset')}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-semibold">{r.kind === 'start' ? 'Session start' : 'Check-in'}</span>
                       <ReadingChips answers={r.answers} decision={r.decision} />
