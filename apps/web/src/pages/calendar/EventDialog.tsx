@@ -268,7 +268,7 @@ export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTyp
             rows={3}
             value={form.notes}
             onChange={(e) => set('notes', e.target.value)}
-            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-card"
           />
         </Field>
         {seriesFieldsLocked && <p className="text-xs text-muted">Changes apply to this occurrence only. Switch to “All occurrences” to change the repeat, type or reminder.</p>}

@@ -1,18 +1,30 @@
-import { ChevronLeft, ChevronRight, NotebookPen, Plus, Receipt } from 'lucide-react';
-import { swatch } from '../../lib/theme';
+import { ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
 import { formatLocal, formatMoney, monthWeeks, tradingDay } from '@tc/domain';
 import { Pnl } from '../../components/GradeBadge';
-import { Button, cn, PageHeader } from '../../components/ui';
+import { Button, cn, PageHeader, SummaryStrip } from '../../components/ui';
 import type { DayFigures, MarketEvent, OccurrenceView } from '../../lib/api';
-import { hoursLabel, LAYERS, useCalendarRange, useEventTypes, useLayers } from '../../lib/calendar';
+import { hoursLabel, LAYERS, useCalendarRange, useEventTypes, useLayers, type LayerId } from '../../lib/calendar';
 import { useSettings } from '../../lib/settings';
+import { swatch } from '../../lib/theme';
 import { DayDetail } from './DayDetail';
 import { EventDialog } from './EventDialog';
 import { UpcomingPanel } from './UpcomingPanel';
 
 const emptyDay: DayFigures = { netCents: 0, trades: 0, wins: 0, tradingMinutes: 0, otherMinutes: 0, expensesCents: 0, hasReview: false };
+
+/** Dot colour on each layer pill while it's on. */
+const LAYER_DOT: Record<LayerId, string> = {
+  pnl: 'var(--positive)',
+  screen: 'var(--dark-text-faint)',
+  events: 'var(--accent)',
+  journal: 'var(--text-secondary)',
+  mine: 'currentColor',
+  expenses: 'var(--medium-impact)',
+};
+
+const NO_TRADE_HATCH = 'bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,var(--border)_6px,var(--border)_7px)]';
 
 export function CalendarPage() {
   const { data: settings } = useSettings();
@@ -52,107 +64,143 @@ export function CalendarPage() {
   const available = monthDays.filter((d) => DateTime.fromISO(d).weekday <= 5 && !isNoTrade(d) && d <= today).length;
   const noTradeDays = monthDays.filter(isNoTrade).length;
 
+  const navButton = 'h-10 w-10 px-0';
+
   return (
-    <div className="max-w-[90rem]">
+    <div>
       <PageHeader
         title="Calendar"
         actions={
-          <Button variant="primary" onClick={() => setEventDialog({ date: today })}>
-            <Plus size={16} aria-hidden /> New event
+          <Button variant="primary" className="h-11 px-[18px]" onClick={() => setEventDialog({ date: today })}>
+            + New event
           </Button>
         }
       />
-      <div className="grid gap-6 xl:grid-cols-[1fr_20rem]">
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" aria-label="Previous month" onClick={() => setMonth(dt.minus({ months: 1 }).toFormat('yyyy-MM'))}>
-              <ChevronLeft size={16} />
-            </Button>
-            <h2 className="w-44 text-center text-2xl">{dt.toFormat('LLLL yyyy')}</h2>
-            <Button variant="ghost" aria-label="Next month" onClick={() => setMonth(dt.plus({ months: 1 }).toFormat('yyyy-MM'))}>
-              <ChevronRight size={16} />
-            </Button>
-            <Button onClick={() => setMonth(today.slice(0, 7))} disabled={month === today.slice(0, 7)}>
-              This month
-            </Button>
-            <div className="ml-auto flex flex-wrap gap-1" role="group" aria-label="Layers">
-              {LAYERS.map((l) => (
-                <button
-                  key={l.id}
-                  type="button"
-                  aria-pressed={layers.has(l.id)}
-                  onClick={() => toggleLayer(l.id)}
-                  className={cn('rounded-full border px-2.5 py-0.5 text-xs', layers.has(l.id) ? 'border-accent bg-accent text-accent-text' : 'border-text/15 text-muted hover:text-text')}
-                >
-                  {l.label}
-                </button>
-              ))}
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex min-w-0 flex-[3_1_640px] flex-col gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-1">
+              <Button className={navButton} aria-label="Previous month" onClick={() => setMonth(dt.minus({ months: 1 }).toFormat('yyyy-MM'))}>
+                <ChevronLeft size={16} />
+              </Button>
+              <h2 className="mx-3 min-w-[150px] text-center text-xl font-medium tracking-[-0.02em]" aria-live="polite">
+                {dt.toFormat('LLLL yyyy')}
+              </h2>
+              <Button className={navButton} aria-label="Next month" onClick={() => setMonth(dt.plus({ months: 1 }).toFormat('yyyy-MM'))}>
+                <ChevronRight size={16} />
+              </Button>
+              <Button className="ml-2 h-10 text-[13px]" onClick={() => setMonth(today.slice(0, 7))} disabled={month === today.slice(0, 7)}>
+                Today
+              </Button>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="tile px-5 py-4">
-              <div className="text-xs text-muted">Net P&L (USD)</div>
-              <Pnl cents={totals.net} className="font-display mt-1 block text-2xl" />
-            </div>
-            <div className="tile px-5 py-4">
-              <div className="text-xs text-muted">Days traded</div>
-              <div className="font-display mt-1 text-2xl">
-                {totals.traded}
-                <span className="text-sm font-normal text-muted"> of {available} available</span>
-              </div>
-              {noTradeDays > 0 && <div className="text-xs text-muted">{noTradeDays} no-trade days excluded</div>}
-            </div>
-            <div className="tile px-5 py-4">
-              <div className="text-xs text-muted">Trading hours</div>
-              <div className="tabular font-display mt-1 text-2xl">{hoursLabel(totals.trading)}</div>
-            </div>
-            <div className="tile px-5 py-4">
-              <div className="text-xs text-muted">Other business hours</div>
-              <div className="tabular font-display mt-1 text-2xl">{hoursLabel(totals.other)}</div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <div className="grid min-w-[52rem] grid-cols-[repeat(7,minmax(0,1fr))_7.5rem] gap-1 text-xs">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Week'].map((d) => (
-                <div key={d} className="px-1 pb-1 font-medium text-muted">
-                  {d}
-                </div>
-              ))}
-              {weeks.map((week) => {
-                const w = week.reduce(
-                  (t, d) => {
-                    const f = fig(d);
-                    return { net: t.net + f.netCents, traded: t.traded + (f.trades > 0 ? 1 : 0), minutes: t.minutes + f.tradingMinutes + f.otherMinutes };
-                  },
-                  { net: 0, traded: 0, minutes: 0 },
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Show on calendar">
+              {LAYERS.map((l) => {
+                const on = layers.has(l.id);
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleLayer(l.id)}
+                    className={cn(
+                      'flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors',
+                      on ? 'border-text bg-text text-card' : 'border-border bg-card text-secondary hover:bg-hover',
+                    )}
+                  >
+                    <span className="h-[7px] w-[7px] rounded-full" style={{ background: on ? LAYER_DOT[l.id] : 'var(--grade-b-border)' }} aria-hidden />
+                    {l.label}
+                  </button>
                 );
-                return [
-                  ...week.map((d) => (
-                    <DayCell
-                      key={d}
-                      date={d}
-                      inMonth={d.startsWith(month)}
-                      isToday={d === today}
-                      figures={fig(d)}
-                      market={marketOn(d)}
-                      occurrences={occOn(d)}
-                      noTrade={isNoTrade(d)}
-                      layers={layers}
-                      colorOf={(id) => typeOf(id)?.color ?? '#64748b'}
-                      onOpen={() => setOpenDay(d)}
-                    />
-                  )),
-                  <div key={`${week[0]}-sum`} className="flex flex-col justify-center gap-0.5 rounded-lg bg-surface p-2">
-                    {layers.has('pnl') && <Pnl cents={w.net} className="font-display text-base" />}
-                    <span className="text-muted">{w.traded} days traded</span>
-                    {layers.has('screen') && <span className="tabular text-muted">{hoursLabel(w.minutes)}</span>}
-                  </div>,
-                ];
               })}
             </div>
           </div>
+
+          <SummaryStrip
+            items={[
+              { label: 'Net P&L · USD', value: <Pnl cents={totals.net} /> },
+              {
+                label: 'Days traded',
+                value: (
+                  <>
+                    {totals.traded} <span className="text-[13px] font-normal tracking-normal text-muted">of {available}</span>
+                  </>
+                ),
+                sub: noTradeDays > 0 ? `${noTradeDays} no-trade day${noTradeDays === 1 ? '' : 's'} excluded` : undefined,
+              },
+              { label: 'Trading hours', value: hoursLabel(totals.trading) },
+              { label: 'Other business hours', value: hoursLabel(totals.other) },
+            ]}
+          />
+
+          <section aria-label="Month grid" className="card p-4">
+            <div className="overflow-x-auto">
+              <div className="flex min-w-[680px] flex-col gap-1.5">
+                <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_minmax(0,1.1fr)] gap-1.5 px-1 pb-1 text-xs text-muted">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Week'].map((d) => (
+                    <span key={d}>{d}</span>
+                  ))}
+                </div>
+                {weeks.map((week) => {
+                  const w = week.reduce(
+                    (t, d) => {
+                      const f = fig(d);
+                      return { net: t.net + f.netCents, traded: t.traded + (f.trades > 0 ? 1 : 0), minutes: t.minutes + f.tradingMinutes + f.otherMinutes };
+                    },
+                    { net: 0, traded: 0, minutes: 0 },
+                  );
+                  return (
+                    <div key={week[0]} className="grid grid-cols-[repeat(7,minmax(0,1fr))_minmax(0,1.1fr)] gap-1.5">
+                      {week.map((d) => (
+                        <DayCell
+                          key={d}
+                          date={d}
+                          inMonth={d.startsWith(month)}
+                          isToday={d === today}
+                          figures={fig(d)}
+                          market={marketOn(d)}
+                          occurrences={occOn(d)}
+                          noTrade={isNoTrade(d)}
+                          layers={layers}
+                          colorOf={(id) => typeOf(id)?.color ?? '#64748b'}
+                          onOpen={() => setOpenDay(d)}
+                        />
+                      ))}
+                      <div className="flex min-h-32 flex-col justify-center gap-[3px] rounded-md bg-page px-3 py-2.5">
+                        {layers.has('pnl') && w.traded > 0 && <Pnl cents={w.net} className="text-base font-medium tracking-[-0.02em]" />}
+                        <span className="text-[11px] text-muted">{w.traded ? `${w.traded} day${w.traded === 1 ? '' : 's'} traded` : 'No trades'}</span>
+                        {layers.has('screen') && w.minutes > 0 && <span className="font-mono text-[11px] text-faint">{hoursLabel(w.minutes)}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4 px-1 pt-3.5 pb-0.5 text-xs text-muted">
+              <span className="flex items-center gap-1.5">
+                <span className="h-[7px] w-[7px] rounded-full bg-ember" aria-hidden />
+                High-impact release
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-[7px] w-[7px] rounded-full bg-medium" aria-hidden />
+                Medium
+              </span>
+              <span className="flex items-center gap-1.5">
+                <NotebookPen size={12} className="text-faint" aria-hidden />
+                Journal entry
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-[11px] w-[11px] rounded-[3px] border border-border-subtle bg-profit-tint" aria-hidden />
+                <span className="h-[11px] w-[11px] rounded-[3px] border border-border-subtle bg-loss-tint" aria-hidden />
+                Winning / losing day
+              </span>
+              {noTradeDays > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <span className={cn('h-[11px] w-[11px] rounded-[3px] border border-border-subtle', NO_TRADE_HATCH)} aria-hidden />
+                  No-trade day
+                </span>
+              )}
+            </div>
+          </section>
         </div>
         <UpcomingPanel onOpen={(o) => setEventDialog({ occurrence: o })} />
       </div>
@@ -182,78 +230,92 @@ interface CellProps {
   onOpen: () => void;
 }
 
+const MAX_TAGS = 3;
+
 function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTrade, layers, colorOf, onOpen }: CellProps) {
+  const day = DateTime.fromISO(date);
   const showPnl = layers.has('pnl') && f.trades > 0;
-  const tone = showPnl ? (f.netCents > 0 ? 'bg-profit/12 border-profit/30' : f.netCents < 0 ? 'bg-loss/12 border-loss/30' : 'bg-surface-2') : 'bg-bg';
-  const high = market.filter((m) => m.impact === 'high');
+  const weekend = day.weekday >= 6;
+  const tone = showPnl ? (f.netCents >= 0 ? 'bg-profit-tint' : 'bg-loss-tint') : weekend ? 'bg-sidebar' : 'bg-card';
   const screen = f.tradingMinutes + f.otherMinutes;
+  const tags = layers.has('mine') ? [...occurrences].sort((a, b) => Number(a.isTask) - Number(b.isTask) || (a.startTime ?? '').localeCompare(b.startTime ?? '')) : [];
 
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onOpen}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
-      aria-label={DateTime.fromISO(date).toFormat('cccc d LLLL')}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      aria-label={day.toFormat('cccc d LLLL')}
+      aria-current={isToday ? 'date' : undefined}
       className={cn(
-        'relative flex min-h-28 cursor-pointer flex-col gap-0.5 rounded-lg border p-1.5 transition hover:border-text/30',
+        'flex min-h-32 min-w-0 cursor-pointer flex-col gap-[3px] rounded-md px-[9px] py-2 transition-colors hover:border-border-strong',
         tone,
-        !showPnl && 'border-border',
-        !inMonth && 'opacity-45',
-        isToday && 'ring-2 ring-ember',
-        noTrade && 'bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,var(--border)_6px,var(--border)_7px)]',
+        isToday ? 'border-[1.5px] border-ember' : 'border border-border-subtle',
+        !inMonth && !isToday && 'opacity-50',
+        noTrade && NO_TRADE_HATCH,
       )}
     >
-      <div className="flex items-center gap-1">
-        <span className={cn('font-medium', isToday && 'text-ember')}>{DateTime.fromISO(date).day}</span>
-        {layers.has('events') && market.length > 0 && <MarketDots events={market} highCount={high.length} />}
-        <span className="ml-auto flex items-center gap-1 text-muted">
-          {layers.has('journal') && f.hasReview && <NotebookPen size={12} aria-label="Daily review written" />}
-          {layers.has('expenses') && f.expensesCents > 0 && (
-            <span className="flex items-center gap-0.5" title={`Expenses ${formatMoney(f.expensesCents)}`}>
-              <Receipt size={11} aria-hidden /> {formatMoney(f.expensesCents).replace('.00', '')}
-            </span>
-          )}
-        </span>
-      </div>
+      <span className="flex h-[22px] items-center gap-[5px]">
+        <span className={cn('flex h-[22px] min-w-[22px] items-center justify-center rounded-full text-xs font-medium', isToday && 'bg-ember text-white')}>{day.day}</span>
+        {layers.has('events') && market.length > 0 && <MarketDot events={market} />}
+        <span className="flex-1" />
+        {layers.has('journal') && f.hasReview && <NotebookPen size={13} className="text-faint" aria-label="Journal entry" />}
+      </span>
       {showPnl && (
-        <div>
-          <Pnl cents={f.netCents} className="font-display text-base" />
-          <div className="text-muted">
+        <>
+          <Pnl cents={f.netCents} className="text-[15px] font-medium tracking-[-0.02em]" />
+          <span className="text-[11px] text-muted">
             {f.trades} trade{f.trades === 1 ? '' : 's'} · {Math.round((f.wins / f.trades) * 100)}%
-          </div>
-        </div>
+          </span>
+        </>
       )}
-      {layers.has('screen') && screen > 0 && <div className="tabular text-muted">⏱ {hoursLabel(screen)}</div>}
-      {noTrade && <div className="text-[10px] font-medium text-muted uppercase">No-trade day</div>}
-      {layers.has('mine') &&
-        occurrences.slice(0, 3).map((o) => (
-          <div
+      {layers.has('screen') && screen > 0 && <span className="font-mono text-[11px] text-faint">{hoursLabel(screen)}</span>}
+      {layers.has('expenses') && f.expensesCents > 0 && <span className="text-[11px] text-secondary">Expense {formatMoney(f.expensesCents)}</span>}
+      {noTrade && <span className="text-[10px] font-medium tracking-wide text-muted uppercase">No-trade day</span>}
+      <span className="flex-1" />
+      {tags.slice(0, MAX_TAGS).map((o) =>
+        o.isTask ? (
+          <span
             key={o.key}
-            className={cn('truncate border-l-2 bg-bg/70 py-px pr-1 pl-1.5 text-[11px] text-text', o.done && 'line-through opacity-60')}
+            className={cn('truncate rounded-[5px] border border-ember/45 px-[5px] py-px text-[11px] leading-[1.3] text-warning', o.done && 'line-through opacity-60')}
+          >
+            {o.title}
+          </span>
+        ) : (
+          <span
+            key={o.key}
+            className="truncate rounded-[5px] border-l-2 bg-nav-active px-[5px] py-0.5 text-[11px] leading-[1.3] text-secondary"
             style={{ borderLeftColor: swatch(colorOf(o.typeId)) }}
           >
             {o.startTime && !o.allDay ? `${o.startTime} ` : ''}
             {o.title}
-          </div>
-        ))}
-      {layers.has('mine') && occurrences.length > 3 && <div className="text-[11px] text-muted">+{occurrences.length - 3} more</div>}
+          </span>
+        ),
+      )}
+      {tags.length > MAX_TAGS && <span className="text-[11px] text-muted">+{tags.length - MAX_TAGS} more</span>}
     </div>
   );
 }
 
-/** Red dot for high-impact releases (amber if only medium); hovering lists them. */
-function MarketDots({ events, highCount }: { events: MarketEvent[]; highCount: number }) {
+/** Orange dot for high-impact releases (amber if only medium); hovering lists them. */
+function MarketDot({ events }: { events: MarketEvent[] }) {
+  const high = events.some((e) => e.impact === 'high');
   const label = events.map((e) => `${formatLocal(e.at, 'HH:mm')} ${e.title} (${e.impact})`).join('\n');
   return (
     <span className="group relative" onClick={(e) => e.stopPropagation()}>
-      <span className={cn('block h-2 w-2 rounded-full', highCount ? 'bg-ember' : 'bg-brass')} aria-label={label} title={label} />
-      <span className="pointer-events-none absolute top-3 left-0 z-20 hidden w-56 rounded-md border border-border bg-surface p-2 text-xs shadow-lg group-hover:block">
+      <span className={cn('block h-[7px] w-[7px] rounded-full', high ? 'bg-ember' : 'bg-medium')} aria-label={label} title={label} />
+      <span className="pointer-events-none absolute top-3 left-0 z-20 hidden w-60 rounded-lg border border-border bg-card p-2 text-xs shadow-menu group-hover:block">
         {events.map((e) => (
-          <span key={e.id} className="flex gap-2">
-            <span className="tabular text-muted">{formatLocal(e.at, 'HH:mm')}</span>
+          <span key={e.id} className="flex gap-2 py-0.5">
+            <span className="font-mono text-muted">{formatLocal(e.at, 'HH:mm')}</span>
             <span className="flex-1">{e.title}</span>
-            <span className={e.impact === 'high' ? 'text-ember' : 'text-brass'}>{e.impact}</span>
+            <span className={e.impact === 'high' ? 'text-ember' : 'text-medium'}>{e.impact}</span>
           </span>
         ))}
       </span>

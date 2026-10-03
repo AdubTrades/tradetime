@@ -28,9 +28,14 @@ interface Props {
 }
 
 /** Everything for one date: trades, sessions vs plan, check-ins, events, expenses — with actions. */
-export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props) {
+export function DayDetail(props: Props) {
+  // Only mount (and fetch) once a day is open.
+  return props.day ? <OpenDayDetail {...props} day={props.day} /> : null;
+}
+
+function OpenDayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props & { day: string }) {
   const { data: settings } = useSettings();
-  const d = day ?? '2000-01-01';
+  const d = day;
   const { data: trades = [] } = useTrades(d, d);
   const { data: sessions = [] } = useSessions(d, d);
   const { data: readings = [] } = useDayReadings(d);
@@ -48,7 +53,6 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
     o.recurring ? api.put(`/calendar/events/${o.eventId}/occurrences/${o.occurrenceDate}`, { done: !o.done }) : api.post(`/calendar/events/${o.eventId}/done`, { done: !o.done }),
   );
 
-  if (!day) return null;
   const today = tradingDay(new Date(), settings?.rolloverTime);
   const occurrences = data?.occurrences.filter((o) => o.date === day) ?? [];
   const market = data?.market.filter((m) => m.tradingDay === day) ?? [];
@@ -74,7 +78,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
   };
 
   const section = 'space-y-2';
-  const h = 'font-display text-[13px] text-brass';
+  const h = 'text-[13px] font-semibold text-text';
 
   return (
     <Dialog
@@ -106,7 +110,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
             <ul className="space-y-1.5">
               {market.map((m) => (
                 <li key={m.id} className="flex items-center gap-2">
-                  <span className={cn('h-2 w-2 rounded-full', m.impact === 'high' ? 'bg-ember' : 'bg-brass')} />
+                  <span className={cn('h-2 w-2 rounded-full', m.impact === 'high' ? 'bg-ember' : 'bg-medium')} />
                   <span className="tabular w-12 text-muted">{formatLocal(m.at, 'HH:mm')}</span>
                   <span>{m.title}</span>
                   <span className="text-xs text-muted">· {m.impact} impact · {m.currency}</span>
@@ -154,7 +158,7 @@ export function DayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props
             <ul className="space-y-1">
               {[...trades].reverse().map((t) => (
                 <li key={t.id}>
-                  <Link to="/journal/trades/$tradeId" params={{ tradeId: t.id }} className="flex items-center gap-2 rounded px-1 hover:bg-surface-2">
+                  <Link to="/journal/trades/$tradeId" params={{ tradeId: t.id }} className="flex items-center gap-2 rounded-sm px-1 hover:bg-hover">
                     <span className="tabular w-12 text-muted">{formatLocal(t.openedAt, 'HH:mm')}</span>
                     <span className={'w-12 capitalize text-muted'}>{t.direction}</span>
                     <span>{plays.find((p) => p.id === t.playId)?.title ?? 'No Play'}</span>
