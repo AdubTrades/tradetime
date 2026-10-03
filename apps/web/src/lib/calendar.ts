@@ -21,7 +21,6 @@ export const LAYERS = [
   { id: 'events', label: 'Market events' },
   { id: 'journal', label: 'Journal' },
   { id: 'mine', label: 'My events' },
-  { id: 'expenses', label: 'Expenses' },
 ] as const;
 export type LayerId = (typeof LAYERS)[number]['id'];
 const DEFAULT_LAYERS: LayerId[] = ['pnl', 'screen', 'events', 'journal', 'mine'];
@@ -32,7 +31,8 @@ export function useLayers(): [Set<LayerId>, (id: LayerId) => void] {
   const [layers, setLayers] = useState<Set<LayerId>>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(LAYERS_KEY) ?? 'null') as LayerId[] | null;
-      return new Set(saved ?? DEFAULT_LAYERS);
+      // Drop layers that no longer exist (an Expenses layer used to be saved here).
+      return new Set(saved ? saved.filter((id) => LAYERS.some((l) => l.id === id)) : DEFAULT_LAYERS);
     } catch {
       return new Set(DEFAULT_LAYERS);
     }

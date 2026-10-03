@@ -3,7 +3,7 @@ import { swatch } from '../../lib/theme';
 import { CheckSquare, ExternalLink, Play, Plus, Square } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useState } from 'react';
-import { blockMinutes, durationMinutes, formatDuration, formatLocal, formatMoney, tradingDay } from '@tc/domain';
+import { blockMinutes, durationMinutes, formatDuration, formatLocal, tradingDay } from '@tc/domain';
 import { Dialog } from '../../components/Dialog';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import { ReadingChips } from '../../components/ReadingSummary';
@@ -11,7 +11,6 @@ import { Button, cn } from '../../components/ui';
 import { api, type CalendarRangeData, type OccurrenceView, type Session, type SessionType } from '../../lib/api';
 import { useCalendarMutation, useEventTypes } from '../../lib/calendar';
 import { useDayReadings } from '../../lib/checkins';
-import { useExpenses } from '../../lib/expenses';
 import { usePlays, useTrades } from '../../lib/journal';
 import { useRunningSession, useSessionMutation, useSessions, useSessionTypes } from '../../lib/sessions';
 import { useSettings } from '../../lib/settings';
@@ -28,7 +27,7 @@ interface Props {
   onNewEvent: (day: string) => void;
 }
 
-/** Everything for one date: trades, sessions vs plan, check-ins, events, expenses — with actions. */
+/** Everything for one date: trades, sessions vs plan, check-ins, events — with actions. */
 export function DayDetail(props: Props) {
   // Only mount (and fetch) once a day is open.
   return props.day ? <OpenDayDetail {...props} day={props.day} /> : null;
@@ -43,8 +42,6 @@ function OpenDayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props & 
   const { data: sessionTypes = [] } = useSessionTypes();
   const { data: eventTypes = [] } = useEventTypes();
   const { data: plays = [] } = usePlays();
-  const fy = DateTime.fromISO(d).month >= 7 ? DateTime.fromISO(d).year : DateTime.fromISO(d).year - 1;
-  const { data: expenses = [] } = useExpenses(fy);
   const { data: running } = useRunningSession();
   const [logging, setLogging] = useState(false);
   const [addingSession, setAddingSession] = useState(false);
@@ -57,7 +54,6 @@ function OpenDayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props & 
   const today = tradingDay(new Date(), settings?.rolloverTime);
   const occurrences = data?.occurrences.filter((o) => o.date === day) ?? [];
   const market = data?.market.filter((m) => m.tradingDay === day) ?? [];
-  const dayExpenses = expenses.filter((e) => e.date === day);
   const type = (id: string) => eventTypes.find((t) => t.id === id);
   const sType = (id: string | null) => sessionTypes.find((t) => t.id === id);
 
@@ -232,19 +228,6 @@ function OpenDayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props & 
           </section>
         )}
 
-        {dayExpenses.length > 0 && (
-          <section className={section}>
-            <h3 className={h}>Expenses</h3>
-            <ul className="space-y-1">
-              {dayExpenses.map((e) => (
-                <li key={e.id} className="flex justify-between">
-                  <span>{e.name}</span>
-                  <span className="tabular">{formatMoney(e.incGstCents)}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </div>
       <TradeForm open={logging} onClose={() => setLogging(false)} defaults={{ tradingDay: day }} />
       <SessionDialog open={addingSession} onClose={() => setAddingSession(false)} types={sessionTypes} defaultDate={day} />

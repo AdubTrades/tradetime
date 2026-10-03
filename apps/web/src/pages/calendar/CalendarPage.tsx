@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
-import { formatLocal, formatMoney, monthWeeks, tradingDay } from '@tc/domain';
+import { formatLocal, monthWeeks, tradingDay } from '@tc/domain';
 import { Pnl } from '../../components/GradeBadge';
 import { Button, cn, PageHeader, SummaryStrip } from '../../components/ui';
 import type { DayFigures, MarketEvent, OccurrenceView } from '../../lib/api';
@@ -22,7 +22,6 @@ const LAYER_DOT: Record<LayerId, string> = {
   events: 'var(--impact-high)',
   journal: 'var(--text-secondary)',
   mine: 'currentColor',
-  expenses: 'var(--cat-education-fg)',
 };
 
 const NO_TRADE_HATCH = 'bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,var(--border)_6px,var(--border)_7px)]';
@@ -277,7 +276,6 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
         </>
       )}
       {layers.has('screen') && screen > 0 && <span className="font-mono text-[11px] text-faint">{hoursLabel(screen)}</span>}
-      {layers.has('expenses') && f.expensesCents > 0 && <span className="text-[11px] text-secondary">Expense {formatMoney(f.expensesCents)}</span>}
       {noTrade && <span className="text-[10px] font-medium tracking-wide text-muted uppercase">No-trade day</span>}
       <span className="flex-1" />
       {tags.slice(0, MAX_TAGS).map((o) =>
