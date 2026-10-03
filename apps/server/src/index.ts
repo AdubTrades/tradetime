@@ -9,9 +9,11 @@ import { startJobs } from './jobs';
 
 if (isProduction) {
   if (!existsSync(webDist)) console.warn(`Web build not found at ${webDist}. Run "pnpm build" first.`);
-  app.use('/*', serveStatic({ root: webDist }));
+  // index.html is always re-checked so a new build shows up on the next load; hashed assets never change.
+  const cacheHeaders = { onFound: (path: string, c: { header: (k: string, v: string) => void }) => c.header('Cache-Control', path.endsWith('.html') ? 'no-cache' : path.includes('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache') };
+  app.use('/*', serveStatic({ root: webDist, ...cacheHeaders }));
   // Client-side routes fall back to index.html.
-  app.get('*', serveStatic({ root: webDist, path: 'index.html' }));
+  app.get('*', serveStatic({ root: webDist, path: 'index.html', ...cacheHeaders }));
 }
 
 // The demo copy fills itself with sample data the first time it starts.
