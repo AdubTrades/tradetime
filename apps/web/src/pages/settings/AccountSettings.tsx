@@ -26,7 +26,7 @@ export function AccountSettings() {
             <span className="font-medium">{a.name}</span>
             <span className="text-muted">{[firmName(a.firmId), typeLabels[a.type]].filter(Boolean).join(' · ')}</span>
             {a.startingBalanceCents != null && <span className="tabular text-muted">{formatMoney(a.startingBalanceCents, 'USD')}</span>}
-            <span className={`rounded-full px-2 py-0.5 text-xs ${a.status === 'active' ? 'bg-text text-bg' : 'bg-bg text-muted ring-1 ring-inset ring-text/10'}`}>
+            <span className={`rounded-full px-2 py-0.5 text-xs ${a.status === 'active' ? 'bg-text text-card' : 'bg-card text-muted ring-1 ring-inset ring-border'}`}>
               {statusLabels[a.status]}
             </span>
             <Button variant="ghost" className="ml-auto px-2" aria-label={`Edit ${a.name}`} onClick={() => setEditing(a)}>

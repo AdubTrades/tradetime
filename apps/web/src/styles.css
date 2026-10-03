@@ -216,6 +216,8 @@ body {
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
+  /* Checkboxes, radios and ranges use the near-black primary, not the browser blue. */
+  accent-color: var(--text);
 }
 
 h1 {

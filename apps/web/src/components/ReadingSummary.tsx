@@ -10,7 +10,7 @@ export function ReadingChips({ answers, decision, className }: { answers: Readin
   return (
     <span className={cn('inline-flex flex-wrap items-center gap-1', className)}>
       {chips.map((c, i) => (
-        <span key={i} className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-muted">
+        <span key={i} className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-secondary">
           {c}
         </span>
       ))}

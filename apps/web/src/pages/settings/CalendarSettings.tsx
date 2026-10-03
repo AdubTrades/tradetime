@@ -69,7 +69,7 @@ export function CalendarSettings({ settings, demo = false }: { settings: Setting
               )}
             </div>
           </Field>
-          <div className="flex flex-wrap items-center gap-3 rounded-md bg-surface-2 p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-border-subtle bg-inset p-3 text-sm">
             <span className="flex-1">
               {status?.lastSuccessAt ? (
                 <>
@@ -94,7 +94,7 @@ export function CalendarSettings({ settings, demo = false }: { settings: Setting
             Covered: CPI, Non-Farm Payrolls, PPI, GDP, PCE and Retail Sales (high); jobless claims and JOLTS (medium). Times are the standard US
             release times converted to Perth, with US daylight saving handled. FOMC statements come from the Federal Reserve's published meeting
             schedule, built in through {DateTime.fromISO(FOMC_SCHEDULE_ENDS).toFormat('LLLL yyyy')}
-            {FOMC_SCHEDULE_ENDS < DateTime.now().plus({ months: 3 }).toISODate()! && <strong className="text-warn"> — the app needs updating with next year's dates</strong>}. This product uses the FRED® API but is not endorsed or
+            {FOMC_SCHEDULE_ENDS < DateTime.now().plus({ months: 3 }).toISODate()! && <strong className="text-warning"> — the app needs updating with next year's dates</strong>}. This product uses the FRED® API but is not endorsed or
             certified by the Federal Reserve Bank of St. Louis.{' '}
             <a href="https://fred.stlouisfed.org/docs/api/terms_of_use.html" target="_blank" rel="noreferrer" className="underline">
               FRED API terms of use

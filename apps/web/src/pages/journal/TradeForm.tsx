@@ -284,7 +284,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
   };
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'Unknown';
-  const sectionTitle = 'font-display mb-3 text-[13px] text-brass';
+  const sectionTitle = 'mb-3 text-[13px] font-semibold text-text';
 
   return (
     <Dialog
@@ -329,7 +329,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
     >
       <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
         {/* Carried context */}
-        <section className="grid gap-3 rounded-md bg-surface-2 p-3 sm:grid-cols-[10rem_8rem_1fr]">
+        <section className="grid gap-3 rounded-md border border-border-subtle bg-inset p-3 sm:grid-cols-[10rem_8rem_1fr]">
           <Field label="Trading day">
             <Input type="date" value={form.tradingDay} disabled={imported} onChange={(e) => set('tradingDay', e.target.value)} />
           </Field>
@@ -372,13 +372,13 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
             </Field>
             {form.mode === 'simple' && (
               <Field label="Direction">
-                <div className="flex overflow-hidden rounded-full border border-text/15">
+                <div className="flex overflow-hidden rounded-full border border-border">
                   {(['long', 'short'] as const).map((d) => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => set('direction', d)}
-                      className={cn('px-4 py-1.5 text-sm capitalize', form.direction === d ? 'bg-accent text-accent-text' : 'text-muted hover:text-text')}
+                      className={cn('px-4 py-1.5 text-sm capitalize', form.direction === d ? 'bg-text text-card' : 'text-muted hover:text-text')}
                     >
                       {d}
                     </button>
@@ -400,7 +400,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                         onChange={(e) => setForm((f) => ({ ...f, checks: { ...f.checks, [c.id]: e.target.checked } }))}
                       />
                       {c.label}
-                      {c.mustHave && <span className="rounded-full px-1.5 text-xs text-ember ring-1 ring-inset ring-ember/60">must-have</span>}
+                      {c.mustHave && <span className="rounded-full border border-ember/25 bg-ember/[0.07] px-2 text-xs text-warning">must-have</span>}
                     </label>
                   </li>
                 ))}
@@ -546,13 +546,13 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
           <h3 className={sectionTitle}>5 · Behaviour</h3>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Followed my plan?">
-              <div className="flex overflow-hidden rounded-full border border-text/15">
+              <div className="flex overflow-hidden rounded-full border border-border">
                 {(['yes', 'partly', 'no'] as const).map((v) => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => set('followedPlan', form.followedPlan === v ? null : v)}
-                    className={cn('flex-1 px-3 py-1.5 text-sm capitalize', form.followedPlan === v ? 'bg-accent text-accent-text' : 'text-muted')}
+                    className={cn('flex-1 px-3 py-1.5 text-sm capitalize', form.followedPlan === v ? 'bg-text text-card' : 'text-muted')}
                   >
                     {v}
                   </button>
@@ -578,7 +578,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                     key={n}
                     type="button"
                     onClick={() => set('confidence', form.confidence === n ? null : n)}
-                    className={cn('h-8 w-8 rounded-md border text-sm', form.confidence === n ? 'border-accent bg-accent text-accent-text' : 'border-border text-muted')}
+                    className={cn('h-8 w-8 rounded-md border text-sm', form.confidence === n ? 'border-text bg-text text-card' : 'border-border text-muted')}
                   >
                     {n}
                   </button>
@@ -597,7 +597,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                     key={m.id}
                     type="button"
                     onClick={() => set('mistakeIds', on ? form.mistakeIds.filter((x) => x !== m.id) : [...form.mistakeIds, m.id])}
-                    className={cn('rounded-full border px-2.5 py-0.5 text-xs', on ? 'border-ember bg-ember/10 text-text' : 'border-text/15 text-muted hover:text-text')}
+                    className={cn('rounded-full border px-2.5 py-0.5 text-xs', on ? 'border-text bg-text text-card' : 'border-border text-muted hover:text-text')}
                   >
                     {m.name}
                   </button>
@@ -614,7 +614,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
               rows={5}
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
-              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm"
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-card"
             />
           </Field>
           <div>

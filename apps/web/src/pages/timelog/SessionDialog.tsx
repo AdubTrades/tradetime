@@ -142,7 +142,7 @@ export function SessionDialog({ open, onClose, types, session, defaultDate }: Pr
           </Field>
         )}
         {overlaps && (
-          <div className="rounded-md border border-warn/40 bg-warn/10 p-3 text-sm">
+          <div className="rounded-md border border-ember/30 bg-ember/[0.06] p-3 text-sm">
             <p className="font-medium">This overlaps {overlaps.length === 1 ? 'an existing session' : `${overlaps.length} existing sessions`}:</p>
             <ul className="mt-1 list-disc pl-5 text-muted">
               {overlaps.map((o) => (

@@ -26,7 +26,7 @@ export function DemoSettings() {
           onClick={() => go(inDemo ? 'exit' : 'open')}
           className={`relative h-7 w-12 shrink-0 rounded-full transition ${inDemo ? 'bg-text' : 'bg-border'}`}
         >
-          <span className={`absolute top-1 h-5 w-5 rounded-full bg-bg transition-all ${inDemo ? 'left-6' : 'left-1'}`} aria-hidden />
+          <span className={`absolute top-1 h-5 w-5 rounded-full bg-card shadow-card transition-all ${inDemo ? 'left-6' : 'left-1'}`} aria-hidden />
           <span className="sr-only">Demo mode</span>
         </button>
         <div className="text-sm">

@@ -197,7 +197,7 @@ function BackupSettings({ settings }: { settings: Settings }) {
           </Field>
         </div>
 
-        <div className="rounded-md bg-surface-2 p-3 text-sm">
+        <div className="rounded-md border border-border-subtle bg-inset p-3 text-sm">
           {status?.lastSuccessAt ? (
             <p>
               Last backup: <span className="font-medium">{formatLocal(status.lastSuccessAt, 'ccc d LLL yyyy, HH:mm')}</span>
@@ -215,7 +215,7 @@ function BackupSettings({ settings }: { settings: Settings }) {
           </Button>
           <a
             href="/api/backup/export"
-            className="inline-flex items-center gap-2 font-display rounded-none border border-text/80 px-3.5 py-1.5 text-sm hover:bg-surface"
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3.5 text-sm font-medium shadow-card hover:bg-hover"
           >
             <Download size={16} aria-hidden /> Export everything (.zip)
           </a>

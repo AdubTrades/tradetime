@@ -138,7 +138,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-text/25 px-4 py-10 text-muted hover:border-text/50"
+            className="flex w-full flex-col items-center gap-2 rounded-lg border-[1.5px] border-dashed border-border-strong/60 bg-card px-4 py-10 text-muted hover:border-border-strong"
           >
             <FileUp size={24} aria-hidden />
             Choose a CSV file

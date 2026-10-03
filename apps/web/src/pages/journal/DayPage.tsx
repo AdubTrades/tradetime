@@ -82,7 +82,7 @@ export function DayPage({ day }: { day: string }) {
               ...readings.map((r) => ({
                 at: r.at,
                 el: (
-                  <div className={cn('rounded-md border px-2 py-1.5', r.kind === 'start' ? 'border-ember/30 bg-ember/5' : 'border-warn/30 bg-warn/5')}>
+                  <div className={cn('rounded-md border px-2 py-1.5', r.kind === 'start' ? 'border-ember/30 bg-ember/5' : 'border-medium/30 bg-medium/5')}>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-semibold">{r.kind === 'start' ? 'Session start' : 'Check-in'}</span>
                       <ReadingChips answers={r.answers} decision={r.decision} />
@@ -94,7 +94,7 @@ export function DayPage({ day }: { day: string }) {
               ...trades.map((t) => ({
                 at: t.openedAt,
                 el: (
-                  <Link to="/journal/trades/$tradeId" params={{ tradeId: t.id }} className="flex flex-wrap items-center gap-2 rounded px-1 hover:bg-surface-2">
+                  <Link to="/journal/trades/$tradeId" params={{ tradeId: t.id }} className="flex flex-wrap items-center gap-2 rounded-sm px-1 hover:bg-hover">
                     <span className="font-medium">{contracts.find((c) => c.id === t.contractId)?.symbol}</span>
                     <span className={'capitalize text-muted'}>{t.direction}</span>
                     <span>{plays.find((p) => p.id === t.playId)?.title ?? 'No Play'}</span>
@@ -159,7 +159,7 @@ function DailyReviewEditor({ day }: { day: string }) {
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="What went well, what didn't, what to change tomorrow."
-        className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
+        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-card"
       />
       <p className="mt-1 text-xs text-muted">{status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : status === 'error' ? 'Couldn’t save — check the app is running' : 'Saves automatically'}</p>
     </Card>

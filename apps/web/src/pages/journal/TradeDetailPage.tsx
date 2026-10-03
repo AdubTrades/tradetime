@@ -79,7 +79,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
       />
 
       {t.needsReview && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-ivory px-5 py-4 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border-subtle bg-inset px-5 py-4 text-sm">
           <span className="flex-1">
             <span className="font-medium">Imported from your broker.</span>{' '}
             <span className="text-muted">Add the Play, tick what you saw before entry, and note how you felt — the fills and P&L are already in.</span>
@@ -116,7 +116,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
                 <li key={c.criterionId} className={cn('flex items-center gap-2', !c.checked && 'text-muted')}>
                   <span className={cn('w-4 text-center', c.checked ? 'text-text' : c.mustHave ? 'text-ember' : 'text-muted')}>{c.checked ? '✓' : '✗'}</span>
                   {c.label}
-                  {c.mustHave && <span className="rounded-full px-1.5 text-xs text-ember ring-1 ring-inset ring-ember/60">must-have</span>}
+                  {c.mustHave && <span className="rounded-full border border-ember/25 bg-ember/[0.07] px-2 text-xs text-warning">must-have</span>}
                 </li>
               ))}
             </ul>

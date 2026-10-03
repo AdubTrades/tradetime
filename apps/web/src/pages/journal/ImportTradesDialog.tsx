@@ -167,7 +167,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
         </div>
       ) : !csv ? (
         <div className="space-y-4 text-sm">
-          <div className="rounded-lg bg-surface-2 p-4">
+          <div className="rounded-lg border border-border-subtle bg-inset p-4">
             <p className="font-medium">From NinjaTrader 8</p>
             <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-muted">
               <li>Control Center → New → Trade Performance.</li>
@@ -179,7 +179,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-text/25 px-4 py-10 text-muted hover:border-text/50"
+            className="flex w-full flex-col items-center gap-2 rounded-lg border-[1.5px] border-dashed border-border-strong/60 bg-card px-4 py-10 text-muted hover:border-border-strong"
           >
             <FileUp size={24} aria-hidden /> Choose the exported CSV
           </button>
@@ -224,7 +224,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
 
               {(opts.format ?? p.format) === 'generic' && (
                 <section>
-                  <h3 className="mb-2 text-[13px] text-brass">Columns</h3>
+                  <h3 className="mb-2 text-[13px] font-semibold text-text">Columns</h3>
                   <div className="grid gap-x-6 gap-y-2 sm:grid-cols-3">
                     {fieldLabels.map((f) => (
                       <label key={f.key} className="flex items-center gap-2">
@@ -255,7 +255,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
 
               {p.accountsInFile.length > 0 && (
                 <section>
-                  <h3 className="mb-2 text-[13px] text-brass">Accounts</h3>
+                  <h3 className="mb-2 text-[13px] font-semibold text-text">Accounts</h3>
                   {accounts.length === 0 && <p className="mb-2 text-loss">Add your trading accounts in Settings first.</p>}
                   <div className="space-y-2">
                     {p.accountsInFile.map((a) => (
@@ -284,7 +284,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
 
               <section>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-[13px] text-brass">
+                  <h3 className="text-[13px] font-semibold text-text">
                     Trades found · {ready.length} ready
                     {p.trades.length - ready.length > 0 && <span className="text-loss"> · {p.trades.length - ready.length} need attention</span>}
                   </h3>
@@ -295,7 +295,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
                 </div>
                 <div className="max-h-80 overflow-auto border border-border">
                   <table className="w-full text-left text-xs">
-                    <thead className="sticky top-0 bg-surface-2">
+                    <thead className="sticky top-0 bg-inset">
                       <tr>
                         {['Entry', 'Contract', 'Side', 'Accounts', 'Net', ''].map((h) => (
                           <th key={h} className="px-2 py-1.5 font-medium">
