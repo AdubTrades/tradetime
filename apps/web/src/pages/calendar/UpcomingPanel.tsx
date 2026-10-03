@@ -5,6 +5,7 @@ import { formatLocal } from '@tc/domain';
 import { cn } from '../../components/ui';
 import { api, type EventRecurrence, type MarketEvent, type OccurrenceView } from '../../lib/api';
 import { useCalendarMutation, useUpcoming } from '../../lib/calendar';
+import { ImpactMarker } from '../../components/ImpactMarker';
 
 type Item = { kind: 'market'; day: string; sort: string; m: MarketEvent } | { kind: 'mine'; day: string; sort: string; o: OccurrenceView; overdue: boolean };
 
@@ -64,7 +65,7 @@ export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void 
             .filter((i) => i.day === day)
             .map((i) =>
               i.kind === 'market' ? (
-                <Row key={i.m.id} time={formatLocal(i.m.at, 'HH:mm')} dot={i.m.impact === 'high' ? 'var(--accent-on-dark)' : 'var(--medium-impact)'}>
+                <Row key={i.m.id} time={formatLocal(i.m.at, 'HH:mm')} marker={<ImpactMarker impact={i.m.impact} onDark size={12} />}>
                   <span className="truncate">{i.m.title}</span>
                 </Row>
               ) : i.o.isTask ? (
@@ -122,11 +123,11 @@ export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void 
   );
 }
 
-function Row({ time, dot, muted = false, children }: { time: string; dot: string; muted?: boolean; children: ReactNode }) {
+function Row({ time, dot, marker, muted = false, children }: { time: string; dot?: string; marker?: ReactNode; muted?: boolean; children: ReactNode }) {
   return (
     <div className={cn('flex min-h-9 items-center gap-3 text-sm', muted && 'text-dark-muted')}>
       <span className={cn('w-10 shrink-0 font-mono text-dark-muted', time.length > 5 ? 'text-[10px]' : 'text-xs')}>{time}</span>
-      <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: dot }} aria-hidden />
+      <span className="flex w-3 shrink-0 justify-center">{marker ?? <span className="h-[7px] w-[7px] rounded-full" style={{ background: dot }} aria-hidden />}</span>
       {children}
     </div>
   );

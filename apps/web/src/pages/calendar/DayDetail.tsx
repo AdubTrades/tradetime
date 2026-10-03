@@ -18,6 +18,7 @@ import { useSettings } from '../../lib/settings';
 import { SessionStartDialog } from '../checkins/SessionStartDialog';
 import { TradeForm } from '../journal/TradeForm';
 import { SessionDialog } from '../timelog/SessionDialog';
+import { ImpactMarker } from '../../components/ImpactMarker';
 
 interface Props {
   day: string | null;
@@ -110,7 +111,9 @@ function OpenDayDetail({ day, data, onClose, onEditEvent, onNewEvent }: Props & 
             <ul className="space-y-1.5">
               {market.map((m) => (
                 <li key={m.id} className="flex items-center gap-2">
-                  <span className={cn('h-2 w-2 rounded-full', m.impact === 'high' ? 'bg-ember' : 'bg-medium')} />
+                  <span className="flex w-3.5 justify-center">
+                    <ImpactMarker impact={m.impact} />
+                  </span>
                   <span className="tabular w-12 text-muted">{formatLocal(m.at, 'HH:mm')}</span>
                   <span>{m.title}</span>
                   <span className="text-xs text-muted">· {m.impact} impact · {m.currency}</span>

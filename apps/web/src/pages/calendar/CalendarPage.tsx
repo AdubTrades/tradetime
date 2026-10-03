@@ -11,6 +11,7 @@ import { swatch } from '../../lib/theme';
 import { DayDetail } from './DayDetail';
 import { EventDialog } from './EventDialog';
 import { UpcomingPanel } from './UpcomingPanel';
+import { ImpactMarker } from '../../components/ImpactMarker';
 
 const emptyDay: DayFigures = { netCents: 0, trades: 0, wins: 0, tradingMinutes: 0, otherMinutes: 0, expensesCents: 0, hasReview: false };
 
@@ -18,7 +19,7 @@ const emptyDay: DayFigures = { netCents: 0, trades: 0, wins: 0, tradingMinutes: 
 const LAYER_DOT: Record<LayerId, string> = {
   pnl: 'var(--positive)',
   screen: 'var(--dark-text-faint)',
-  events: 'var(--accent)',
+  events: 'var(--impact-high)',
   journal: 'var(--text-secondary)',
   mine: 'currentColor',
   expenses: 'var(--medium-impact)',
@@ -177,11 +178,11 @@ export function CalendarPage() {
             </div>
             <div className="flex flex-wrap gap-4 px-1 pt-3.5 pb-0.5 text-xs text-muted">
               <span className="flex items-center gap-1.5">
-                <span className="h-[7px] w-[7px] rounded-full bg-ember" aria-hidden />
+                <ImpactMarker impact="high" size={12} />
                 High-impact release
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-[7px] w-[7px] rounded-full bg-medium" aria-hidden />
+                <ImpactMarker impact="medium" size={12} />
                 Medium
               </span>
               <span className="flex items-center gap-1.5">
@@ -270,8 +271,8 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
       {showPnl && (
         <>
           <Pnl cents={f.netCents} className="text-[15px] font-medium tracking-[-0.02em]" />
-          <span className="text-[11px] text-muted">
-            {f.trades} trade{f.trades === 1 ? '' : 's'} · {Math.round((f.wins / f.trades) * 100)}%
+          <span className="text-[11px] text-muted" title={`${f.trades} trade${f.trades === 1 ? '' : 's'}, ${f.wins} won`}>
+            {Math.round((f.wins / f.trades) * 100)}%
           </span>
         </>
       )}
@@ -303,19 +304,23 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
   );
 }
 
-/** Orange dot for high-impact releases (amber if only medium); hovering lists them. */
+/** Red lightning bolt when any release that day is high impact (amber dot if only medium); hovering lists them. */
 function MarketDot({ events }: { events: MarketEvent[] }) {
   const high = events.some((e) => e.impact === 'high');
   const label = events.map((e) => `${formatLocal(e.at, 'HH:mm')} ${e.title} (${e.impact})`).join('\n');
   return (
     <span className="group relative" onClick={(e) => e.stopPropagation()}>
-      <span className={cn('block h-[7px] w-[7px] rounded-full', high ? 'bg-ember' : 'bg-medium')} aria-label={label} title={label} />
+      <span className="flex items-center" aria-label={label} title={label}>
+        <ImpactMarker impact={high ? 'high' : 'medium'} size={12} />
+      </span>
       <span className="pointer-events-none absolute top-3 left-0 z-20 hidden w-60 rounded-lg border border-border bg-card p-2 text-xs shadow-menu group-hover:block">
         {events.map((e) => (
           <span key={e.id} className="flex gap-2 py-0.5">
             <span className="font-mono text-muted">{formatLocal(e.at, 'HH:mm')}</span>
+            <span className="flex w-3 items-center justify-center">
+              <ImpactMarker impact={e.impact} size={11} />
+            </span>
             <span className="flex-1">{e.title}</span>
-            <span className={e.impact === 'high' ? 'text-ember' : 'text-medium'}>{e.impact}</span>
           </span>
         ))}
       </span>

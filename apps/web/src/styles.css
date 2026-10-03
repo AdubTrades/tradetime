@@ -45,6 +45,9 @@
   --warning-text: #b4470a;
   --warning-text-dark: #fb923c;
   --medium-impact: #d97706;
+  /* High-impact releases: red lightning bolt (FinancialJuice-style) */
+  --impact-high: #dc2626;
+  --impact-high-on-dark: #f04438;
 
   /* P&L */
   --positive: #157f3c;
@@ -125,6 +128,8 @@
   --accent: #f76b1c;
   --warning-text: #fb923c;
   --medium-impact: #f59e0b;
+  --impact-high: #f04438;
+  --impact-high-on-dark: #f04438;
   --positive: #4ade80;
   --negative: #f87171;
   --positive-tint: #16251b;
@@ -182,6 +187,8 @@
   --color-warning: var(--warning-text);
   --color-warning-dark: var(--warning-text-dark);
   --color-medium: var(--medium-impact);
+  --color-impact: var(--impact-high);
+  --color-impact-dark: var(--impact-high-on-dark);
   --color-profit: var(--positive);
   --color-profit-dark: var(--positive-on-dark);
   --color-loss: var(--negative);

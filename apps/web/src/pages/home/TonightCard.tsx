@@ -8,6 +8,7 @@ import { SegmentedTabs } from '../../components/ui';
 import type { OccurrenceView, SessionType, TradeRow } from '../../lib/api';
 import { useEventTypes, useUpcoming } from '../../lib/calendar';
 import { useSessions } from '../../lib/sessions';
+import { ImpactMarker } from '../../components/ImpactMarker';
 
 interface AgendaItem {
   key: string;
@@ -16,6 +17,7 @@ interface AgendaItem {
   title: string;
   sub: string;
   bar: string;
+  impact?: string;
   muted?: boolean;
 }
 
@@ -106,7 +108,8 @@ function Agenda({ now, today, types }: { now: Date; today: string; types: Sessio
         time: formatLocal(m.at, 'HH:mm'),
         title: m.title,
         sub: `${m.impact === 'high' ? 'High' : 'Medium'} impact · ${countdown(at - nowMs)}`,
-        bar: m.impact === 'high' ? 'var(--accent-on-dark)' : 'var(--medium-impact)',
+        bar: m.impact === 'high' ? 'var(--impact-high-on-dark)' : 'var(--medium-impact)',
+        impact: m.impact,
       });
     }
     const timed = (data?.occurrences ?? []).filter((o) => !o.isTask && o.startAt);
@@ -156,7 +159,10 @@ function Agenda({ now, today, types }: { now: Date; today: string; types: Sessio
             <span className={`pt-0.5 font-mono text-[13px] ${it.muted ? 'text-dark-faint' : 'text-dark-muted'}`}>{it.time}</span>
             <span className="rounded-[2px]" style={{ background: it.bar }} aria-hidden />
             <span className="flex flex-col gap-0.5 pt-px pb-1">
-              <span className={`text-sm font-medium ${it.muted ? 'text-dark-muted' : 'text-dark-text'}`}>{it.title}</span>
+              <span className={`flex items-center gap-1.5 text-sm font-medium ${it.muted ? 'text-dark-muted' : 'text-dark-text'}`}>
+                {it.impact === 'high' && <ImpactMarker impact="high" onDark size={13} />}
+                {it.title}
+              </span>
               <span className="text-xs text-dark-faint">{it.sub}</span>
             </span>
           </div>
