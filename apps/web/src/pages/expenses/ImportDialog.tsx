@@ -180,7 +180,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
               <section>
                 <h3 className="mb-2 font-medium">
                   Preview · <span>{p.counts.ok} ready</span>
-                  {p.counts.duplicate > 0 && <span className="text-warn"> · {p.counts.duplicate} already imported</span>}
+                  {p.counts.duplicate > 0 && <span className="text-warning"> · {p.counts.duplicate} already imported</span>}
                   {p.counts.error > 0 && <span className="text-loss"> · {p.counts.error} with errors</span>}
                 </h3>
                 {p.counts.duplicate > 0 && (
@@ -191,7 +191,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
                 )}
                 <div className="max-h-80 overflow-auto rounded-md border border-border">
                   <table className="w-full text-left text-xs">
-                    <thead className="sticky top-0 bg-surface-2">
+                    <thead className="sticky top-0 bg-inset">
                       <tr>
                         {['Row', 'Date', 'Name', 'Category', 'ex GST', 'GST', 'inc GST', ''].map((h) => (
                           <th key={h} className="px-2 py-1.5 font-medium">
@@ -219,9 +219,9 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
                             <td className="tabular px-2 py-1.5 text-right">{formatMoney(r.value.gstCents)}</td>
                             <td className="tabular px-2 py-1.5 text-right">{formatMoney(r.value.incGstCents)}</td>
                             <td className="px-2 py-1.5">
-                              {r.status === 'duplicate' && <span className="text-warn">Duplicate</span>}
+                              {r.status === 'duplicate' && <span className="text-warning">Duplicate</span>}
                               {r.warnings.length > 0 && (
-                                <span className="inline-flex items-center gap-1 text-warn" title={r.warnings.join('\n')}>
+                                <span className="inline-flex items-center gap-1 text-warning" title={r.warnings.join('\n')}>
                                   <AlertTriangle size={12} aria-hidden /> {r.warnings.length === 1 ? r.warnings[0] : `${r.warnings.length} warnings`}
                                 </span>
                               )}

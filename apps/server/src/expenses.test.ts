@@ -125,3 +125,12 @@ describe('financial-year summary', () => {
     expect(svc.financialYearSummary(2026).expenses.total).toMatchObject({ deductibleCents: 2250 + 10000, gstCreditCents: 225 });
   });
 });
+
+describe('expenseFinancialYears', () => {
+  it('lists years with expenses or payouts, newest first, always including the current one', () => {
+    expect(svc.expenseFinancialYears(2026)).toEqual([2026]);
+    svc.createExpense({ name: 'Old course', date: '2025-06-30', exGstCents: 10000, gstCents: 0 }); // FY 2024–25
+    svc.createPayout({ receivedDate: '2025-07-01', audReceivedCents: 150000 }); // FY 2025–26
+    expect(svc.expenseFinancialYears(2026)).toEqual([2026, 2025, 2024]);
+  });
+});

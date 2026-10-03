@@ -180,7 +180,7 @@ export function ExpenseDialog({ open, expense, onClose, onHistory, onMakeRecurri
           <Input value={form.description} onChange={(e) => set('description', e.target.value)} />
         </Field>
 
-        <div className="grid gap-4 rounded-md bg-surface-2 p-4 sm:grid-cols-4">
+        <div className="grid gap-4 rounded-md bg-inset p-4 sm:grid-cols-4">
           <Field label="Amount ex GST">
             <MoneyInput value={form.exGstCents} onChange={(v) => set('exGstCents', v)} />
           </Field>

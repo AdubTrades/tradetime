@@ -13,12 +13,16 @@
 - Restore: `apps/server/src/restore.ts` validates and stages a backup into `restore-pending/`, writes a `pre-restore` safety zip, then exits. launchd restarts the app, and `restoreApply.ts` swaps the data in before the database opens. In dev (tsx watch) you restart by hand.
 - FOMC dates are a curated list in `packages/domain/src/calendar.ts` (`FOMC_MEETINGS`). Extend it each year from federalreserve.gov. Don't use FRED rid 101: it's updated daily.
 - The product name is **TradeTime** (wordmark: "Trade" semibold + "Time" regular, `Wordmark` in `AppShell.tsx`). The repo, data folder (`~/TradingCompanion`) and launchd label keep their old names on purpose. Backups are `tradetime-backup-*`, and the old `trading-companion-*` names are still accepted.
-- Design system (Ventriloc-style), defined in `apps/web/src/styles.css`:
-  - Graphite/Ash/Fog/Ivory surfaces; Ember (`text-ember`, `bg-ember`) only for links, focus, today and highlights; Brass for warnings and secondary chart lines.
-  - Muted `profit`/`loss` only for P&L (the user chose this). Errors and destructive actions also use `loss`.
-  - Utilities: `panel` (Ash, 6px top-left radius) for cards/sections, `tile` (20px) for stat tiles and data widgets, `font-display` (Inter Tight 400, −0.02em) for headings, figures and button labels, `link-ember` for key links.
-  - Buttons and fields are square (`rounded-none`); nav, tags and toggles are pills. No shadows.
-  - Use `swatch()` for user-chosen colours so graphite stays visible in dark mode.
+- Design system ("Calm", from the approved `design-handoff/`, which replaced the Ventriloc look). Tokens live in `apps/web/src/styles.css` under the handoff's variable names, with a warm dark set on `:root.dark`:
+  - Warm off-white page (`bg-page`), white cards (`card`/`panel`: border, 12px radius, `shadow-card`), muted insets (`bg-inset`, `tile`). Geist and Geist Mono (bundled); mono for clocks, times and time ranges.
+  - One orange (`ember`) used sparingly: focus ring (global `:focus-visible`), today, high-impact events, the Start button, overdue/must-have hints. Don't add `focus:outline` classes; the global rule handles focus.
+  - `profit`/`loss` only for P&L (the user chose muted greens/reds). Errors and destructive actions also use `loss`. `warning` for warnings.
+  - Dark panels (`bg-dark`, `dark-*` text colours) for the dashboard Tonight card, the time-log timer and the Calendar "Next 7 days".
+  - Radii: buttons/fields 10px (`rounded-md`), cards 12px (`rounded-lg`), dark panels 16px (`rounded-xl`); pills fully rounded. Primary buttons are near-black, secondary are white outline.
+  - Shared pieces in `components/ui.tsx` (`Button`/`buttonClass`, `ViewLink`, `Card`/`CardHeader`, `PageHeader`, `SummaryStrip`, `SegmentedTabs`, `StatusPill`, `CategoryPill`), plus `Select` (custom listbox with the native `<select>` API; `highlightActive` for filters), `MenuButton` (`icon` for a ⋯ trigger) and `SessionTimer` (`layout="row"` on the time log).
+  - Old token names (`surface`, `surface-2`, `ivory`, `brass`, `warn`, `accent`) are aliased so un-redesigned pages still render; prefer the new names in new code.
+  - Use `swatch()` for user-chosen colours so they stay visible in dark mode.
+- Financial-year pickers list only years with data: `GET /sessions/years` (time log) and `GET /expenses/years` (expenses and payouts), always including the current FY.
 - Demo mode runs a separate copy of the server (`TC_DEMO=1`, data in `<dataDir>/demo`, port = real port + 3, so 4320 for the installed app). It's started and stopped by the real app via `apps/server/src/demo/manager.ts` and the `/demo-switch` page, and it fills itself from `demo/seed.ts` on first start.
   - The demo copy never runs jobs or notifications, and blocks backups, restore, folder pickers, FRED and demo start/stop (`app.ts`).
   - When adding a feature, extend `seed.ts` so the demo shows it, using fictional names only.

@@ -1,5 +1,5 @@
 import { parse } from 'csv-parse/sync';
-import { and, asc, desc, eq, gte, isNull, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { schema } from '@tc/db';
 import {
   claimable,
@@ -51,6 +51,20 @@ function validateRefs(input: Partial<ExpenseInput>) {
 }
 
 const clean = (s: string | null | undefined) => (s?.trim() ? s.trim() : null);
+
+/** Financial years (start year, newest first) with expenses or payouts, always including the current one. */
+export function expenseFinancialYears(currentStartYear: number): number[] {
+  const months = [
+    ...db.selectDistinct({ month: sql<string>`substr(${expense.date}, 1, 7)` }).from(expense).where(isNull(expense.deletedAt)).all(),
+    ...db.selectDistinct({ month: sql<string>`substr(${payout.receivedDate}, 1, 7)` }).from(payout).where(isNull(payout.deletedAt)).all(),
+  ];
+  const years = new Set([currentStartYear]);
+  for (const { month } of months) {
+    const [y, m] = month.split('-').map(Number) as [number, number];
+    years.add(m >= 7 ? y : y - 1);
+  }
+  return [...years].sort((a, b) => b - a);
+}
 
 export function listExpenses(range: { from: string; to: string }) {
   return db

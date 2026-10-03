@@ -1,129 +1,199 @@
-import { createColumnHelper, flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type SortingState } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, Paperclip, Repeat, Search } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
 import { claimable, formatMoney } from '@tc/domain';
-import { Input, Select } from '../../components/ui';
-import type { Expense } from '../../lib/api';
-import { useExpenseLookups, useExpenses } from '../../lib/expenses';
+import { CategoryPill, cn, Select, SummaryStrip } from '../../components/ui';
+import type { Expense, Frequency } from '../../lib/api';
+import { useExpenseLookups, useExpenses, useRecurring } from '../../lib/expenses';
 import { useSettings } from '../../lib/settings';
 
-const col = createColumnHelper<Expense>();
+const FREQUENCY_LABEL: Record<Frequency, string> = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' };
+const COLUMNS = 'grid-cols-[64px_minmax(0,1fr)_190px_96px_88px_64px_88px_64px_96px]';
 
 export function ExpensesTab({ fy, onEdit }: { fy: number; onEdit: (e: Expense) => void }) {
   const { data: expenses = [], isLoading } = useExpenses(fy);
+  const { data: recurring = [] } = useRecurring();
   const { data: settings } = useSettings();
   const lookups = useExpenseLookups();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'date', desc: true }]);
+  const [newestFirst, setNewestFirst] = useState(true);
+  const gstRegistered = !!settings?.gstRegistered;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return expenses.filter(
-      (e) =>
-        (!category || (category === 'none' ? !e.categoryId : e.categoryId === category)) &&
-        (!q || [e.name, e.vendor, e.description].some((v) => v?.toLowerCase().includes(q))),
-    );
-  }, [expenses, search, category]);
+    return expenses
+      .filter(
+        (e) =>
+          (!category || (category === 'none' ? !e.categoryId : e.categoryId === category)) &&
+          (!q || [e.name, e.vendor, e.description].some((v) => v?.toLowerCase().includes(q))),
+      )
+      .sort((a, b) => (newestFirst ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)) || a.name.localeCompare(b.name));
+  }, [expenses, search, category, newestFirst]);
 
-  const columns = useMemo(
-    () => [
-      col.accessor('date', { header: 'Date', cell: (c) => DateTime.fromISO(c.getValue()).toFormat('d LLL yyyy') }),
-      col.accessor('name', {
-        header: 'Name',
-        cell: (c) => (
-          <span className="flex items-center gap-1.5">
-            {c.getValue()}
-            {c.row.original.recurringId && <Repeat size={12} className="text-muted" aria-label="Recurring" />}
-          </span>
-        ),
-      }),
-      col.accessor('vendor', { header: 'Vendor' }),
-      col.accessor((e) => lookups.name(e.categoryId), { id: 'category', header: 'Category' }),
-      col.accessor((e) => lookups.name(e.paymentMethodId), { id: 'payment', header: 'Payment' }),
-      col.accessor('exGstCents', { header: 'ex GST', cell: (c) => formatMoney(c.getValue()), meta: { numeric: true } }),
-      col.accessor('gstCents', { header: 'GST', cell: (c) => formatMoney(c.getValue()), meta: { numeric: true } }),
-      col.accessor('incGstCents', { header: 'inc GST', cell: (c) => <strong>{formatMoney(c.getValue())}</strong>, meta: { numeric: true } }),
-      col.accessor('businessUsePct', { header: 'Bus. %', cell: (c) => `${c.getValue()}%`, meta: { numeric: true } }),
-      col.accessor((e) => claimable(e, !!settings?.gstRegistered).deductibleCents, {
-        id: 'claimable',
-        header: 'Claimable',
-        cell: (c) => formatMoney(c.getValue()),
-        meta: { numeric: true },
-      }),
-    ],
-    [lookups, settings?.gstRegistered],
+  const months = useMemo(() => {
+    const map = new Map<string, Expense[]>();
+    for (const e of filtered) map.set(e.date.slice(0, 7), [...(map.get(e.date.slice(0, 7)) ?? []), e]);
+    return [...map.entries()];
+  }, [filtered]);
+
+  const totals = filtered.reduce(
+    (t, e) => ({ inc: t.inc + e.incGstCents, gst: t.gst + e.gstCents, claim: t.claim + claimable(e, gstRegistered).deductibleCents }),
+    { inc: 0, gst: 0, claim: 0 },
   );
-
-  const table = useReactTable({ data: filtered, columns, state: { sorting }, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
-  const total = filtered.reduce((s, e) => s + e.incGstCents, 0);
+  const frequencyOf = (id: string | null) => {
+    const r = id ? recurring.find((x) => x.id === id) : undefined;
+    return r ? (r.interval > 1 ? `Every ${r.interval}` : FREQUENCY_LABEL[r.frequency]) : 'Recurring';
+  };
+  const hasFilter = !!search.trim() || !!category;
+  const clear = () => {
+    setSearch('');
+    setCategory('');
+  };
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-64">
-          <Search size={14} className="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted" aria-hidden />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, vendor, description" className="pl-8" />
-        </div>
-        <Select aria-label="Filter by category" className="w-56" value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="">All categories</option>
-          {lookups.categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-          <option value="none">Uncategorised</option>
-        </Select>
-        <span className="tabular ml-auto text-sm text-muted">
-          {filtered.length} expenses · {formatMoney(total)} inc GST
-        </span>
-      </div>
+    <div className="flex flex-col gap-5">
+      <SummaryStrip
+        items={[
+          { label: 'Total inc GST', value: formatMoney(totals.inc) },
+          { label: 'Claimable', value: <span className="text-profit">{formatMoney(totals.claim)}</span> },
+          { label: 'GST paid', value: formatMoney(totals.gst) },
+          { label: 'Expenses', value: filtered.length },
+        ]}
+      />
 
-      <div className="overflow-x-auto panel">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border bg-surface-2 text-left text-xs text-muted">
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id}>
-                {hg.headers.map((h) => {
-                  const numeric = (h.column.columnDef.meta as { numeric?: boolean } | undefined)?.numeric;
-                  const sorted = h.column.getIsSorted();
-                  return (
-                    <th key={h.id} className={`px-3 py-2 font-medium ${numeric ? 'text-right' : ''}`}>
-                      <button type="button" className="inline-flex items-center gap-1 hover:text-text" onClick={h.column.getToggleSortingHandler()}>
-                        {flexRender(h.column.columnDef.header, h.getContext())}
-                        {sorted === 'asc' ? <ArrowUp size={12} /> : sorted === 'desc' ? <ArrowDown size={12} /> : null}
-                      </button>
-                    </th>
-                  );
-                })}
-              </tr>
+      <div className="flex flex-col gap-4">
+        <h2 className="sr-only">Expense list</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-[200px] flex-[0_1_300px]">
+            <span className="sr-only">Search expenses</span>
+            <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint" aria-hidden />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name or vendor"
+              className="h-10 w-full rounded-md border border-border bg-card pr-3 pl-[34px] text-sm shadow-card placeholder:text-faint"
+            />
+          </label>
+          <Select aria-label="Category" highlightActive className="w-auto min-w-[180px]" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">All categories</option>
+            {lookups.categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                <CategoryPill name={c.name} />
+              </option>
             ))}
-          </thead>
-          <tbody className="divide-y divide-border">
-            {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="cursor-pointer hover:bg-surface-2" onClick={() => onEdit(row.original)}>
-                {row.getVisibleCells().map((cell) => {
-                  const numeric = (cell.column.columnDef.meta as { numeric?: boolean } | undefined)?.numeric;
-                  return (
-                    <td key={cell.id} className={`px-3 py-2 ${numeric ? 'tabular text-right' : ''}`}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!isLoading && filtered.length === 0 && (
-          <p className="px-4 py-10 text-center text-sm text-muted">
-            {expenses.length ? 'No expenses match the filters.' : 'No expenses in this financial year yet. Add one or import a CSV.'}
-          </p>
+            <option value="none">Uncategorised</option>
+          </Select>
+          {hasFilter && (
+            <button type="button" onClick={clear} className="h-10 rounded-sm px-2 text-[13px] font-medium text-secondary underline underline-offset-[3px] hover:text-text">
+              Clear
+            </button>
+          )}
+        </div>
+
+        {!isLoading && filtered.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border-strong/60 bg-card px-5 py-8 text-center text-sm text-muted">
+            {expenses.length ? (
+              <>
+                No expenses match.{' '}
+                <button type="button" onClick={clear} className="rounded-sm font-medium text-text underline">
+                  Clear filters
+                </button>
+              </>
+            ) : (
+              'No expenses in this financial year yet. Add one or import a CSV.'
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex min-w-[960px] flex-col gap-4">
+              <div className={cn('grid gap-3 px-5 text-xs text-muted', COLUMNS)}>
+                <button
+                  type="button"
+                  onClick={() => setNewestFirst((v) => !v)}
+                  className="flex items-center gap-0.5 rounded-sm text-left hover:text-text"
+                  aria-label={newestFirst ? 'Date, newest first. Show oldest first' : 'Date, oldest first. Show newest first'}
+                >
+                  Date {newestFirst ? <ArrowDown size={11} aria-hidden /> : <ArrowUp size={11} aria-hidden />}
+                </button>
+                <span aria-hidden>Expense</span>
+                <span aria-hidden>Category</span>
+                <span aria-hidden>Paid with</span>
+                <span className="text-right" aria-hidden>
+                  ex GST
+                </span>
+                <span className="text-right" aria-hidden>
+                  GST
+                </span>
+                <span className="text-right" aria-hidden>
+                  inc GST
+                </span>
+                <span className="text-right" aria-hidden>
+                  Business
+                </span>
+                <span className="text-right" aria-hidden>
+                  Claimable
+                </span>
+              </div>
+              {months.map(([month, list]) => {
+                const name = DateTime.fromISO(`${month}-01`).toFormat('LLLL yyyy');
+                return (
+                  <section key={month} aria-label={name} className="card overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-3.5">
+                      <div className="flex items-baseline gap-2.5">
+                        <h3 className="text-[15px] font-semibold tracking-[-0.01em]">{name}</h3>
+                        <span className="text-[13px] text-muted">
+                          {list.length} expense{list.length === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                      <span className="text-[15px] font-medium">{formatMoney(list.reduce((s, e) => s + e.incGstCents, 0))}</span>
+                    </div>
+                    <div className="px-2 py-1">
+                      {list.map((e) => {
+                        const cat = lookups.name(e.categoryId);
+                        return (
+                          <button
+                            key={e.id}
+                            type="button"
+                            onClick={() => onEdit(e)}
+                            aria-label={`Edit ${e.name}, ${DateTime.fromISO(e.date).toFormat('d LLLL')}, ${formatMoney(e.incGstCents)}`}
+                            className={cn('grid min-h-14 w-full items-center gap-3 rounded-sm px-3 py-1.5 text-left text-sm hover:bg-hover', COLUMNS)}
+                          >
+                            <span className="whitespace-nowrap text-secondary">{DateTime.fromISO(e.date).toFormat('d LLL')}</span>
+                            <span className="min-w-0">
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <span className="truncate">{e.name}</span>
+                                {e.recurringId && (
+                                  <span title="Recurring" className="inline-flex flex-none items-center gap-[3px] rounded-full border border-border px-[7px] text-[11px] font-medium text-muted">
+                                    <Repeat size={10} strokeWidth={2.2} aria-hidden />
+                                    {frequencyOf(e.recurringId)}
+                                  </span>
+                                )}
+                              </span>
+                              {e.vendor && <span className="block truncate text-xs text-muted">{e.vendor}</span>}
+                            </span>
+                            <span className="min-w-0">{cat ? <CategoryPill name={cat} className="px-2.5 py-[3px]" /> : <span className="text-xs text-faint">Uncategorised</span>}</span>
+                            <span className="truncate text-[13px] whitespace-nowrap text-secondary">{lookups.name(e.paymentMethodId) || '–'}</span>
+                            <span className="text-right text-secondary">{formatMoney(e.exGstCents)}</span>
+                            <span className="text-right text-secondary">{e.gstCents ? formatMoney(e.gstCents) : '–'}</span>
+                            <span className="text-right font-medium">{formatMoney(e.incGstCents)}</span>
+                            <span className="text-right text-secondary">{e.businessUsePct}%</span>
+                            <span className="text-right font-medium">{formatMoney(claimable(e, gstRegistered).deductibleCents)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </div>
         )}
+        <p className="flex items-center gap-1 text-xs text-muted">
+          <Paperclip size={12} aria-hidden /> Click an expense to edit it or attach a receipt.
+        </p>
       </div>
-      <p className="flex items-center gap-1 text-xs text-muted">
-        <Paperclip size={12} aria-hidden /> Click an expense to edit it or attach a receipt.
-      </p>
     </div>
   );
 }

@@ -1,13 +1,14 @@
 import { Hono } from 'hono';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import { claimable, expenseImportFields, financialYear, localDate } from '@tc/domain';
+import { claimable, expenseImportFields, financialYear, financialYearOf, localDate } from '@tc/domain';
 import { listAccounts } from '../accounts';
 import { toCsv } from '../csv';
 import { body, cents, fyParam, isoDate } from '../http';
 import { listItems } from '../lists';
 import { getSettings } from '../settings';
 import {
+  expenseFinancialYears,
   commitImport,
   createExpense,
   createPayout,
@@ -56,6 +57,7 @@ const rangeQuery = (q: { from?: string; to?: string; fy?: string }) => {
 
 export const expenseRoutes = new Hono()
   .get('/', (c) => c.json(listExpenses(rangeQuery(c.req.query()))))
+  .get('/years', (c) => c.json(expenseFinancialYears(financialYearOf(today()).startYear)))
   .post('/', async (c) => c.json(createExpense(await body(c.req, z.object({ id: ulid.optional(), ...expenseFields }))), 201))
   .patch('/:id', async (c) => {
     const { reason, ...patch } = await body(c.req, z.object({ ...expenseFields, reason: z.string().max(500).nullable() }).partial().strict());

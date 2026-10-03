@@ -21,43 +21,43 @@ export function PayoutsTab({ fy }: { fy: number }) {
   const totalUsd = payouts.reduce((s, p) => s + (p.grossUsdCents ?? 0), 0);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">Money received from prop firms, recorded in AUD as it landed in your bank.</p>
         <Button onClick={() => setEditing('new')}>
           <Plus size={16} aria-hidden /> Add payout
         </Button>
       </div>
-      <div className="overflow-x-auto panel">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border bg-surface-2 text-left text-xs text-muted">
+      <div className="card overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
+          <thead className="border-b border-border-subtle text-left text-xs text-muted">
             <tr>
-              <th className="px-3 py-2 font-medium">Received</th>
-              <th className="px-3 py-2 font-medium">Account</th>
-              <th className="px-3 py-2 text-right font-medium">Gross (USD)</th>
-              <th className="px-3 py-2 text-right font-medium">Received (AUD)</th>
-              <th className="px-3 py-2 font-medium">Notes</th>
+              <th className="px-5 py-3 font-medium">Received</th>
+              <th className="px-5 py-3 font-medium">Account</th>
+              <th className="px-5 py-3 text-right font-medium">Gross (USD)</th>
+              <th className="px-5 py-3 text-right font-medium">Received (AUD)</th>
+              <th className="px-5 py-3 font-medium">Notes</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-border-subtle">
             {payouts.map((p) => (
-              <tr key={p.id} className="cursor-pointer hover:bg-surface-2" onClick={() => setEditing(p)}>
-                <td className="px-3 py-2">{DateTime.fromISO(p.receivedDate).toFormat('d LLL yyyy')}</td>
-                <td className="px-3 py-2">{accountName(p.accountId)}</td>
-                <td className="tabular px-3 py-2 text-right">{p.grossUsdCents == null ? '—' : formatMoney(p.grossUsdCents, 'USD')}</td>
-                <td className="tabular px-3 py-2 text-right font-medium">{formatMoney(p.audReceivedCents)}</td>
-                <td className="px-3 py-2 text-muted">{p.notes}</td>
+              <tr key={p.id} className="cursor-pointer hover:bg-hover" onClick={() => setEditing(p)}>
+                <td className="px-5 py-3">{DateTime.fromISO(p.receivedDate).toFormat('d LLL yyyy')}</td>
+                <td className="px-5 py-3">{accountName(p.accountId)}</td>
+                <td className="tabular px-5 py-3 text-right">{p.grossUsdCents == null ? '—' : formatMoney(p.grossUsdCents, 'USD')}</td>
+                <td className="tabular px-5 py-3 text-right font-medium">{formatMoney(p.audReceivedCents)}</td>
+                <td className="px-5 py-3 text-muted">{p.notes}</td>
               </tr>
             ))}
           </tbody>
           {payouts.length > 0 && (
             <tfoot className="border-t border-border font-medium">
               <tr>
-                <td className="px-3 py-2" colSpan={2}>
+                <td className="px-5 py-3" colSpan={2}>
                   Total ({payouts.length})
                 </td>
-                <td className="tabular px-3 py-2 text-right">{formatMoney(totalUsd, 'USD')}</td>
-                <td className="tabular px-3 py-2 text-right">{formatMoney(totalAud)}</td>
+                <td className="tabular px-5 py-3 text-right">{formatMoney(totalUsd, 'USD')}</td>
+                <td className="tabular px-5 py-3 text-right">{formatMoney(totalAud)}</td>
                 <td />
               </tr>
             </tfoot>

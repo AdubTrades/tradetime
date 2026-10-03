@@ -1,9 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
 import { FileUp, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { financialYear, financialYearOf } from '@tc/domain';
 import { HistoryDialog } from '../../components/HistoryDialog';
-import { Button, cn, PageHeader, Select } from '../../components/ui';
-import type { Expense } from '../../lib/api';
+import { Button, PageHeader, SegmentedTabs, Select } from '../../components/ui';
+import { api, type Expense } from '../../lib/api';
 import { useExpenseLookups } from '../../lib/expenses';
 import { todayLocal } from '../../lib/localTime';
 import { ExpenseDialog } from './ExpenseDialog';
@@ -45,15 +46,16 @@ export function ExpensesPage() {
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [recurringDraft, setRecurringDraft] = useState<RecurringDraft | null>(null);
   const lookups = useExpenseLookups();
-  const years = Array.from({ length: 5 }, (_, i) => currentFy - i);
+  const { data: years = [currentFy] } = useQuery({ queryKey: ['expenses', 'years'], queryFn: () => api.get<number[]>('/expenses/years') });
 
   return (
-    <div className="max-w-6xl">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Expenses"
+        description="Business costs for tax time, in AUD."
         actions={
           <>
-            <Select aria-label="Financial year" className="w-36" value={fy} onChange={(e) => setFy(Number(e.target.value))}>
+            <Select aria-label="Financial year" className="w-[140px]" value={fy} onChange={(e) => setFy(Number(e.target.value))}>
               {years.map((y) => (
                 <option key={y} value={y}>
                   FY {financialYear(y).label}
@@ -61,28 +63,15 @@ export function ExpensesPage() {
               ))}
             </Select>
             <Button onClick={() => setImporting(true)}>
-              <FileUp size={16} aria-hidden /> Import CSV
+              <FileUp size={15} aria-hidden /> Import CSV
             </Button>
             <Button variant="primary" onClick={() => setEditing('new')}>
-              <Plus size={16} aria-hidden /> Add expense
+              <Plus size={14} aria-hidden /> Add expense
             </Button>
           </>
         }
       />
-      <nav className="mb-4 flex gap-1 border-b border-border" role="tablist">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={cn('font-display -mb-px border-b-2 px-3 py-2 text-[15px]', tab === t.id ? 'border-ember text-text' : 'border-transparent text-muted hover:text-text')}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <SegmentedTabs label="Expenses view" className="-mt-6 flex-wrap self-start" value={tab} onChange={setTab} options={tabs.map((t) => ({ value: t.id, label: t.label }))} />
 
       {tab === 'expenses' && <ExpensesTab fy={fy} onEdit={setEditing} />}
       {tab === 'recurring' && <RecurringTab />}
