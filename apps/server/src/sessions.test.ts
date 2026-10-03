@@ -114,3 +114,12 @@ describe('financial year report', () => {
     expect(sessions.map((s) => s.tradingDay)).toEqual(['2026-07-01', '2026-07-02']);
   });
 });
+
+describe('sessionFinancialYears', () => {
+  it('lists years with sessions, newest first, always including the current one', () => {
+    expect(svc.sessionFinancialYears(2026)).toEqual([2026]);
+    svc.createManualSession({ typeId: 'st_trading', start: '2025-03-05T12:00:00Z', end: '2025-03-05T13:00:00Z' }); // FY 2024–25
+    svc.createManualSession({ typeId: 'st_trading', start: '2025-07-02T12:00:00Z', end: '2025-07-02T13:00:00Z' }); // FY 2025–26
+    expect(svc.sessionFinancialYears(2026)).toEqual([2026, 2025, 2024]);
+  });
+});

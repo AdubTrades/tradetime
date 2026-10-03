@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { MessageCircleQuestion, Play, Square } from 'lucide-react';
 import { useState } from 'react';
-import { durationMinutes, formatDuration } from '@tc/domain';
+import { durationMinutes, formatDuration, formatLocal } from '@tc/domain';
 import { api, type Session, type SessionType } from '../lib/api';
 import { latestInstantAt } from '../lib/localTime';
 import { useNow, useRunningSession, useSessionMutation } from '../lib/sessions';
@@ -34,11 +34,14 @@ export function SessionTimer({
   longSessionHours,
   clock = 48,
   timeLogLink = false,
+  layout = 'stack',
 }: {
   types: SessionType[];
   longSessionHours: number;
   clock?: 48 | 56;
   timeLogLink?: boolean;
+  /** `row` puts the controls to the right of the clock (time log). */
+  layout?: 'stack' | 'row';
 }) {
   const now = useNow();
   const { data: running } = useRunningSession();
@@ -58,16 +61,19 @@ export function SessionTimer({
   const longRunning = running && minutes >= longSessionHours * 60;
   const stopAtInstant = running && stopAt ? latestInstantAt(stopAt, running.start, now) : null;
 
+  const row = layout === 'row';
   return (
-    <div className="flex flex-col gap-[18px]">
-      <div className="flex items-center gap-2 text-[13px] text-dark-muted">
-        <span className={cn('inline-block h-[7px] w-[7px] rounded-full', running ? 'bg-profit-dark' : 'bg-[#5c5b57]')} aria-hidden />
-        {running ? `Running · ${runningType?.name ?? 'Session'}` : 'No session running'}
+    <div className={row ? 'flex flex-wrap items-center justify-between gap-x-8 gap-y-5' : 'flex flex-col gap-[18px]'}>
+      <div className={cn('flex flex-col', row ? 'gap-2.5' : 'gap-[18px]')}>
+        <div className="flex items-center gap-2 text-[13px] text-dark-muted">
+          <span className={cn('inline-block h-[7px] w-[7px] rounded-full', running ? 'bg-profit-dark' : 'bg-[#5c5b57]')} aria-hidden />
+          {running ? `Running · ${runningType?.name ?? 'Session'} · since ${formatLocal(running.start, 'HH:mm')}` : 'No session running'}
+        </div>
+        <div className={cn('font-mono leading-none tracking-[-0.04em] text-dark-text', clock === 56 ? 'text-[56px]' : 'text-[48px]')} aria-live="off">
+          {running ? elapsedClock(running.start, now) : '00:00:00'}
+        </div>
       </div>
-      <div className={cn('font-mono leading-none tracking-[-0.04em] text-dark-text', clock === 56 ? 'text-[56px]' : 'text-[48px]')} aria-live="off">
-        {running ? elapsedClock(running.start, now) : '00:00:00'}
-      </div>
-      <div className="flex gap-2">
+      <div className={cn('flex gap-2', row && 'min-w-[260px] flex-[0_1_360px]')}>
         {running ? (
           <>
             {runningType?.isTrading && (
@@ -126,7 +132,7 @@ export function SessionTimer({
       </div>
 
       {longRunning && (
-        <div className="space-y-2 rounded-md border border-dark-border p-3 text-[13px] text-dark-muted">
+        <div className="basis-full space-y-2 rounded-md border border-dark-border p-3 text-[13px] text-dark-muted">
           <p>
             <span className="font-medium text-dark-text">Still going?</span> Running for {formatDuration(minutes)}. If you finished earlier, stop it at the right
             time.
@@ -151,7 +157,7 @@ export function SessionTimer({
           {stopAt && !stopAtInstant && <p className="text-warning-dark">That time is before the session started.</p>}
         </div>
       )}
-      {(start.error || stop.error) && <p className="text-[13px] text-warning-dark">{(start.error ?? stop.error)?.message}</p>}
+      {(start.error || stop.error) && <p className="basis-full text-[13px] text-warning-dark">{(start.error ?? stop.error)?.message}</p>}
       {timeLogLink && (
         <Link to="/time-log" className="self-start rounded-sm py-1 text-[13px] text-[#d6d5d1] hover:text-dark-text">
           Time log →

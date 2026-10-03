@@ -1,9 +1,18 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, MoreHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { buttonClass, cn } from './ui';
 
-/** Outline button that opens a small action menu (same look as the Select menu). */
-export function MenuButton({ label, items, className }: { label: ReactNode; items: { label: ReactNode; onSelect: () => void }[]; className?: string }) {
+export interface MenuItem {
+  label: ReactNode;
+  onSelect: () => void;
+  danger?: boolean;
+}
+
+/**
+ * Outline button that opens a small action menu (same look as the Select menu).
+ * With `icon`, the trigger is a quiet 32px ⋯ button and `label` becomes its accessible name.
+ */
+export function MenuButton({ label, items, className, icon = false }: { label: ReactNode; items: MenuItem[]; className?: string; icon?: boolean }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
@@ -29,6 +38,7 @@ export function MenuButton({ label, items, className }: { label: ReactNode; item
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={icon && typeof label === 'string' ? label : undefined}
         onClick={() => {
           setActive(0);
           setOpen((o) => !o);
@@ -50,10 +60,16 @@ export function MenuButton({ label, items, className }: { label: ReactNode; item
             e.preventDefault();
           }
         }}
-        className={cn(buttonClass('secondary'), 'h-11')}
+        className={icon ? 'flex h-8 w-8 items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-text' : cn(buttonClass('secondary'), 'h-11')}
       >
-        {label}
-        <ChevronDown size={16} className="opacity-55" aria-hidden />
+        {icon ? (
+          <MoreHorizontal size={16} aria-hidden />
+        ) : (
+          <>
+            {label}
+            <ChevronDown size={16} className="opacity-55" aria-hidden />
+          </>
+        )}
       </button>
       {open && (
         <div role="menu" className="absolute right-0 z-50 mt-1.5 min-w-[160px] rounded-lg border border-border bg-card p-1 shadow-menu">
@@ -65,7 +81,7 @@ export function MenuButton({ label, items, className }: { label: ReactNode; item
               tabIndex={-1}
               onMouseEnter={() => setActive(i)}
               onClick={() => pick(i)}
-              className={cn('flex h-10 w-full items-center rounded-sm px-2.5 text-left text-sm', i === active && 'bg-hover')}
+              className={cn('flex h-10 w-full items-center rounded-sm px-2.5 text-left text-sm whitespace-nowrap', i === active && 'bg-hover', it.danger && 'text-loss')}
             >
               {it.label}
             </button>

@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import { decimalHours, durationMinutes, formatLocal } from '@tc/domain';
+import { decimalHours, durationMinutes, financialYearOf, formatLocal, tradingDay } from '@tc/domain';
+import { getSettings } from '../settings';
 import { createReading, relinkSessionTrades } from '../checkins';
 import { toCsv } from '../csv';
 import { answersSchema } from './checkins';
@@ -16,6 +17,7 @@ import {
   listSessionTypes,
   restoreSession,
   sessionHistory,
+  sessionFinancialYears,
   sessionsForFinancialYear,
   startTimer,
   stopTimer,
@@ -53,6 +55,7 @@ export const sessionRoutes = new Hono()
     if (!from.success || !to.success) throw new AppError(400, 'from and to (YYYY-MM-DD) are required');
     return c.json(listSessions({ from: from.data, to: to.data }));
   })
+  .get('/years', (c) => c.json(sessionFinancialYears(financialYearOf(tradingDay(new Date(), getSettings().rolloverTime)).startYear)))
   .get('/running', (c) => c.json(getRunningSession()))
   /** Start the timer. Trading sessions may include the session-start checklist answers. */
   .post('/start', async (c) => {

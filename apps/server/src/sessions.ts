@@ -72,6 +72,21 @@ export function listSessions(range: { from: string; to: string }) {
     .all();
 }
 
+/** Financial years (start year, newest first) that have sessions, always including the current one. */
+export function sessionFinancialYears(currentStartYear: number): number[] {
+  const months = db
+    .selectDistinct({ month: sql<string>`substr(${session.tradingDay}, 1, 7)` })
+    .from(session)
+    .where(notDeleted)
+    .all();
+  const years = new Set([currentStartYear]);
+  for (const { month } of months) {
+    const [y, m] = month.split('-').map(Number) as [number, number];
+    years.add(m >= 7 ? y : y - 1);
+  }
+  return [...years].sort((a, b) => b - a);
+}
+
 export function getRunningSession() {
   return db.select(sessionColumns).from(session).where(and(notDeleted, isNull(session.end))).get() ?? null;
 }
