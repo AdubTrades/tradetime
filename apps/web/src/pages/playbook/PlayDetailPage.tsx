@@ -39,7 +39,7 @@ export function PlayDetailPage({ playId }: { playId: string }) {
               key={play.description ?? ''}
               defaultValue={play.description ?? ''}
               rows={2}
-              className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm"
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-card"
               placeholder="What this setup is and when it applies"
               onBlur={(e) => e.target.value !== (play.description ?? '') && update.mutate({ description: e.target.value || null })}
             />
@@ -76,7 +76,7 @@ function CriteriaEditor({ play }: { play: PlayDetail }) {
     <Card title="Entry criteria" description="What must play out on the chart before you take this trade. Missing a must-have puts a trade outside the plan.">
       <ol className="space-y-1">
         {active.map((c, i) => (
-          <li key={c.id} className="group flex items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-surface-2">
+          <li key={c.id} className="group flex items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-hover">
             <span className="w-5 text-right text-xs text-muted">{i + 1}</span>
             <Input
               key={c.label}
@@ -204,7 +204,7 @@ function Gallery({ play }: { play: PlayDetail }) {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-base">Gallery</h2>
+        <h2 className="text-base font-semibold">Gallery</h2>
         <p className="text-sm text-muted">What each grade of this setup looks like. A+ is your ideal-example shelf. Drop or paste screenshots onto a shelf.</p>
       </div>
       {GRADES.map((g) => (
@@ -225,7 +225,7 @@ function GradeShelf({ play, grade, examples }: { play: PlayDetail; grade: string
   const remove = useJournalMutation((id: string) => api.delete(`/plays/examples/${id}`));
 
   return (
-    <div className="panel p-4">
+    <div className="card p-6">
       <div className="mb-3 flex items-center gap-2">
         <GradeBadge grade={grade} className="text-sm" />
         <span className="text-xs text-muted">{examples.length} examples</span>
@@ -235,7 +235,7 @@ function GradeShelf({ play, grade, examples }: { play: PlayDetail; grade: string
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
         {examples.map((ex) => (
-          <figure key={ex.id} className="group overflow-hidden rounded-md border border-border bg-surface-2">
+          <figure key={ex.id} className="group overflow-hidden rounded-md border border-border bg-hover">
             <a href={`/api/attachments/${ex.attachmentId}/file`} target="_blank" rel="noreferrer" className="block aspect-video bg-black/5">
               {ex.mime.startsWith('image/') ? (
                 <img src={`/api/attachments/${ex.attachmentId}/file`} alt={ex.caption ?? `${grade} example`} className="h-full w-full object-contain" />

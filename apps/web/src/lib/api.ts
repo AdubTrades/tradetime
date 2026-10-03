@@ -218,6 +218,8 @@ export interface Play {
   archived: boolean;
   criteria: PlayCriterion[];
   exampleCount: number;
+  /** Up to three example images for the card collage, best grade first. */
+  coverAttachmentIds: string[];
 }
 export interface PlayExample {
   id: string;

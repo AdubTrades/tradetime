@@ -10,17 +10,28 @@ const nowIso = () => new Date().toISOString();
 export function listPlays() {
   const plays = db.select().from(play).where(isNull(play.deletedAt)).orderBy(asc(play.sortOrder), asc(play.title)).all();
   const criteria = db.select().from(playCriterion).where(isNull(playCriterion.deletedAt)).orderBy(asc(playCriterion.sortOrder)).all();
-  const counts = db
-    .select({ playId: playExample.playId, n: sql<number>`count(*)` })
+  const examples = db
+    .select({ playId: playExample.playId, attachmentId: playExample.attachmentId, grade: playExample.grade, mime: attachment.mime })
     .from(playExample)
+    .innerJoin(attachment, eq(attachment.id, playExample.attachmentId))
     .where(isNull(playExample.deletedAt))
-    .groupBy(playExample.playId)
+    .orderBy(asc(playExample.sortOrder), asc(playExample.createdAt))
     .all();
-  return plays.map((p) => ({
-    ...p,
-    criteria: criteria.filter((c) => c.playId === p.id),
-    exampleCount: counts.find((c) => c.playId === p.id)?.n ?? 0,
-  }));
+  const gradeRank = (g: string) => (GRADES as readonly string[]).indexOf(g);
+  return plays.map((p) => {
+    const own = examples.filter((e) => e.playId === p.id);
+    return {
+      ...p,
+      criteria: criteria.filter((c) => c.playId === p.id),
+      exampleCount: own.length,
+      // Up to three images for the card collage, best grade first.
+      coverAttachmentIds: own
+        .filter((e) => e.mime.startsWith('image/'))
+        .sort((a, b) => gradeRank(a.grade) - gradeRank(b.grade))
+        .slice(0, 3)
+        .map((e) => e.attachmentId),
+    };
+  });
 }
 
 export function getPlay(id: string) {
