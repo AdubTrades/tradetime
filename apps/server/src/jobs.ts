@@ -1,11 +1,12 @@
 import { Cron } from 'croner';
-import { formatDuration, localDate } from '@tc/domain';
+import { DateTime } from 'luxon';
+import { formatDuration, formatMoney, localDate, LOCAL_ZONE } from '@tc/domain';
 import { isBackupDue, runBackup } from './backup';
 import { isDemo } from './config';
 import { dueReminders } from './calendar';
 import { checkInToNotify } from './checkins';
 import { isMarketRefreshDue, refreshMarketEvents } from './marketEvents';
-import { generateRecurringExpenses } from './expenses';
+import { generateRecurringExpenses, markRenewalNotified, renewalsToNotify } from './expenses';
 import { notify } from './notify';
 import { getRunningSession, runningMinutes } from './sessions';
 import { getSettings, getState, setState } from './settings';
@@ -59,8 +60,16 @@ export function startJobs(): Cron[] {
 
   // Recurring expenses: create any occurrences due up to today (catches up after downtime).
   const recurring = new Cron('5 * * * *', { protect: true }, () => {
-    const created = generateRecurringExpenses(localDate(new Date()));
+    const today = localDate(new Date());
+    const created = generateRecurringExpenses(today);
     if (created) console.log(`[recurring] created ${created} expense(s)`);
+    // Renewal reminders a week ahead, once per renewal, not before 9am (catches up if the Mac slept).
+    if (DateTime.now().setZone(LOCAL_ZONE).hour < 9) return;
+    for (const r of renewalsToNotify(today)) {
+      const days = Math.round(DateTime.fromISO(r.nextDate).diff(DateTime.fromISO(today), 'days').days);
+      notify(`${r.name} renews ${days === 1 ? 'tomorrow' : `in ${days} days`}`, `${formatMoney(r.incGstCents)} on ${DateTime.fromISO(r.nextDate).toFormat('cccc d LLLL')}. Cancel or change it before then if you need to.`);
+      markRenewalNotified(r);
+    }
   });
   void recurring.trigger();
 

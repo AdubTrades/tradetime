@@ -4,7 +4,7 @@ import { schema, type Recurrence } from '@tc/db';
 import { durationMinutes, expandOccurrences, localInstant, newId, tradingDay, type Occurrence } from '@tc/domain';
 import { db } from './context';
 import { AppError } from './errors';
-import { listExpenses } from './expenses';
+import { listExpenses, renewalsBetween } from './expenses';
 import { listMarketEvents } from './marketEvents';
 import { listSessions } from './sessions';
 import { getSettings } from './settings';
@@ -227,6 +227,8 @@ export function upcoming(days = 7) {
       tradingDay: tradingDay(m.at, rolloverTime),
     })),
     occurrences: listOccurrences(today, end, true),
+    // Subscription renewals in the window, so the Next 7 days panel can flag them.
+    renewals: renewalsBetween(today, today, end),
   };
 }
 

@@ -1,4 +1,5 @@
 import { parse } from 'csv-parse/sync';
+import { DateTime } from 'luxon';
 import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { schema } from '@tc/db';
 import {
@@ -18,7 +19,7 @@ import { auditEvent, auditUpdate } from './audit';
 import { db } from './context';
 import { AppError } from './errors';
 import { assertListItem, findOrCreateListItem, listItems } from './lists';
-import { getSettings } from './settings';
+import { getSettings, getState, setState } from './settings';
 
 const { expense, recurringExpense, payout, auditLog } = schema;
 const nowIso = () => new Date().toISOString();
@@ -169,6 +170,35 @@ export function listRecurring(today: string) {
     .orderBy(asc(recurringExpense.name))
     .all()
     .map((r) => ({ ...r, nextDate: r.active ? nextOccurrence(r, today) : null }));
+}
+
+/** How many days before a renewal the reminder goes out. */
+export const RENEWAL_LEAD_DAYS = 7;
+
+/**
+ * Active recurring expenses renewing between `from` and `to` (inclusive). Weekly items are left out:
+ * a week's notice would land on the day of the previous charge.
+ */
+export function renewalsBetween(today: string, from: string, to: string) {
+  return listRecurring(today)
+    .filter((r) => r.nextDate && r.nextDate >= from && r.nextDate <= to && !(r.frequency === 'weekly' && r.interval === 1))
+    .map((r) => ({ id: r.id, name: r.name, vendor: r.vendor, nextDate: r.nextDate!, incGstCents: incGst(r.exGstCents, r.gstCents), frequency: r.frequency, interval: r.interval }))
+    .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
+}
+
+type Renewal = ReturnType<typeof renewalsBetween>[number];
+const RENEWAL_STATE = 'renewalNotified';
+
+/** Renewals coming up within the lead time that haven't been notified yet (once per renewal date). */
+export function renewalsToNotify(today: string): Renewal[] {
+  const sent = getState<Record<string, string>>(RENEWAL_STATE) ?? {};
+  const from = DateTime.fromISO(today).plus({ days: 1 }).toISODate()!;
+  const to = DateTime.fromISO(today).plus({ days: RENEWAL_LEAD_DAYS }).toISODate()!;
+  return renewalsBetween(today, from, to).filter((r) => sent[r.id] !== r.nextDate);
+}
+
+export function markRenewalNotified(r: Pick<Renewal, 'id' | 'nextDate'>): void {
+  setState(RENEWAL_STATE, { ...(getState<Record<string, string>>(RENEWAL_STATE) ?? {}), [r.id]: r.nextDate });
 }
 
 export function createRecurring(input: RecurringInput) {

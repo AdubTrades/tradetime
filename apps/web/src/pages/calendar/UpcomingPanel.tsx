@@ -1,13 +1,17 @@
-import { ExternalLink, Repeat } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { ExternalLink, Receipt, Repeat } from 'lucide-react';
 import { DateTime } from 'luxon';
 import type { ReactNode } from 'react';
-import { formatLocal } from '@tc/domain';
+import { formatLocal, formatMoney } from '@tc/domain';
 import { cn } from '../../components/ui';
-import { api, type EventRecurrence, type MarketEvent, type OccurrenceView } from '../../lib/api';
+import { api, type EventRecurrence, type MarketEvent, type OccurrenceView, type Renewal } from '../../lib/api';
 import { useCalendarMutation, useUpcoming } from '../../lib/calendar';
 import { ImpactMarker } from '../../components/ImpactMarker';
 
-type Item = { kind: 'market'; day: string; sort: string; m: MarketEvent } | { kind: 'mine'; day: string; sort: string; o: OccurrenceView; overdue: boolean };
+type Item =
+  | { kind: 'market'; day: string; sort: string; m: MarketEvent }
+  | { kind: 'mine'; day: string; sort: string; o: OccurrenceView; overdue: boolean }
+  | { kind: 'renewal'; day: string; sort: string; r: Renewal };
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -43,6 +47,8 @@ export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void 
       .filter((o) => !(o.isTask && o.done))
       .filter((o) => !frequent.has(o.eventId) || o.date === data.today)
       .map((o) => ({ kind: 'mine' as const, day: o.date < data.today ? data.today : o.date, sort: o.startAt ?? `${o.date}T00:00`, o, overdue: o.date < data.today })),
+    // Subscription renewals sit at the start of their day, like an all-day item.
+    ...(data.renewals ?? []).map((r) => ({ kind: 'renewal' as const, day: r.nextDate, sort: `${r.nextDate}T00:00`, r })),
   ].sort((a, b) => a.day.localeCompare(b.day) || Number(b.kind === 'mine' && b.o.isTask) - Number(a.kind === 'mine' && a.o.isTask) || a.sort.localeCompare(b.sort));
   const days = [...new Set(items.map((i) => i.day))];
 
@@ -64,7 +70,14 @@ export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void 
           {items
             .filter((i) => i.day === day)
             .map((i) =>
-              i.kind === 'market' ? (
+              i.kind === 'renewal' ? (
+                <Row key={`renewal-${i.r.id}`} time="Renews" marker={<Receipt size={12} strokeWidth={1.8} className="text-dark-muted" aria-hidden />}>
+                  <Link to="/expenses" className="min-w-0 truncate rounded-sm hover:underline" title={`Recurring expense${i.r.vendor ? ` · ${i.r.vendor}` : ''}`}>
+                    {i.r.name}
+                  </Link>
+                  <span className="ml-auto shrink-0 text-[13px] text-dark-muted">{formatMoney(i.r.incGstCents)}</span>
+                </Row>
+              ) : i.kind === 'market' ? (
                 <Row key={i.m.id} time={formatLocal(i.m.at, 'HH:mm')} marker={<ImpactMarker impact={i.m.impact} onDark size={12} />}>
                   <span className="truncate">{i.m.title}</span>
                 </Row>

@@ -378,10 +378,20 @@ export interface CalendarRangeData {
   market: MarketEvent[];
   occurrences: OccurrenceView[];
 }
+export interface Renewal {
+  id: string;
+  name: string;
+  vendor: string | null;
+  nextDate: string;
+  incGstCents: number;
+  frequency: Frequency;
+  interval: number;
+}
 export interface UpcomingData {
   today: string;
   market: MarketEvent[];
   occurrences: OccurrenceView[];
+  renewals: Renewal[];
 }
 export interface MarketStatus {
   lastSuccessAt: string | null;

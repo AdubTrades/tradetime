@@ -15,7 +15,7 @@ export function useMoneyMutation<TVars, TResult = unknown>(fn: (vars: TVars) => 
   return useMutation({
     mutationFn: fn,
     onSuccess: () => {
-      for (const key of ['expenses', 'recurring', 'payouts', 'expense-summary', 'lists', 'history']) void qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ['expenses', 'recurring', 'payouts', 'expense-summary', 'lists', 'history', 'calendar']) void qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }

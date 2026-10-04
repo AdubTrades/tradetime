@@ -134,3 +134,24 @@ describe('expenseFinancialYears', () => {
     expect(svc.expenseFinancialYears(2026)).toEqual([2026, 2025, 2024]);
   });
 });
+
+describe('renewal reminders', () => {
+  beforeEach(() => ctx.sqlite.exec(`DELETE FROM setting WHERE key = 'state.renewalNotified';`));
+
+  it('flags renewals within 7 days, once per renewal date, and skips weekly items', () => {
+    svc.createRecurring({ name: 'TradingView', exGstCents: 5995, gstCents: 0, frequency: 'monthly', interval: 1, startDate: '2026-07-12' });
+    svc.createRecurring({ name: 'Yearly journal', exGstCents: 20000, gstCents: 2000, frequency: 'yearly', interval: 1, startDate: '2026-10-30' });
+    svc.createRecurring({ name: 'Weekly data', exGstCents: 1000, gstCents: 0, frequency: 'weekly', interval: 1, startDate: '2026-07-01' });
+
+    // 12 Oct is 8 days after 4 Oct: not yet.
+    expect(svc.renewalsToNotify('2026-10-04')).toEqual([]);
+    // 5 Oct: TradingView renews in 7 days. The yearly one (30 Oct) and the weekly one stay quiet.
+    const due = svc.renewalsToNotify('2026-10-05');
+    expect(due.map((r) => [r.name, r.nextDate, r.incGstCents])).toEqual([['TradingView', '2026-10-12', 5995]]);
+
+    svc.markRenewalNotified(due[0]!);
+    expect(svc.renewalsToNotify('2026-10-06')).toEqual([]);
+    // The next month's renewal gets its own reminder.
+    expect(svc.renewalsToNotify('2026-11-05').map((r) => r.nextDate)).toEqual(['2026-11-12']);
+  });
+});
