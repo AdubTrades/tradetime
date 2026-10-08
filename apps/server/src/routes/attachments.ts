@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { storage } from '../config';
+import { demoFile } from '../demo/account';
 import { body, formatZodError } from '../http';
 import {
   attachmentPath,
@@ -79,6 +80,12 @@ export const attachmentRoutes = new Hono()
   .get('/:id/file', async (c) => {
     const row = await getAttachment(c.req.param('id'));
     if (!row) return c.json({ error: 'Not found' }, 404);
+    const drawn = demoFile(row);
+    if (drawn) {
+      c.header('Content-Type', row.mime);
+      c.header('Cache-Control', 'private, max-age=86400');
+      return c.body(new Uint8Array(drawn));
+    }
     if (storage.remote) {
       // Send the browser on to a short-lived private link; the file itself comes from Supabase Storage.
       const url = await fileLink(row);

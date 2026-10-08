@@ -5,6 +5,7 @@ import { listUserIds, schema } from '@tc/db';
 import { currentZone, formatDuration, formatMoney, localDate } from '@tc/domain';
 import { dueReminders } from './calendar';
 import { checkInToNotify } from './checkins';
+import { cleanUpDemos, isDemoUser } from './demo/account';
 import { rootDb, withUser } from './context';
 import { generateRecurringExpenses, markRenewalNotified, renewalsToNotify } from './expenses';
 import { isMarketRefreshDue, refreshMarketEvents } from './marketEvents';
@@ -14,7 +15,8 @@ import { getAppState, getSettings, getState, setAppState, setState } from './set
 
 /** Run `fn` for every account, each in its own user scope. One user's failure doesn't stop the others. */
 async function forEachUser(label: string, fn: (userId: string) => Promise<void>): Promise<number> {
-  const users = await listUserIds(rootDb());
+  // Demo copies get no alerts or recurring work; they're deleted after a day.
+  const users = (await listUserIds(rootDb())).filter((id) => !isDemoUser(id));
   for (const userId of users) {
     try {
       await withUser(userId, () => fn(userId));
@@ -95,13 +97,14 @@ export interface TickReport {
   ran: boolean;
   users?: number;
   hourly?: boolean;
+  demosRemoved?: number;
   market?: 'refreshed' | 'failed' | 'not due';
   ms?: number;
 }
 
 /**
  * One round of background work for everyone: long-session and check-in alerts and calendar reminders every
- * minute; recurring expenses and renewal reminders hourly; economic events every 12 hours. Safe to call as often
+ * minute; recurring expenses, renewal reminders and expired demo copies hourly; economic events every 12 hours. Safe to call as often
  * as you like: overlapping calls skip, and each alert is sent once.
  */
 export async function runTick(now = Date.now()): Promise<TickReport> {
@@ -121,13 +124,20 @@ export async function runTick(now = Date.now()): Promise<TickReport> {
     if (hourly) await recurringCheck();
   });
 
+  const demosRemoved = hourly
+    ? await cleanUpDemos(now).catch((err: Error) => {
+        console.error(`[demo cleanup] ${err.message}`);
+        return 0;
+      })
+    : 0;
+
   let market: TickReport['market'] = 'not due';
   if ((await isMarketRefreshDue()) && (await claimLease('jobs.market', 10 * 60_000, now))) {
     const s = await refreshMarketEvents();
     market = s.lastError ? 'failed' : 'refreshed';
     if (s.lastError) console.error(`[market] ${s.lastError}`);
   }
-  return { ran: true, users, hourly, market, ms: Date.now() - started };
+  return { ran: true, users, hourly, demosRemoved, market, ms: Date.now() - started };
 }
 
 /** Local mode: run the tick every minute in this process. (In the cloud, pg_cron calls /api/jobs/tick.) */

@@ -32,7 +32,7 @@ export const objectPath = (userId: string, sha256: string, mime: string) => `${u
 
 type AttachmentRow = typeof schema.attachment.$inferSelect;
 
-function checkFile(mime: string, bytes: number) {
+export function checkFile(mime: string, bytes: number) {
   if (!isAllowedMime(mime)) throw new AppError(422, `Unsupported file type: ${mime || 'unknown'}`);
   if (bytes > MAX_ATTACHMENT_BYTES) throw new AppError(422, 'File is larger than 25 MB');
 }
@@ -51,13 +51,28 @@ async function checkQuota(bytes: number) {
   }
 }
 
-async function insertRow(sha256: string, mime: string, bytes: number, originalName: string | null): Promise<AttachmentRow> {
+/** Record a file that's already where it belongs (or, in the demo, one that's drawn on request). */
+export async function recordAttachment(sha256: string, mime: string, bytes: number, originalName: string | null): Promise<AttachmentRow> {
   const [row] = await db
     .insert(schema.attachment)
     .values({ id: newId(), sha256, mime, bytes, originalName })
     .onConflictDoNothing({ target: [schema.attachment.userId, schema.attachment.sha256] })
     .returning();
   return row ?? (await findBySha(sha256))!;
+}
+
+/** Local mode: put a file in the attachments folder (if it isn't there already) and return its hash. */
+export function writeLocalFile(data: Buffer, mime: string): string {
+  const sha256 = createHash('sha256').update(data).digest('hex');
+  const target = attachmentPath(sha256, mime);
+  if (!existsSync(target)) {
+    mkdirSync(path.dirname(target), { recursive: true });
+    mkdirSync(paths.tmp, { recursive: true });
+    const tmp = path.join(paths.tmp, `${sha256}.part`);
+    writeFileSync(tmp, data);
+    renameSync(tmp, target);
+  }
+  return sha256;
 }
 
 /** Store file content (once per user and hash) and return its attachment row. Used by server-side uploads and scripts. */
@@ -72,16 +87,9 @@ export async function storeAttachment(data: Buffer, mime: string, originalName: 
     const { userId, token } = currentScope();
     await putObject(storeConfig(), token, objectPath(userId, sha256, mime), data, mime);
   } else {
-    const target = attachmentPath(sha256, mime);
-    if (!existsSync(target)) {
-      mkdirSync(path.dirname(target), { recursive: true });
-      mkdirSync(paths.tmp, { recursive: true });
-      const tmp = path.join(paths.tmp, `${sha256}.part`);
-      writeFileSync(tmp, data);
-      renameSync(tmp, target);
-    }
+    writeLocalFile(data, mime);
   }
-  return insertRow(sha256, mime, data.byteLength, originalName);
+  return recordAttachment(sha256, mime, data.byteLength, originalName);
 }
 
 export interface FileInfo {
@@ -112,7 +120,7 @@ export async function completeUpload(f: FileInfo): Promise<AttachmentRow> {
   if (existing) return existing;
   const { userId, token } = currentScope();
   if (!(await signedUrl(storeConfig(), token, objectPath(userId, f.sha256, f.mime), 60))) throw new AppError(422, 'The file didn’t reach storage. Please try again.');
-  return insertRow(f.sha256, f.mime, f.bytes, f.name);
+  return recordAttachment(f.sha256, f.mime, f.bytes, f.name);
 }
 
 /** Cloud mode: a temporary link to the file. Null in local mode (the API streams it from disk). */

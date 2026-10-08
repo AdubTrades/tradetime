@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
-import { auth, authEnabled, fredApiKey, localUserId, storage } from './config';
+import { auth, authEnabled, demo, fredApiKey, localUserId, storage } from './config';
 import { tokenFrom, verifyAccessToken, type AuthUser } from './auth';
 import { withUser } from './context';
 import { dataHealth } from './health';
@@ -16,6 +16,8 @@ import { sessionRoutes, sessionTypeRoutes } from './routes/sessions';
 import { settingsRoutes } from './routes/settings';
 import { pushRoutes } from './routes/push';
 import { runTick } from './jobs';
+import { accountRoutes as accountDataRoutes } from './routes/account';
+import { demoAvailable, isDemoToken, startDemo, verifyDemoToken } from './demo/account';
 import { timingSafeEqual } from 'node:crypto';
 
 const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
@@ -43,7 +45,7 @@ app.use('/api/*', async (c, next) => {
 });
 
 const startedAt = new Date().toISOString();
-app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: false, realAppUrl: null, cloud: true, fredConfigured: !!fredApiKey, auth: authEnabled, storage: storage.remote ? { kind: 'supabase', bucket: storage.bucket } : { kind: 'local' } }));
+app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: demoAvailable() ? { public: demo.public || !authEnabled } : null, cloud: true, fredConfigured: !!fredApiKey, auth: authEnabled, storage: storage.remote ? { kind: 'supabase', bucket: storage.bucket } : { kind: 'local' } }));
 
 /**
  * Scheduled jobs, called every minute by Supabase pg_cron (cloud) with `Authorization: Bearer <JOBS_SECRET>`.
@@ -63,22 +65,49 @@ app.post('/api/jobs/tick', async (c) => {
 });
 
 /**
+ * Open a fresh copy of the demo account. Signed-in users can always do this (Settings → Demo); people without an
+ * account only when DEMO_PUBLIC=1 (a link on the sign-in page).
+ */
+app.post('/api/demo/session', async (c) => {
+  if (authEnabled && !demo.public) {
+    const token = tokenFrom({ method: c.req.method, header: (n) => c.req.header(n) });
+    const ok = token && (isDemoToken(token) ? await verifyDemoToken(token).catch(() => null) : await verifyAccessToken(token).catch(() => null));
+    if (!ok) throw new HTTPException(401, { message: 'Please sign in to open the demo' });
+  }
+  return c.json(await startDemo(), 201);
+});
+
+/** Things a demo visitor can't do: they'd reach outside the sample account (devices, uploads, imports, the FRED key). */
+const demoBlocked = (method: string, path: string) =>
+  method !== 'GET' && (/^\/api\/push\/(subscribe|test)$/.test(path) || /^\/api\/attachments(\/prepare|\/complete)?$/.test(path) || path.startsWith('/api/account/import'));
+
+/**
  * Who's asking: the signed-in user from their Supabase access token, or the single local user when sign-in isn't
  * configured. Every other API request then runs as that user, in one transaction with row-level security on.
  * If the handler fails, the whole request is rolled back.
  */
 app.use('/api/*', async (c, next) => {
-  if (c.req.path === '/api/health' || c.req.path === '/api/jobs/tick') return next();
+  if (c.req.path === '/api/health' || c.req.path === '/api/jobs/tick' || c.req.path === '/api/demo/session') return next();
   let user: AuthUser = { userId: localUserId, email: null };
-  let token: string | null = null;
-  if (authEnabled) {
-    token = tokenFrom({ method: c.req.method, header: (n) => c.req.header(n) });
+  let token = tokenFrom({ method: c.req.method, header: (n) => c.req.header(n) });
+  if (token && isDemoToken(token)) {
+    try {
+      user = await verifyDemoToken(token);
+    } catch {
+      throw new HTTPException(401, { message: 'This demo has expired. Open it again from Settings.' });
+    }
+    // The demo's token isn't a Supabase one, so storage calls can't use it (demo screenshots are drawn on request).
+    token = null;
+    if (demoBlocked(c.req.method, c.req.path)) throw new AppError(403, 'That’s switched off in the demo.');
+  } else if (authEnabled) {
     if (!token) throw new HTTPException(401, { message: 'Please sign in' });
     try {
       user = await verifyAccessToken(token);
     } catch {
       throw new HTTPException(401, { message: 'Your session has expired. Please sign in again.' });
     }
+  } else {
+    token = null;
   }
   c.set('user', user);
   try {
@@ -95,7 +124,8 @@ app.use('/api/*', async (c, next) => {
     if (err !== c.error) throw err;
   }
 });
-app.get('/api/me', (c) => c.json({ ...c.get('user'), auth: authEnabled }));
+app.get('/api/me', (c) => c.json({ demo: false, ...c.get('user'), auth: authEnabled }));
+app.route('/api/account', accountDataRoutes);
 app.get('/api/health/data', async (c) => c.json(await dataHealth()));
 app.route('/api/settings', settingsRoutes);
 app.route('/api/push', pushRoutes);

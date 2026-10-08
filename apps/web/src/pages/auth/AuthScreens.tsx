@@ -1,6 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Wordmark } from '../../components/AppShell';
 import { Button, Field, Input } from '../../components/ui';
+import { useHealth } from '../../lib/demo';
+import { enterDemo } from '../../lib/demoSession';
 import { clearLinkError, passwordChosen, signOut, supabase, useAuth } from '../../lib/auth';
 
 /** Centred card on the page background, shared by the sign-in screens. */
@@ -42,6 +44,19 @@ export function SignInPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
+
+  const { data: health } = useHealth();
+  const [demoBusy, setDemoBusy] = useState(false);
+  const openDemo = async () => {
+    setDemoBusy(true);
+    setError(null);
+    try {
+      await enterDemo(null);
+    } catch (err) {
+      setError((err as Error).message);
+      setDemoBusy(false);
+    }
+  };
 
   const switchTo = (m: Mode) => {
     setMode(m);
@@ -111,6 +126,13 @@ export function SignInPage() {
           </button>
         )}
       </div>
+      {health?.demo?.public && (
+        <div className="mt-5 border-t border-border-subtle pt-5 text-center text-[13px]">
+          <button type="button" disabled={demoBusy} className="link-ember" onClick={() => void openDemo()}>
+            {demoBusy ? 'Opening the demo…' : 'No invite yet? Look around the demo'}
+          </button>
+        </div>
+      )}
     </AuthCard>
   );
 }

@@ -12,19 +12,19 @@ describe('settings', () => {
 
   it('only changes the keys in a patch, and the change is visible to the next request', async () => {
     await asUser(async () => {
-      await settings.updateSettings({ backupRetention: 7, backupFolder: '/tmp' });
+      await settings.updateSettings({ longSessionHours: 7, reportName: 'Sam' });
       await settings.updateSettings({ theme: 'dark' });
     });
     await asUser(async () => {
-      expect(settings.getSettings()).toMatchObject({ theme: 'dark', backupRetention: 7, backupFolder: '/tmp', rolloverTime: '10:00' });
+      expect(settings.getSettings()).toMatchObject({ theme: 'dark', longSessionHours: 7, reportName: 'Sam', rolloverTime: '10:00' });
     });
   });
 
   it('treats null as reset to default', () =>
     asUser(async () => {
-      await settings.updateSettings({ backupFolder: '/tmp' });
-      await settings.updateSettings({ backupFolder: null });
-      expect(settings.getSettings().backupFolder).toBeNull();
+      await settings.updateSettings({ reportName: 'Sam' });
+      await settings.updateSettings({ reportName: null });
+      expect(settings.getSettings().reportName).toBeNull();
     }));
 
   it('rejects invalid and unknown keys', () =>

@@ -12,9 +12,6 @@ const settingsShape = z.object({
   /** IANA time zone for trading days, calendar times and reminders. Null until chosen (treated as Perth). */
   timeZone: z.string().refine(isValidZone, 'Choose a valid time zone').nullable(),
   theme: z.enum(['system', 'light', 'dark']),
-  backupFolder: z.string().nullable(),
-  backupIntervalHours: z.union([z.literal(0), z.literal(6), z.literal(12), z.literal(24), z.literal(168)]),
-  backupRetention: z.number().int().min(1).max(365),
   /** A running session longer than this triggers a "still going?" prompt. */
   longSessionHours: z.number().min(1).max(24),
   /** Registered for GST: claim ex-GST amounts plus GST credits instead of inc-GST amounts. */
@@ -41,9 +38,6 @@ export const defaultSettings: Settings = {
   rolloverTime: '10:00',
   timeZone: null,
   theme: 'system',
-  backupFolder: null,
-  backupIntervalHours: 24,
-  backupRetention: 30,
   longSessionHours: 6,
   gstRegistered: false,
   checkInEnabled: true,
@@ -120,7 +114,7 @@ export async function updateSettings(patch: Partial<Settings>): Promise<Settings
   return scope.settings;
 }
 
-/** Internal state (not user-editable), e.g. last backup result. */
+/** Internal per-user state (not user-editable), e.g. which session was already flagged as long. */
 export async function getState<T>(key: string): Promise<T | undefined> {
   const [row] = await db.select().from(schema.setting).where(eq(schema.setting.key, `state.${key}`));
   return row?.value as T | undefined;

@@ -67,6 +67,16 @@ export const pushEnabled = !!(push.publicKey && push.privateKey);
  */
 export const jobsSecret = process.env.JOBS_SECRET || null;
 
+/**
+ * The demo (a fictional trader's account, one fresh copy per visitor). DEMO_SECRET signs the demo's own short-lived
+ * tokens; without it the demo is off in the cloud (locally it always works). DEMO_PUBLIC=1 offers it on the sign-in
+ * page to people without an account; otherwise only signed-in users can open it.
+ */
+export const demo = {
+  secret: process.env.DEMO_SECRET || null,
+  public: process.env.DEMO_PUBLIC === '1',
+};
+
 /** Economic events are fetched once for everyone with the server's FRED key (free from fred.stlouisfed.org). */
 export const fredApiKey = process.env.FRED_API_KEY || null;
 

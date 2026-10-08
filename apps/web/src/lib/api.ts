@@ -1,4 +1,5 @@
 import { accessToken, authEnabled, signOut } from './auth';
+import { demoToken, exitDemo } from './demoSession';
 
 export class ApiError extends Error {
   constructor(
@@ -10,19 +11,29 @@ export class ApiError extends Error {
   }
 }
 
+/** fetch() to the API as the current user (or demo visitor). A 401 ends the demo, or signs out. */
+export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const token = demoToken() ?? accessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`/api${url}`, { ...init, headers });
+  if (res.status === 401) {
+    // An expired demo copy: back to your own account. An expired or revoked session: back to the sign-in screen.
+    if (demoToken()) exitDemo();
+    else if (authEnabled) void signOut();
+  }
+  return res;
+}
+
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
-  const token = accessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
   const init: RequestInit = { method, headers };
   if (body instanceof FormData) init.body = body;
   else if (body !== undefined) {
     init.body = JSON.stringify(body);
     headers['Content-Type'] = 'application/json';
   }
-  const res = await fetch(`/api${url}`, init);
-  // A session that's expired or been revoked: back to the sign-in screen.
-  if (res.status === 401 && authEnabled) void signOut();
+  const res = await apiFetch(url, init);
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -47,9 +58,6 @@ export interface Settings {
   /** IANA time zone, or null until chosen (the app then picks up the browser's zone). */
   timeZone: string | null;
   theme: Theme;
-  backupFolder: string | null;
-  backupIntervalHours: 0 | 6 | 12 | 24 | 168;
-  backupRetention: number;
   longSessionHours: number;
   gstRegistered: boolean;
   checkInEnabled: boolean;
@@ -62,14 +70,6 @@ export interface Settings {
   reportName: string | null;
   reportAbn: string | null;
   homeHidePnl: boolean;
-}
-export interface BackupStatus {
-  lastSuccessAt: string | null;
-  lastAttemptAt: string | null;
-  lastError: string | null;
-  lastFile: string | null;
-  lastBytes: number | null;
-  folder: string;
 }
 export interface Attachment {
   id: string;

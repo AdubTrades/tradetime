@@ -20,6 +20,8 @@ import { addCriterion, addExample, createPlay, updatePlay } from '../plays';
 import { createManualSession } from '../sessions';
 import { updateSettings } from '../settings';
 import { createTrade, saveDailyReview } from '../trades';
+import { currentUserId } from '../context';
+import { isDemoUser, recordDemoChart } from './account';
 import { chartPng, rng } from './chartImage';
 
 const DAYS = 56; // about eight weeks of trading history
@@ -38,7 +40,7 @@ export async function seedDemo(): Promise<void> {
   const now = DateTime.now().setZone(currentZone());
   const today = now.toISODate()!;
 
-  await updateSettings({ reportName: 'Alex Morgan', homeHidePnl: false, backupIntervalHours: 0, includeMediumEvents: true });
+  await updateSettings({ reportName: 'Alex Morgan', homeHidePnl: false, includeMediumEvents: true });
   await updateContract('ct_mnq', { feePerSideCents: 37 });
   await updateContract('ct_mes', { feePerSideCents: 37 });
   await updateContract('ct_nq', { feePerSideCents: 129 });
@@ -77,7 +79,12 @@ export async function seedDemo(): Promise<void> {
     ],
   });
   let imgSeed = 1;
-  const image = async (direction: 'long' | 'short', outcome: 'win' | 'loss') => await storeAttachment(chartPng(imgSeed++, { direction, outcome }), 'image/png', 'chart.png');
+  // A demo visitor's copy only records which chart to draw; a real account (seed:demo) stores the image.
+  const demoCopy = isDemoUser(currentUserId());
+  const image = async (direction: 'long' | 'short', outcome: 'win' | 'loss') => {
+    const n = imgSeed++;
+    return demoCopy ? recordDemoChart(n, direction, outcome) : storeAttachment(chartPng(n, { direction, outcome }), 'image/png', 'chart.png');
+  };
   for (const [playId, grade, caption] of [
     [orb.id, 'A+', 'Textbook: range break on volume, retest holds'],
     [orb.id, 'A+', 'Trend day continuation after the first pullback'],
@@ -278,23 +285,9 @@ export async function seedDemo(): Promise<void> {
   await createEvent({ typeId: 'cet_admin', title: 'Send receipts to accountant', date: now.minus({ days: 2 }).toISODate()!, allDay: true, isTask: true });
   await createEvent({ typeId: 'cet_admin', title: 'Quarterly BAS check-in', date: now.plus({ days: 18 }).toISODate()!, allDay: true, isTask: true });
 
-  // Sample US releases around today (fixed patterns, labelled as demo data) plus the real FOMC schedule.
+  // The real FOMC schedule. Other releases come from the shared economic calendar (FRED), which every account sees,
+  // so the demo doesn't add made-up ones.
   const events: MarketEventInput[] = [];
-  const ny = (date: string, time: string) => zonedToUtc(date, time, 'America/New_York');
-  const add = (date: string, title: string, time: string, impact: 'high' | 'medium') => events.push({ provider: 'demo', providerId: `${title}:${date}`, title, at: ny(date, time), impact, country: 'US', currency: 'USD' });
-  // Weekend dates move to the following Monday, like real release calendars.
-  const weekday = (dt: DateTime) => (dt.weekday === 6 ? dt.plus({ days: 2 }) : dt.weekday === 7 ? dt.plus({ days: 1 }) : dt).toISODate()!;
-  for (let m = -2; m <= 2; m++) {
-    const first = now.plus({ months: m }).startOf('month');
-    add(first.plus({ days: (5 - first.weekday + 7) % 7 }).toISODate()!, 'Non-Farm Payrolls', '08:30', 'high');
-    add(weekday(first.plus({ days: 11 })), 'CPI', '08:30', 'high');
-    add(weekday(first.plus({ days: 14 })), 'Retail Sales', '08:30', 'high');
-    add(weekday(first.plus({ days: 15 })), 'PPI', '08:30', 'high');
-  }
-  for (let w = -8; w <= 6; w++) {
-    const thu = now.plus({ weeks: w }).set({ weekday: 4 }).toISODate()!;
-    add(thu, 'Unemployment Claims', '08:30', 'medium');
-  }
   const nyToday = DateTime.now().setZone('America/New_York');
   events.push(...fomcEvents(nyToday.minus({ days: 70 }).toISODate()!, nyToday.plus({ days: 120 }).toISODate()!));
   await upsertMarketEvents(events);

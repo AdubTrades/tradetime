@@ -4,6 +4,8 @@ import { auth } from './config';
 export interface AuthUser {
   userId: string;
   email: string | null;
+  /** A visitor in their own copy of the demo account (see `demo/account.ts`). */
+  demo?: boolean;
 }
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;

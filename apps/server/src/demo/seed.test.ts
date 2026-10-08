@@ -28,7 +28,7 @@ describe('demo data', () => {
       expect((await expenses.expenseFinancialYears(2026)).length).toBeGreaterThan(1);
       expect(playList.map((p) => p.coverAttachmentIds.length)).toEqual(expect.arrayContaining([3, 2, 1]));
       expect((await expenses.listRecurring(new Date().toISOString().slice(0, 10))).some((r) => r.frequency === 'yearly')).toBe(true);
-      expect(settings.getSettings()).toMatchObject({ reportName: 'Alex Morgan', backupIntervalHours: 0, fredApiKey: null });
+      expect(settings.getSettings()).toMatchObject({ reportName: 'Alex Morgan', fredApiKey: null });
     }, 'demo');
     // The demo account's data is invisible to everyone else.
     await asUser(async () => {

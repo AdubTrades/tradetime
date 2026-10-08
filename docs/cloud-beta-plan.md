@@ -149,7 +149,15 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
   - On iPhone it works once the app is added to the home screen (iOS 16.4 or later).
 - **Fallbacks:** the in-app check-in card and the floating timer still work without push. They already poll from the browser.
 
-### Phase 6 — Replace the Mac-only pieces (1–2 days)
+### Phase 6 — Replace the Mac-only pieces ✅ built 8 Oct 2026
+
+**As built:**
+- **Your data:** Settings → Your data → **Download my data** builds a zip in the browser: every record as `data.json` plus the screenshots and receipts. **Import an export…** replaces everything in the account with one, all or nothing, after showing what's in it. This is how your real data comes across in Phase 9. Data travels gzipped and files go straight to and from storage, so it fits Vercel's request limits.
+- **Demo:** Settings → Demo mode opens a fresh copy of the fictional trader for whoever opens it, so visitors never see each other's changes. It uses its own signed token (`DEMO_SECRET`), and `DEMO_PUBLIC=1` adds a "look around the demo" link on the sign-in page. Its screenshots are drawn on request rather than stored. Notifications, uploads, imports and the FRED key are off in it. The hourly job deletes copies after a day, and at most 40 are live at once.
+- **Nightly database backup:** `.github/workflows/db-backup.yml` dumps the `tradetime` schema plus the sign-in accounts, encrypts them with your passphrase, and keeps 30 days as private workflow artifacts.
+- **Removed from the cloud version:** the folder backups, restore, and the demo server and its switch page, along with their settings.
+
+**Original plan:**
 
 | Today (on your Mac) | On Supabase + Vercel |
 |---|---|

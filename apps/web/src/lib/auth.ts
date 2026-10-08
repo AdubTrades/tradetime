@@ -1,5 +1,6 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 import { useSyncExternalStore } from 'react';
+import { inDemo } from './demoSession';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -42,6 +43,8 @@ const set = (patch: Partial<AuthState>) => {
  * work. The server only accepts the cookie for reads; changes always need the Authorization header.
  */
 function syncCookie(session: Session | null) {
+  // While the demo is open, the cookie carries the demo's token instead (lib/demoSession.ts).
+  if (inDemo()) return;
   const secure = window.location.protocol === 'https:' ? '; Secure' : '';
   document.cookie = session
     ? `tt_at=${encodeURIComponent(session.access_token)}; Path=/api; Max-Age=${session.expires_in ?? 3600}; SameSite=Lax${secure}`

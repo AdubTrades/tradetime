@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { authEnabled, useAuth } from '../lib/auth';
+import { inDemo } from '../lib/demoSession';
 import { SetPasswordPage, SignInPage } from '../pages/auth/AuthScreens';
 
 /**
@@ -17,7 +18,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
     previous.current = userId;
   }, [userId, queryClient]);
 
-  if (!authEnabled) return <>{children}</>;
+  // A demo visitor uses the demo's own token, signed in or not.
+  if (!authEnabled || inDemo()) return <>{children}</>;
   if (!auth.ready) return null;
   if (!auth.session) return <SignInPage />;
   if (auth.needsPassword) return <SetPasswordPage reason={auth.needsPassword} />;

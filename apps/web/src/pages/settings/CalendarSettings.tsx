@@ -38,7 +38,7 @@ export function CalendarSettings({ settings, demo = false }: { settings: Setting
       <div className="space-y-6">
         <div className="space-y-2">
           {demo ? (
-            <p className="text-sm text-muted">The demo shows sample economic releases; fetching from FRED is switched off.</p>
+            <p className="text-sm text-muted">The demo shows the same economic releases as everyone else; adding a FRED key is switched off.</p>
           ) : (
             <>
           {serverKey ? (

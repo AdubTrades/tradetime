@@ -1,0 +1,69 @@
+# Nightly backup of the TradeTime database (Supabase), kept as an encrypted workflow artifact for 30 days.
+#
+# Needs two repository secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL     the Session pooler connection string (port 5432) from Supabase → Connect.
+#                       GitHub's runners only have IPv4, so use the pooler, not the direct connection.
+#   BACKUP_PASSPHRASE   a long random passphrase (keep it in your password manager: you need it to restore).
+#
+# Restore (see docs/supabase-setup.md, "Backups"):
+#   gpg --decrypt tradetime-db-….tar.gz.gpg | tar -xz
+#   pg_restore --no-owner --no-privileges --clean --if-exists -d "<connection string>" tradetime-db-…/tradetime.dump
+#
+# Screenshots and receipts live in Supabase Storage and aren't in this dump; each user's "Download my data" zip has them.
+name: Database backup
+
+on:
+  schedule:
+    - cron: '17 18 * * *' # 18:17 UTC = 02:17 in Perth
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install the Postgres 17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump the app's data and sign-in accounts
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y%m%d-%H%M)
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          pg_dump=/usr/lib/postgresql/17/bin/pg_dump
+          mkdir "tradetime-db-$stamp"
+          # Everything in the tradetime schema (tables, policies, data)…
+          $pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges --schema=tradetime \
+            --file="tradetime-db-$stamp/tradetime.dump"
+          # …and, separately (pg_dump can't mix a schema with single tables), the sign-in accounts the user ids refer to.
+          $pg_dump "$SUPABASE_DB_URL" --format=custom --data-only --table=auth.users --table=auth.identities \
+            --file="tradetime-db-$stamp/auth-users.dump"
+          tar -czf "tradetime-db-$stamp.tar.gz" "tradetime-db-$stamp"
+          ls -lh "tradetime-db-$stamp"/*
+
+      - name: Encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_PASSPHRASE"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 --output "tradetime-db-$STAMP.tar.gz.gpg" "tradetime-db-$STAMP.tar.gz"
+          rm -r "tradetime-db-$STAMP.tar.gz" "tradetime-db-$STAMP"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tradetime-db-${{ env.STAMP }}
+          path: tradetime-db-${{ env.STAMP }}.tar.gz.gpg
+          retention-days: 30
+          if-no-files-found: error

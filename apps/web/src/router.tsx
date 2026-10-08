@@ -4,7 +4,6 @@ import { AppShell } from './components/AppShell';
 import { useSettings } from './lib/settings';
 import { CalendarPage } from './pages/calendar/CalendarPage';
 import { HomePage } from './pages/home/HomePage';
-import { DemoSwitch } from './pages/DemoSwitch';
 import { DevAttachments } from './pages/DevAttachments';
 import { ExpensesPage } from './pages/expenses/ExpensesPage';
 import { DayPage } from './pages/journal/DayPage';
@@ -93,19 +92,8 @@ const expensesReportRoute = createRoute({
   },
 });
 
-const demoSwitchRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/demo-switch',
-  validateSearch: (search: Record<string, unknown>): { action: 'open' | 'reset' | 'exit' } => ({
-    action: search.action === 'reset' || search.action === 'exit' ? search.action : 'open',
-  }),
-  component: function DemoSwitchRoute() {
-    return <DemoSwitch action={demoSwitchRoute.useSearch().action} />;
-  },
-});
-
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([shellRoute.addChildren(shellRoutes), timeLogReportRoute, expensesReportRoute, demoSwitchRoute]),
+  routeTree: rootRoute.addChildren([shellRoute.addChildren(shellRoutes), timeLogReportRoute, expensesReportRoute]),
 });
 
 declare module '@tanstack/react-router' {

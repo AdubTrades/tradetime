@@ -88,10 +88,30 @@ Locally, the server runs reminders, check-ins and renewal notices itself every m
 2. Open [`packages/db/supabase/cron.sql`](../packages/db/supabase/cron.sql), replace `<APP_URL>` and `<JOBS_SECRET>`, and run it in the **SQL Editor**.
 3. The comments at the bottom of that file show how to check it's running and how to stop it.
 
+## 7. Demo (optional)
+Add `DEMO_SECRET=` plus a value from `openssl rand -hex 32` to the server's environment (`apps/server/.env.local`, and on Vercel later). Signed-in users can then turn on **Settings → Demo mode**. To also let people without an invite look around from the sign-in page, add `DEMO_PUBLIC=1`. Each visitor gets their own copy, and it's deleted after a day.
+
+## 8. Backups (after we push to GitHub)
+A GitHub Action (`.github/workflows/db-backup.yml`) backs up the database every night at about 2am Perth time and keeps 30 days.
+1. In Supabase, **Connect → Session pooler**: copy the connection string (port 5432) and put in your database password.
+2. In the GitHub repo, **Settings → Secrets and variables → Actions → New repository secret**:
+   - `SUPABASE_DB_URL`: that connection string.
+   - `BACKUP_PASSPHRASE`: a long random passphrase. Save it in your password manager, because a backup can't be opened without it.
+3. **Actions → Database backup → Run workflow** once to check it works. Each run's file is under **Artifacts**.
+
+To restore, download the artifact and run:
+```bash
+gpg --decrypt tradetime-db-YYYYMMDD-HHMM.tar.gz.gpg | tar -xz
+```
+then `pg_restore --no-owner --no-privileges --clean --if-exists -d "<connection string>" tradetime-db-…/tradetime.dump`. We'd do that together.
+
+Screenshots and receipts are in Supabase Storage, not in this backup. For a full copy of one account, files included, use **Settings → Your data → Download my data**.
+
 ## How sign-in works (for reference)
 - The web app signs in with Supabase and sends the access token on every request. The server checks it against your project's public signing keys and works out who you are.
 - Each request then runs in the database as that user only, enforced by row-level security.
 - Signing out, or a session expiring, returns you to the sign-in screen and clears anything cached in the browser.
 - Files: the browser uploads screenshots straight to the `attachments` bucket, into a folder named after your user id, and the API records them. Viewing a file goes through the API, which checks it's yours and hands the browser a link that expires after an hour. Each user has 100 MB during the beta.
 - Scheduled jobs: every minute, a tick goes through each account (long-session and check-in alerts, calendar reminders, and hourly recurring expenses and renewal notices) and refreshes economic events every 12 hours. Overlapping ticks skip, so nothing is sent twice.
+- The demo uses its own short-lived tokens signed by the server (not a Supabase sign-in), each for a separate `demo-…` account.
 - Without the two `.env.local` files, the app runs as before, as a single local user with no sign-in and files on disk.
