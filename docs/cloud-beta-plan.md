@@ -2,7 +2,7 @@
 
 **Goal:** put TradeTime online so about a dozen traders from your community can use it, each with their own private account and data, from any computer or phone, **for free**, while you decide whether to turn it into a paid product. The product features stay as they are. This is also the foundation for a later paid, two-tier product, so nothing here is throwaway.
 
-**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phase 1 is done on the `cloud` branch** (8 Oct 2026): Postgres schema with per-user rows and row-level security, async server, all 144 tests passing on PGlite.
+**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phases 1 and 2 are built on the `cloud` branch** (8 Oct 2026): Postgres with per-user rows and row-level security, and Supabase sign-in, which switches on once you create the project (see `docs/supabase-setup.md`).
 
 ---
 
@@ -83,7 +83,11 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 - **Tests:** run the existing tests (150 today) against a real in-process Postgres (PGlite), so they stay fast and don't need Docker.
 - **Fresh migration history:** start a new Postgres one and keep the SQLite migrations on `main`.
 
-### Phase 2 — Login and per-user scoping (3–4 days)
+### Phase 2 — Login and per-user scoping ✅ built 8 Oct 2026 (needs your Supabase project to switch on)
+
+**As built:** Supabase Auth with email and password, magic links, password reset and invites. The server verifies the access token (JWKS, or the legacy secret) and runs each request as that user under row-level security. Sign-in screens are styled in Calm. API tests prove that tokens are required and that users can't reach each other's records or files. Without Supabase settings the app runs as the local user. Setup steps for you are in `docs/supabase-setup.md`.
+
+**Original plan:**
 - **Web login screens:** sign in, magic link, forgot or reset password, and accept invite, using Supabase's JS client and styled in the Calm design.
 - **Identity check:** the API verifies the Supabase login token on every request and passes `userId` into every service call. No request reaches data without it.
 - **Row-level security as a second lock:** each request's database work runs in a transaction that sets the user's identity, and Postgres policies (`user_id = auth.uid()`) refuse other users' rows even if the app code had a bug.

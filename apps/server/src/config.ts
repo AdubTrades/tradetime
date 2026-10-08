@@ -17,11 +17,22 @@ export const paths = {
   tmp: path.join(dataDir, 'tmp'),
 };
 
-/**
- * Until real sign-in arrives (Phase 2), every request acts as this one local user. Tests and jobs pass their
- * own user ids explicitly.
- */
+/** Without sign-in configured (local development), every request acts as this one local user. */
 export const localUserId = process.env.TC_LOCAL_USER ?? 'local';
+
+/**
+ * Sign-in (Supabase Auth). When SUPABASE_URL (or SUPABASE_JWT_SECRET) is set, every API request needs a valid
+ * Supabase access token; otherwise the app runs as the single local user above (local development).
+ * - SUPABASE_URL: the project URL; its public signing keys verify tokens (current Supabase projects).
+ * - SUPABASE_JWT_SECRET: the legacy shared JWT secret, for older projects and tests.
+ * - APP_ORIGINS: extra comma-separated origins allowed to send changes (the app's own origin always is).
+ */
+export const auth = {
+  supabaseUrl: process.env.SUPABASE_URL?.replace(/\/$/, '') || null,
+  jwtSecret: process.env.SUPABASE_JWT_SECRET || null,
+  allowedOrigins: (process.env.APP_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean),
+};
+export const authEnabled = !!(auth.supabaseUrl || auth.jwtSecret);
 
 /** Economic events are fetched once for everyone with the server's FRED key (free from fred.stlouisfed.org). */
 export const fredApiKey = process.env.FRED_API_KEY || null;

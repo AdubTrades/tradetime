@@ -7,3 +7,5 @@ dist
 test-results
 playwright-report
 /data-local
+.env.local
+.env.*.local

@@ -1,3 +1,5 @@
+import { accessToken, authEnabled, signOut } from './auth';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -9,13 +11,18 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
-  const init: RequestInit = { method };
+  const headers: Record<string, string> = {};
+  const token = accessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const init: RequestInit = { method, headers };
   if (body instanceof FormData) init.body = body;
   else if (body !== undefined) {
     init.body = JSON.stringify(body);
-    init.headers = { 'Content-Type': 'application/json' };
+    headers['Content-Type'] = 'application/json';
   }
   const res = await fetch(`/api${url}`, init);
+  // A session that's expired or been revoked: back to the sign-in screen.
+  if (res.status === 401 && authEnabled) void signOut();
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { formatLocal } from '@tc/domain';
 import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui';
 import { api, type BackupStatus, type Settings } from '../lib/api';
+import { authEnabled, signOut, useAuth } from '../lib/auth';
 import { useHealth } from '../lib/demo';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { AccountSettings } from './settings/AccountSettings';
@@ -37,6 +38,7 @@ export function SettingsPage() {
       <PageHeader title="Settings" />
       <div className="space-y-6">
         {!cloud && <DemoSettings />}
+        {authEnabled && <AccountCard />}
         <GeneralSettings settings={settings} />
         <TimeLogSettings settings={settings} />
         <CheckInSettings settings={settings} />
@@ -54,6 +56,21 @@ export function SettingsPage() {
         <DataHealth />
       </div>
     </div>
+  );
+}
+
+/** Who's signed in, with Sign out (the sidebar's Sign out button is hidden on phones). */
+function AccountCard() {
+  const { session } = useAuth();
+  return (
+    <Card title="Account">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <span>
+          Signed in as <span className="font-medium">{session?.user.email}</span>
+        </span>
+        <Button onClick={() => void signOut()}>Sign out</Button>
+      </div>
+    </Card>
   );
 }
 

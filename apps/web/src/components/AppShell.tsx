@@ -8,6 +8,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Receipt,
+  LogOut,
   Settings as SettingsIcon,
   Sun,
   Target,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { Theme } from '../lib/api';
+import { authEnabled, signOut } from '../lib/auth';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { useThemeSync } from '../lib/theme';
 import { CheckInPrompt } from '../pages/checkins/CheckInPrompt';
@@ -112,6 +114,7 @@ export function AppShell() {
         <div className="mt-auto hidden flex-col gap-0.5 md:flex">
           <NavItem to="/settings" label="Settings" icon={SettingsIcon} collapsed={collapsed} textOnly />
           <RailButton label={theme.label} icon={theme.icon} collapsed={collapsed} onClick={() => updateSettings.mutate({ theme: theme.next })} />
+          {authEnabled && <RailButton label="Sign out" icon={LogOut} collapsed={collapsed} onClick={() => void signOut()} />}
           <RailButton
             label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             hint="⌘\"

@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
-import { fredApiKey, localUserId } from './config';
+import { auth, authEnabled, fredApiKey, localUserId } from './config';
+import { tokenFrom, verifyAccessToken, type AuthUser } from './auth';
 import { withUser } from './context';
 import { dataHealth } from './health';
 import { calendarRoutes } from './routes/calendar';
@@ -15,33 +16,52 @@ import { sessionRoutes, sessionTypeRoutes } from './routes/sessions';
 import { settingsRoutes } from './routes/settings';
 
 const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
+const hostOf = (origin: string) => (URL.canParse(origin) ? new URL(origin).host : '');
 
-export const app = new Hono();
+export const app = new Hono<{ Variables: { user: AuthUser } }>();
 
-// The server only listens on 127.0.0.1, but also reject foreign Host/Origin headers
-// so a malicious web page can't reach it via DNS rebinding or cross-site requests.
+/**
+ * Request checks.
+ * - Local mode (no sign-in): the server listens on 127.0.0.1 only, and also rejects foreign Host/Origin headers so
+ *   a malicious page can't reach it via DNS rebinding or cross-site requests.
+ * - Signed-in mode: a page on another site may not send changes (the Origin must be this site or APP_ORIGINS).
+ */
 app.use('/api/*', async (c, next) => {
   const hostHeader = c.req.header('host') ?? '';
-  if (!localHost.test(hostHeader)) throw new HTTPException(403, { message: 'Forbidden host' });
   const origin = c.req.header('origin');
-  if (origin && c.req.method !== 'GET') {
-    const originHost = URL.canParse(origin) ? new URL(origin).host : '';
-    if (!localHost.test(originHost)) throw new HTTPException(403, { message: 'Forbidden origin' });
+  if (!authEnabled) {
+    if (!localHost.test(hostHeader)) throw new HTTPException(403, { message: 'Forbidden host' });
+    if (origin && c.req.method !== 'GET' && !localHost.test(hostOf(origin))) throw new HTTPException(403, { message: 'Forbidden origin' });
+  } else if (origin && c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+    const allowed = hostOf(origin) === hostHeader || auth.allowedOrigins.includes(origin);
+    if (!allowed) throw new HTTPException(403, { message: 'Forbidden origin' });
   }
   await next();
 });
 
 const startedAt = new Date().toISOString();
-app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: false, realAppUrl: null, cloud: true, fredConfigured: !!fredApiKey }));
+app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: false, realAppUrl: null, cloud: true, fredConfigured: !!fredApiKey, auth: authEnabled }));
 
 /**
- * Every other API request runs as one user, in one transaction with row-level security on. Until sign-in
- * arrives (Phase 2) that's the single local user. If the handler fails, the whole request is rolled back.
+ * Who's asking: the signed-in user from their Supabase access token, or the single local user when sign-in isn't
+ * configured. Every other API request then runs as that user, in one transaction with row-level security on.
+ * If the handler fails, the whole request is rolled back.
  */
 app.use('/api/*', async (c, next) => {
   if (c.req.path === '/api/health') return next();
+  let user: AuthUser = { userId: localUserId, email: null };
+  if (authEnabled) {
+    const token = tokenFrom({ method: c.req.method, header: (n) => c.req.header(n) });
+    if (!token) throw new HTTPException(401, { message: 'Please sign in' });
+    try {
+      user = await verifyAccessToken(token);
+    } catch {
+      throw new HTTPException(401, { message: 'Your session has expired. Please sign in again.' });
+    }
+  }
+  c.set('user', user);
   try {
-    await withUser(localUserId, async () => {
+    await withUser(user.userId, async () => {
       await next();
       if (c.error) throw c.error;
     });
@@ -50,6 +70,7 @@ app.use('/api/*', async (c, next) => {
     if (err !== c.error) throw err;
   }
 });
+app.get('/api/me', (c) => c.json({ ...c.get('user'), auth: authEnabled }));
 app.get('/api/health/data', async (c) => c.json(await dataHealth()));
 app.route('/api/settings', settingsRoutes);
 app.route('/api/attachments', attachmentRoutes);

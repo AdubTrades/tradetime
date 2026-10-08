@@ -4,8 +4,19 @@
     {
       "name": "dev",
       "runtimeExecutable": "/Users/adubtrades/.local/bin/pnpm",
-      "runtimeArgs": ["dev"],
+      "runtimeArgs": [
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "web-signin-preview",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/web && VITE_SUPABASE_URL=http://127.0.0.1:54399 VITE_SUPABASE_PUBLISHABLE_KEY=placeholder-key exec /Users/adubtrades/.local/bin/pnpm exec vite --port 5174 --strictPort"
+      ],
+      "port": 5174
     }
   ]
 }

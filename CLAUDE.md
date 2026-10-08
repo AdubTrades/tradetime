@@ -9,7 +9,11 @@
   - `getSettings()` is synchronous: settings are loaded once per `withUser`. `updateSettings`, `getState`/`setState` are async.
   - Shared tables (`market_event`, `app_state`) aren't anyone's; `getAppState`/`setAppState` for app-wide status. The FRED key comes from `FRED_API_KEY`, falling back to the user's own setting.
   - Tests: `useTestDb()` + `asUser(fn, userId?)` from `apps/server/src/testing.ts` (in-memory PGlite per file, wiped before each test). Use separate `asUser` calls for steps that are expected to fail at the database level.
-  - `pnpm --filter @tc/server seed:demo` fills the local dev account with the demo trader's data.
+  - `pnpm --filter @tc/server seed:demo [userId]` fills an account with the demo trader's data.
+- *(cloud)* Sign-in is Supabase Auth, switched on by env (`docs/supabase-setup.md`): web `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY`, server `SUPABASE_URL` (JWKS) or `SUPABASE_JWT_SECRET` (HS256, tests). Without them everything runs as the local user. Env lives in git-ignored `.env.local` files (see `.env.example`).
+  - Server: `auth.ts` verifies the token (`aud: authenticated`), `app.ts` runs the request as `sub`. `Authorization: Bearer` for everything; the `tt_at` cookie (set by `lib/auth.ts`, path `/api`) is accepted for GET only, for `<img>` and download links. Non-GET requests from another origin are refused unless listed in `APP_ORIGINS`.
+  - Web: `AuthGate` (sign-in, invite/reset → set password) wraps the router; `api.ts` adds the token and signs out on 401; the query cache is cleared when the user changes. Invite-only: magic links use `shouldCreateUser: false`, and sign-ups are off in Supabase.
+  - `api.test.ts` covers sign-in and cross-user isolation over HTTP with HS256 test tokens (vitest sets `SUPABASE_JWT_SECRET`).
 - pnpm lives at `~/.local/bin/pnpm` (`export PATH="$HOME/.local/bin:$PATH"`).
 - Dev ports: web 5173 → API 4318 (`data-dev/`). The installed app uses 4317 and `~/TradingCompanion` — never point dev or tests at the real data folder.
 - Zod 4: `.partial()` still applies `.default()` values, so patch schemas must not have defaults (see `apps/server/src/settings.ts`).
