@@ -2,17 +2,30 @@ import { createReadStream, existsSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { formatZodError } from '../http';
+import { storage } from '../config';
+import { body, formatZodError } from '../http';
 import {
   attachmentPath,
   attachmentsFor,
+  completeUpload,
+  fileLink,
   getAttachment,
   isAllowedMime,
   linkAttachment,
   MAX_ATTACHMENT_BYTES,
+  prepareUpload,
+  storageUsed,
   storeAttachment,
   unlinkAttachment,
 } from '../attachments';
+
+const fileSchema = z.object({
+  sha256: z.string().regex(/^[0-9a-f]{64}$/, 'Invalid file hash'),
+  mime: z.string().min(1),
+  bytes: z.number().int().positive(),
+  name: z.string().max(255).nullable().optional(),
+});
+const ownerSchema = z.object({ ownerType: z.string().min(1).optional(), ownerId: z.string().min(1).optional(), role: z.string().nullable().optional() });
 
 const linkSchema = z.object({
   attachmentId: z.string().min(1),
@@ -41,6 +54,19 @@ export const attachmentRoutes = new Hono()
     }
     return c.json(results, 201);
   })
+  /** Cloud uploads, step 1: reuse an identical file, or get the storage path to upload it to from the browser. */
+  .post('/prepare', async (c) => {
+    const f = await body(c.req, fileSchema);
+    return c.json(await prepareUpload({ ...f, name: f.name ?? null }));
+  })
+  /** Cloud uploads, step 2: record the uploaded file and optionally link it to an owner. */
+  .post('/complete', async (c) => {
+    const { ownerType, ownerId, role, ...f } = await body(c.req, fileSchema.merge(ownerSchema));
+    const attachment = await completeUpload({ ...f, name: f.name ?? null });
+    const link = ownerType && ownerId ? await linkAttachment(attachment.id, ownerType, ownerId, role ?? null) : null;
+    return c.json({ attachment, link }, 201);
+  })
+  .get('/usage', async (c) => c.json({ usedBytes: await storageUsed(), capBytes: storage.capBytes }))
   .post('/links', async (c) => {
     const parsed = linkSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: formatZodError(parsed.error) }, 400);
@@ -53,7 +79,14 @@ export const attachmentRoutes = new Hono()
   .get('/:id/file', async (c) => {
     const row = await getAttachment(c.req.param('id'));
     if (!row) return c.json({ error: 'Not found' }, 404);
-    const file = await attachmentPath(row.sha256, row.mime);
+    if (storage.remote) {
+      // Send the browser on to a short-lived private link; the file itself comes from Supabase Storage.
+      const url = await fileLink(row);
+      if (!url) return c.json({ error: 'File missing from storage' }, 410);
+      c.header('Cache-Control', 'private, max-age=300');
+      return c.redirect(url, 302);
+    }
+    const file = attachmentPath(row.sha256, row.mime);
     if (!existsSync(file)) return c.json({ error: 'File missing from attachments folder' }, 410);
     c.header('Content-Type', row.mime);
     c.header('Content-Length', String(row.bytes));

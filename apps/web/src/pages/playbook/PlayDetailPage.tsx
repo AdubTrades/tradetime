@@ -8,6 +8,7 @@ import { GradeBadge } from '../../components/GradeBadge';
 import { Button, Card, Input, PageHeader, Select } from '../../components/ui';
 import { api, type Attachment, type GradeRule, type PlayDetail, type PlayExample } from '../../lib/api';
 import { useJournalMutation, usePlay } from '../../lib/journal';
+import { uploadFiles } from '../../lib/upload';
 
 export function PlayDetailPage({ playId }: { playId: string }) {
   const { data: play } = usePlay(playId);
@@ -216,9 +217,7 @@ function Gallery({ play }: { play: PlayDetail }) {
 
 function GradeShelf({ play, grade, examples }: { play: PlayDetail; grade: string; examples: PlayExample[] }) {
   const upload = useJournalMutation(async (files: File[]) => {
-    const form = new FormData();
-    for (const f of files) form.append('file', f);
-    const uploaded = await api.post<{ attachment: Attachment }[]>('/attachments', form);
+    const uploaded = await uploadFiles(files);
     for (const { attachment } of uploaded) await api.post(`/plays/${play.id}/examples`, { grade, attachmentId: attachment.id, date: DateTime.now().toISODate() });
   });
   const updateEx = useJournalMutation(({ id, ...patch }: { id: string; caption?: string | null; grade?: string }) => api.patch(`/plays/examples/${id}`, patch));

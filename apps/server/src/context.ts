@@ -6,6 +6,8 @@ import { loadSettings, type Settings } from './settings';
 
 interface UserScope {
   userId: string;
+  /** The user's Supabase access token, for calls to Supabase Storage on their behalf. */
+  token: string | null;
   tx: Db;
   /** Loaded once per scope so date maths can read settings synchronously. */
   settings: Settings;
@@ -54,14 +56,14 @@ export const rootDb = (): Db => root();
 const seeded = new Set<string>();
 
 /** Run `fn` as `userId`: one transaction, row-level security on, defaults seeded on first use. */
-export async function withUser<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+export async function withUser<T>(userId: string, fn: () => Promise<T>, opts: { token?: string | null } = {}): Promise<T> {
   return asUser(root(), userId, async (tx) => {
     if (!seeded.has(userId)) {
       await ensureUserSeeded(tx, userId);
       seeded.add(userId);
     }
     const settings = await loadSettings(tx);
-    return scope.run({ userId, tx, settings }, fn);
+    return scope.run({ userId, tx, settings, token: opts.token ?? null }, fn);
   });
 }
 

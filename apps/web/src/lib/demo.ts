@@ -10,6 +10,10 @@ export interface Health {
   cloud?: boolean;
   /** The server has its own FRED key, so economic events work without one in Settings. */
   fredConfigured?: boolean;
+  /** Where screenshots and receipts live. */
+  storage?: { kind: 'supabase'; bucket: string } | { kind: 'local' };
+  /** Sign-in is switched on (Supabase Auth). */
+  auth?: boolean;
 }
 
 /** Whether this window is the demo copy, and where the real app lives. */

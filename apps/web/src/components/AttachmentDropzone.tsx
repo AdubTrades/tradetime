@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, ImagePlus, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { api, type Attachment, type AttachmentLink } from '../lib/api';
+import { uploadFiles } from '../lib/upload';
 import { FileDropTarget } from './FileDropTarget';
 
 interface Props {
@@ -25,14 +26,7 @@ export function AttachmentDropzone({ ownerType, ownerId, role, pasteAnywhere = f
   });
 
   const upload = useMutation({
-    mutationFn: (files: File[]) => {
-      const form = new FormData();
-      for (const f of files) form.append('file', f);
-      form.append('ownerType', ownerType);
-      form.append('ownerId', ownerId);
-      if (role) form.append('role', role);
-      return api.post('/attachments', form);
-    },
+    mutationFn: (files: File[]) => uploadFiles(files, { ownerType, ownerId, role }),
     onSuccess: () => qc.invalidateQueries({ queryKey }),
   });
 

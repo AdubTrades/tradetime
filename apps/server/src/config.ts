@@ -34,6 +34,21 @@ export const auth = {
 };
 export const authEnabled = !!(auth.supabaseUrl || auth.jwtSecret);
 
+/**
+ * File storage. With SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY set, screenshots and receipts live in the private
+ * Supabase Storage bucket below, one folder per user, and are read and written with the signed-in user's own token
+ * (storage policies limit each user to their folder). Otherwise they're kept on disk under TC_DATA_DIR/attachments.
+ * SUPABASE_SECRET_KEY is optional: only scripts that run without a signed-in user (demo seed, data import) need it.
+ */
+export const storage = {
+  remote: !!(auth.supabaseUrl && process.env.SUPABASE_PUBLISHABLE_KEY),
+  bucket: 'attachments',
+  publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || null,
+  secretKey: process.env.SUPABASE_SECRET_KEY || null,
+  /** Per-user storage cap, to stay inside the free tier during the beta. */
+  capBytes: Number(process.env.TC_STORAGE_CAP_MB ?? 100) * 1024 * 1024,
+};
+
 /** Economic events are fetched once for everyone with the server's FRED key (free from fred.stlouisfed.org). */
 export const fredApiKey = process.env.FRED_API_KEY || null;
 

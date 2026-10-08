@@ -3,6 +3,7 @@ import { isNull } from 'drizzle-orm';
 import { schema } from '@tc/db';
 import { durationMinutes } from '@tc/domain';
 import { attachmentPath } from './attachments';
+import { storage } from './config';
 import { db } from './context';
 import { getRunningSession } from './sessions';
 
@@ -18,7 +19,8 @@ export async function dataHealth(): Promise<{ checks: HealthCheck[] }> {
   const checks: HealthCheck[] = [];
 
   const atts = await db.select().from(schema.attachment).where(isNull(schema.attachment.deletedAt));
-  const missing = atts.filter((a) => !existsSync(attachmentPath(a.sha256, a.mime)));
+  // Files in Supabase Storage aren't checked one by one here; the bucket keeps them.
+  const missing = storage.remote ? [] : atts.filter((a) => !existsSync(attachmentPath(a.sha256, a.mime)));
   checks.push({
     id: 'attachments',
     label: 'Screenshots and receipts',

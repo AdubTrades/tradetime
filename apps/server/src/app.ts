@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
-import { auth, authEnabled, fredApiKey, localUserId } from './config';
+import { auth, authEnabled, fredApiKey, localUserId, storage } from './config';
 import { tokenFrom, verifyAccessToken, type AuthUser } from './auth';
 import { withUser } from './context';
 import { dataHealth } from './health';
@@ -40,7 +40,7 @@ app.use('/api/*', async (c, next) => {
 });
 
 const startedAt = new Date().toISOString();
-app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: false, realAppUrl: null, cloud: true, fredConfigured: !!fredApiKey, auth: authEnabled }));
+app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: false, realAppUrl: null, cloud: true, fredConfigured: !!fredApiKey, auth: authEnabled, storage: storage.remote ? { kind: 'supabase', bucket: storage.bucket } : { kind: 'local' } }));
 
 /**
  * Who's asking: the signed-in user from their Supabase access token, or the single local user when sign-in isn't
@@ -50,8 +50,9 @@ app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: false, realApp
 app.use('/api/*', async (c, next) => {
   if (c.req.path === '/api/health') return next();
   let user: AuthUser = { userId: localUserId, email: null };
+  let token: string | null = null;
   if (authEnabled) {
-    const token = tokenFrom({ method: c.req.method, header: (n) => c.req.header(n) });
+    token = tokenFrom({ method: c.req.method, header: (n) => c.req.header(n) });
     if (!token) throw new HTTPException(401, { message: 'Please sign in' });
     try {
       user = await verifyAccessToken(token);
@@ -61,10 +62,14 @@ app.use('/api/*', async (c, next) => {
   }
   c.set('user', user);
   try {
-    await withUser(user.userId, async () => {
-      await next();
-      if (c.error) throw c.error;
-    });
+    await withUser(
+      user.userId,
+      async () => {
+        await next();
+        if (c.error) throw c.error;
+      },
+      { token },
+    );
   } catch (err) {
     // The error response was already rendered by onError; rethrow anything else.
     if (err !== c.error) throw err;

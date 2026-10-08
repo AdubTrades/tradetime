@@ -2,7 +2,7 @@
 
 **Goal:** put TradeTime online so about a dozen traders from your community can use it, each with their own private account and data, from any computer or phone, **for free**, while you decide whether to turn it into a paid product. The product features stay as they are. This is also the foundation for a later paid, two-tier product, so nothing here is throwaway.
 
-**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phases 1 and 2 are built on the `cloud` branch** (8 Oct 2026): Postgres with per-user rows and row-level security, and Supabase sign-in, which switches on once you create the project (see `docs/supabase-setup.md`).
+**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phases 1–3 are built on the `cloud` branch** (8 Oct 2026): Postgres with per-user rows and row-level security, Supabase sign-in, and Supabase file storage, which switch on once you create the project (see `docs/supabase-setup.md`).
 
 ---
 
@@ -94,7 +94,16 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 - **Isolation tests:** create two users and prove neither can read, edit or delete the other's trades, sessions, expenses, files or events through any API route.
 - **Invites:** you invite testers from the Supabase dashboard.
 
-### Phase 3 — Files to Supabase Storage (1–2 days)
+### Phase 3 — Files to Supabase Storage ✅ built 8 Oct 2026
+
+**As built:**
+- The browser hashes each file, reuses one you already have, and otherwise uploads straight to your folder in a private bucket, then the API records it.
+- Viewing goes through the API, which checks the file is yours and redirects to a one-hour signed link, so existing image links work unchanged.
+- Storage calls use the signed-in user's own token, and storage policies limit each user to their folder, so no secret key sits on the server.
+- There's a 100 MB per-user cap.
+- Local mode still keeps files on disk.
+
+**Original plan:**
 - **Private bucket:** screenshots, receipts and imports go in a private bucket under `user_id/…`, and the app shows them through short-lived signed links.
 - **Direct uploads:** the browser asks the API for a signed upload URL, then uploads to Storage itself. This works around Vercel's request-size limit. The drop, paste and upload interface doesn't change.
 - **Imports:** CSV imports from NinjaTrader, Tradovate and expense files stay small enough to go through the API as now. They're checked against a size limit.
