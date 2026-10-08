@@ -2,7 +2,7 @@
 
 **Goal:** put TradeTime online so about a dozen traders from your community can use it, each with their own private account and data, from any computer or phone, **for free**, while you decide whether to turn it into a paid product. The product features stay as they are. This is also the foundation for a later paid, two-tier product, so nothing here is throwaway.
 
-**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phases 1–4 are built on the `cloud` branch** (8 Oct 2026): Postgres with per-user rows and row-level security, Supabase sign-in, and Supabase file storage, which switch on once you create the project (see `docs/supabase-setup.md`).
+**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phases 1–5 are built on the `cloud` branch** (8 Oct 2026): Postgres with per-user rows and row-level security, Supabase sign-in, and Supabase file storage, which switch on once you create the project (see `docs/supabase-setup.md`).
 
 ---
 
@@ -123,7 +123,16 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 - **What it affects:** check that the trading day, financial-year boundaries, calendar times, reminders and economic-event times all follow the user's zone. The time and daylight-saving tests get extra cases for a non-Perth user.
 - **Economic events:** fetched once for everyone using your FRED key and shown in each user's own time zone. The per-user FRED key setting goes away.
 
-### Phase 5 — Background jobs and notifications (2–3 days)
+### Phase 5 — Background jobs and notifications ✅ built 8 Oct 2026
+
+**As built:**
+- One `runTick()` does a round of jobs for every user.
+- A lease in the database stops overlapping ticks double-sending, and the reminder window is kept in the database, so it works serverless.
+- Locally it runs every minute in-process. In the cloud, pg_cron calls the secret-protected `/api/jobs/tick` (`packages/db/supabase/cron.sql`, with the URL and secret in Supabase Vault).
+- Notifications are Web Push to each of the user's devices, managed in Settings → Notifications, with a service worker that opens the right page when you click. Dead devices are removed automatically.
+- The local Mac app also keeps its macOS notifications.
+
+**Original plan:**
 - **The tick:** a protected `POST /api/jobs/tick` endpoint, which needs a secret header, runs one round of jobs for all users:
   - "still going?" long-session alerts
   - check-ins

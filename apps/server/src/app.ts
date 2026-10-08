@@ -14,6 +14,9 @@ import { accountGroupRoutes, contractRoutes, dailyReviewRoutes, playRoutes, trad
 import { accountRoutes, firmRoutes, listRoutes } from './routes/lists';
 import { sessionRoutes, sessionTypeRoutes } from './routes/sessions';
 import { settingsRoutes } from './routes/settings';
+import { pushRoutes } from './routes/push';
+import { runTick } from './jobs';
+import { timingSafeEqual } from 'node:crypto';
 
 const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 const hostOf = (origin: string) => (URL.canParse(origin) ? new URL(origin).host : '');
@@ -43,12 +46,29 @@ const startedAt = new Date().toISOString();
 app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: false, realAppUrl: null, cloud: true, fredConfigured: !!fredApiKey, auth: authEnabled, storage: storage.remote ? { kind: 'supabase', bucket: storage.bucket } : { kind: 'local' } }));
 
 /**
+ * Scheduled jobs, called every minute by Supabase pg_cron (cloud) with `Authorization: Bearer <JOBS_SECRET>`.
+ * Not a user request, so it's checked before the sign-in step and runs every user's jobs itself.
+ */
+const secretMatches = (given: string, expected: string) => {
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+};
+app.post('/api/jobs/tick', async (c) => {
+  const secret = process.env.JOBS_SECRET;
+  if (!secret) return c.json({ error: 'Scheduled jobs endpoint is off (JOBS_SECRET not set)' }, 404);
+  const given = c.req.header('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+  if (!secretMatches(given, secret)) return c.json({ error: 'Forbidden' }, 403);
+  return c.json(await runTick());
+});
+
+/**
  * Who's asking: the signed-in user from their Supabase access token, or the single local user when sign-in isn't
  * configured. Every other API request then runs as that user, in one transaction with row-level security on.
  * If the handler fails, the whole request is rolled back.
  */
 app.use('/api/*', async (c, next) => {
-  if (c.req.path === '/api/health') return next();
+  if (c.req.path === '/api/health' || c.req.path === '/api/jobs/tick') return next();
   let user: AuthUser = { userId: localUserId, email: null };
   let token: string | null = null;
   if (authEnabled) {
@@ -78,6 +98,7 @@ app.use('/api/*', async (c, next) => {
 app.get('/api/me', (c) => c.json({ ...c.get('user'), auth: authEnabled }));
 app.get('/api/health/data', async (c) => c.json(await dataHealth()));
 app.route('/api/settings', settingsRoutes);
+app.route('/api/push', pushRoutes);
 app.route('/api/attachments', attachmentRoutes);
 app.route('/api/sessions', sessionRoutes);
 app.route('/api/session-types', sessionTypeRoutes);

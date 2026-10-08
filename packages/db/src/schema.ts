@@ -654,6 +654,22 @@ export const accountAlias = app.table(
   ],
 );
 
+/** A browser or phone that asked for push notifications (Web Push). One row per device. */
+export const pushSubscription = app.table(
+  'push_subscription',
+  {
+    userId: userId(),
+    id: text('id').notNull(),
+    endpoint: text('endpoint').notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: text('created_at').notNull().default(nowIso),
+    lastUsedAt: text('last_used_at'),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.id] }), uniqueIndex('push_subscription_endpoint_idx').on(t.userId, t.endpoint)],
+);
+
 /** Every per-user table, for row-level security and per-user deletes/exports. */
 export const userTables = [
   'user_profile',
@@ -687,4 +703,5 @@ export const userTables = [
   'calendar_event',
   'calendar_event_exception',
   'account_alias',
+  'push_subscription',
 ] as const;

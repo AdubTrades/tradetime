@@ -16,6 +16,7 @@ import { CheckInSettings } from './settings/CheckInSettings';
 import { ExpenseSettings } from './settings/ExpenseSettings';
 import { JournalSettings } from './settings/JournalSettings';
 import { TimeLogSettings } from './settings/TimeLogSettings';
+import { NotificationSettings } from './settings/NotificationSettings';
 
 const intervals: { value: Settings['backupIntervalHours']; label: string }[] = [
   { value: 0, label: 'Off (manual only)' },
@@ -40,6 +41,7 @@ export function SettingsPage() {
         {!cloud && <DemoSettings />}
         {authEnabled && <AccountCard />}
         <GeneralSettings settings={settings} />
+        {cloud && <NotificationSettings />}
         <TimeLogSettings settings={settings} />
         <CheckInSettings settings={settings} />
         <CalendarSettings settings={settings} demo={demo} />

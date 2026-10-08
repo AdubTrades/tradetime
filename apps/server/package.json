@@ -6,7 +6,8 @@
     "dev": "TC_DATA_DIR=../../data-dev TC_PORT=4318 tsx watch --env-file-if-exists=.env.local src/index.ts",
     "start": "NODE_ENV=production tsx src/index.ts",
     "typecheck": "tsc -p .",
-    "seed:demo": "TC_DATA_DIR=../../data-dev tsx --env-file-if-exists=.env.local src/scripts/seed-demo.ts"
+    "seed:demo": "TC_DATA_DIR=../../data-dev tsx --env-file-if-exists=.env.local src/scripts/seed-demo.ts",
+    "vapid-keys": "tsx src/scripts/vapid-keys.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -22,9 +23,11 @@
     "luxon": "^3.7.2",
     "postgres": "^3.4.9",
     "tsx": "^4.23.15",
+    "web-push": "^3.6.7",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/luxon": "^3.7.6"
+    "@types/luxon": "^3.7.6",
+    "@types/web-push": "^3.6.4"
   }
 }

@@ -49,6 +49,24 @@ export const storage = {
   capBytes: Number(process.env.TC_STORAGE_CAP_MB ?? 100) * 1024 * 1024,
 };
 
+/**
+ * Web Push (notifications on any browser or phone). Generate the key pair once with
+ * `pnpm --filter @tc/server vapid-keys`. Without them, push is off and only the in-app prompts remain.
+ */
+export const push = {
+  publicKey: process.env.VAPID_PUBLIC_KEY || null,
+  privateKey: process.env.VAPID_PRIVATE_KEY || null,
+  /** Contact for the push services, e.g. mailto:you@example.com. */
+  subject: process.env.VAPID_SUBJECT || 'mailto:admin@tradetime.app',
+};
+export const pushEnabled = !!(push.publicKey && push.privateKey);
+
+/**
+ * Scheduled jobs. In the cloud, Supabase's pg_cron calls POST /api/jobs/tick every minute with this secret
+ * (Authorization: Bearer …). Locally, an in-process timer runs the same tick.
+ */
+export const jobsSecret = process.env.JOBS_SECRET || null;
+
 /** Economic events are fetched once for everyone with the server's FRED key (free from fred.stlouisfed.org). */
 export const fredApiKey = process.env.FRED_API_KEY || null;
 

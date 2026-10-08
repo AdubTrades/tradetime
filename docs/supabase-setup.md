@@ -73,9 +73,25 @@ The demo seed uploads sample chart screenshots without anyone signed in, so with
 
 Your real data comes across in Phase 9.
 
+## 5. Notifications (optional for local testing)
+1. Generate the push keys once:
+   ```bash
+   pnpm --filter @tc/server vapid-keys
+   ```
+2. Copy the three `VAPID_…` lines into `apps/server/.env.local`, putting your own email in `VAPID_SUBJECT`. Keep these keys forever: changing them switches notifications off on every device.
+3. Restart `pnpm dev`. In **Settings → Notifications**, click **Turn on notifications** on each device, then **Send a test**.
+   - On iPhone and iPad this only works once TradeTime is added to the Home Screen (Phase 7 makes that look right).
+
+## 6. Scheduled jobs (after we deploy, Phase 8)
+Locally, the server runs reminders, check-ins and renewal notices itself every minute. Once it's on Vercel, Supabase triggers them:
+1. Make a secret with `openssl rand -hex 32` and set it as `JOBS_SECRET` in the server's environment on Vercel.
+2. Open [`packages/db/supabase/cron.sql`](../packages/db/supabase/cron.sql), replace `<APP_URL>` and `<JOBS_SECRET>`, and run it in the **SQL Editor**.
+3. The comments at the bottom of that file show how to check it's running and how to stop it.
+
 ## How sign-in works (for reference)
 - The web app signs in with Supabase and sends the access token on every request. The server checks it against your project's public signing keys and works out who you are.
 - Each request then runs in the database as that user only, enforced by row-level security.
 - Signing out, or a session expiring, returns you to the sign-in screen and clears anything cached in the browser.
 - Files: the browser uploads screenshots straight to the `attachments` bucket, into a folder named after your user id, and the API records them. Viewing a file goes through the API, which checks it's yours and hands the browser a link that expires after an hour. Each user has 100 MB during the beta.
+- Scheduled jobs: every minute, a tick goes through each account (long-session and check-in alerts, calendar reminders, and hourly recurring expenses and renewal notices) and refreshes economic events every 12 hours. Overlapping ticks skip, so nothing is sent twice.
 - Without the two `.env.local` files, the app runs as before, as a single local user with no sign-in and files on disk.
