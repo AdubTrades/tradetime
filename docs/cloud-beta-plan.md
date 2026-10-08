@@ -1,58 +1,66 @@
-# TradeTime community beta — Supabase "middle path" plan
+# TradeTime community beta — Supabase + Vercel plan
 
-**Goal:** put TradeTime online so about a dozen traders from your community can use it, each with their own private account and data, from any computer or phone, for free or close to it. The product features stay as they are. This is also the foundation for a later paid, two-tier product, so nothing here is throwaway.
+**Goal:** put TradeTime online so about a dozen traders from your community can use it, each with their own private account and data, from any computer or phone, **for free**, while you decide whether to turn it into a paid product. The product features stay as they are. This is also the foundation for a later paid, two-tier product, so nothing here is throwaway.
 
-**Status:** decisions confirmed (7 Oct 2026). Nothing has been built yet.
+**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. Nothing has been built yet.
 
 ---
 
 ## 1. The shape of it
 
 ```
- Testers' browsers (any PC, Mac, phone)          Supabase (Sydney region)
- ┌──────────────────────────────┐               ┌───────────────────────────────┐
- │ TradeTime web app            │──login──────▶ │ Auth: accounts, passwords,    │
- │ (same React app, installable │               │       email, password reset   │
- │  to the home screen)         │               ├───────────────────────────────┤
- └──────────────┬───────────────┘               │ Postgres: everyone's data,    │
-                │ HTTPS + login token           │   every row tagged by user,   │
-                ▼                               │   row-level security          │
- ┌──────────────────────────────┐   SQL         ├───────────────────────────────┤
- │ TradeTime server (always on) │─────────────▶ │ Storage: screenshots, receipts│
- │ the existing Hono server,    │──files──────▶ │   in private per-user folders │
- │ Sydney region                │               └───────────────────────────────┘
- │ - API (checks who you are)   │
- │ - background jobs (reminders,│──push──▶ testers' browsers / phones
- │   check-ins, renewals, FRED) │
- │ - serves the web app itself  │
+ Testers' browsers (any PC, Mac, phone)            Supabase (Sydney region)
+ ┌──────────────────────────────┐                 ┌─────────────────────────────────┐
+ │ TradeTime web app            │──login────────▶ │ Auth: accounts, passwords,      │
+ │ (same React app, installable │                 │   email, password reset         │
+ │  to the home screen)         │──upload files─▶ │ Storage: screenshots, receipts  │
+ └──────────────┬───────────────┘   (direct,      │   in private per-user folders   │
+                │ HTTPS + login     signed URL)   ├─────────────────────────────────┤
+                ▼ token                           │ Postgres: everyone's data,      │
+ ┌──────────────────────────────┐   SQL via       │   every row tagged by user,     │
+ │ Vercel                       │   connection    │   row-level security            │
+ │ - the website (static files) │──pooler───────▶ ├─────────────────────────────────┤
+ │ - the API: the existing Hono │                 │ Scheduler (pg_cron): every      │
+ │   server as Vercel functions │◀──"run jobs"────│   minute it calls the API's     │
+ │ - /api/jobs/tick runs        │                 │   job endpoint                  │
+ │   reminders, check-ins,      │                 └─────────────────────────────────┘
+ │   renewals, FRED refresh     │──push──▶ testers' browsers / phones
  └──────────────────────────────┘
+ GitHub Actions (free): nightly database backup, keep-alive ping
 ```
 
-**Why this split:**
-- **Supabase does the parts that are risky to build yourself:** login, password resets and email verification; the database; private file storage.
-- **The existing server stays.** It keeps its API, its background jobs (which need an always-on process) and serves the website, so there's one thing to deploy.
-- **Vercel isn't needed for the beta.** The server can serve the website. Vercel stays an option later if you want the site on a CDN.
+**What changes compared with the always-on server version:**
+- **No server to rent.** Vercel runs the website and turns the existing Hono API into on-demand functions; Hono supports this directly. Supabase does login, the database and file storage.
+- **Background jobs get a timer from outside.** On Vercel, code only runs when a request comes in, so Supabase's scheduler (`pg_cron` with `pg_net`) calls a protected `/api/jobs/tick` endpoint every minute. That endpoint does what the in-process timers do today. Vercel's own scheduled jobs are too limited on the free plan.
+- **Files upload straight to Supabase.** Vercel functions only accept request bodies up to about 4.5 MB, so the browser asks the API for a signed upload link and sends screenshots straight to Supabase Storage.
+- **Backups and the keep-alive run on GitHub Actions**, which is free.
 
-## 2. Decisions (confirmed 7 Oct 2026)
+## 2. Decisions (confirmed 8 Oct 2026)
 
 | # | Decision | Confirmed |
 |---|---|---|
-| 1 | Where the server runs | **Fly.io (Sydney)**, about US$5 a month and always on. (Railway is the fallback; Oracle Cloud Always Free is the free option, with more setup and less dependability.) |
+| 1 | Hosting | **Vercel (Hobby, free)** for the website and API, and **Supabase (free, Sydney)** for login, database, storage and scheduler. |
 | 2 | Who can sign up | **Invite only.** You add testers' emails, they get an invite link, and public sign-up is off. |
 | 3 | Login methods | Email and password, plus a magic link. Google sign-in is optional. |
-| 4 | Testers outside Australia? | The beta stays **Australia-centric**: Australian financial year, GST and ATO-style exports. Time zone and trading-day rollover become per-user settings, so non-Perth traders still work. |
+| 4 | Testers outside Australia? | The beta stays **Australia-centric**: Australian financial year, GST and ATO-style exports. Time zone and trading-day rollover become per-user settings. |
 | 5 | Your own data | You become **user #1**: your current data is imported into your account. Your local installed app keeps running until the cloud version has proven itself. |
-| 6 | Demo mode | Replace the separate demo server with a **demo account** that resets nightly, which also works as a public "try it" login later. |
-| 7 | Web address | Start on the host's free address (e.g. `tradetime.fly.dev`). Add your own domain later for about US$15–20 a year. |
+| 6 | Demo mode | A **demo account** that resets nightly instead of the separate demo server. |
+| 7 | Web address | The free Vercel address to start (e.g. `tradetime.vercel.app`). Add your own domain later if you want one. |
+| 8 | Code hosting | A **private GitHub repo**. Vercel deploys from it, and GitHub Actions run backups. This also gives the repo the remote it doesn't have yet. |
 
 ## 3. Phases
 
 Estimates assume focused build sessions like the ones so far, and include testing. Each phase ends in a working state.
 
 ### Phase 0 — Accounts and setup (half a day)
-- Create the Supabase project (Sydney), the server host account (Fly.io or Railway), error monitoring (Sentry free tier) and an uptime monitor (Better Stack or UptimeRobot free tier).
-- Work on a `cloud` branch so the local app on `main` is untouched.
-- Store secrets (database URL, Supabase keys, FRED key, push keys) in the host's secret settings, never in the repo.
+- **You** create accounts (I can't create accounts or handle passwords for you):
+  - GitHub, with a private repo for TradeTime
+  - Vercel, signed in with GitHub
+  - Supabase, with a project in the Sydney region
+- **Me:**
+  - work on a `cloud` branch so the local app on `main` is untouched
+  - set up error monitoring (Sentry free tier) and an uptime monitor (Better Stack or UptimeRobot free tier)
+- **Secrets** stay in Vercel's and Supabase's settings, never in the repo: database URL, Supabase keys, FRED key, push keys and the job-endpoint secret.
 
 ### Phase 1 — Move the database to Postgres (4–6 days, the biggest phase)
 Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instant answer" style, 23 transactions and 8 migrations.
@@ -61,47 +69,60 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 - **Shared vs per-user tables:**
   - Shared by everyone: market events (one FRED feed for all) and the contract specs (ES, NQ, MES, MNQ).
   - Seeded into each new account: session types, check-in questions, list items (moods, mistakes, expense categories), calendar event types, and the default settings.
-- **Async conversion:** convert every database call and transaction in the server to the network ("async") style. This is mechanical but touches every server module.
+- **Async conversion:** convert every database call and transaction to the network ("async") style. This is mechanical but touches every server module.
+- **Serverless-friendly connections:** connect through Supabase's **connection pooler** (transaction mode), so many short-lived Vercel functions don't run out of database connections.
 - **Tests:** run the existing tests (150 today) against a real in-process Postgres (PGlite), so they stay fast and don't need Docker.
-- **Fresh migration history:** start a new Postgres one (`0000_init` for Postgres) and keep the SQLite migrations on `main`.
+- **Fresh migration history:** start a new Postgres one and keep the SQLite migrations on `main`.
 
 ### Phase 2 — Login and per-user scoping (3–4 days)
 - **Web login screens:** sign in, magic link, forgot or reset password, and accept invite, using Supabase's JS client and styled in the Calm design.
-- **Server identity check:** verify the Supabase login token on every request, find the user, and pass `userId` into every service call. No request reaches data without it.
+- **Identity check:** the API verifies the Supabase login token on every request and passes `userId` into every service call. No request reaches data without it.
 - **Row-level security as a second lock:** each request's database work runs in a transaction that sets the user's identity, and Postgres policies (`user_id = auth.uid()`) refuse other users' rows even if the app code had a bug.
 - **Isolation tests:** create two users and prove neither can read, edit or delete the other's trades, sessions, expenses, files or events through any API route.
-- **Invites:** you invite testers from the Supabase dashboard. A small "Admin" page for you is optional.
+- **Invites:** you invite testers from the Supabase dashboard.
 
 ### Phase 3 — Files to Supabase Storage (1–2 days)
 - **Private bucket:** screenshots, receipts and imports go in a private bucket under `user_id/…`, and the app shows them through short-lived signed links.
-- **Unchanged behaviour:** de-duplication by content hash stays (now per user), and the drop, paste and upload interface doesn't change.
-- **Limits:** per-file size limits and a per-user storage cap for the beta, to stay inside the free tier.
+- **Direct uploads:** the browser asks the API for a signed upload URL, then uploads to Storage itself. This works around Vercel's request-size limit. The drop, paste and upload interface doesn't change.
+- **Imports:** CSV imports from NinjaTrader, Tradovate and expense files stay small enough to go through the API as now. They're checked against a size limit.
+- **Limits:** per-file size limits and a per-user storage cap, to stay inside the free tier.
 
 ### Phase 4 — Per-user time zone and settings (1–2 days)
 - **Time zone setting:** Perth is hard-coded in 35 places, through `LOCAL_ZONE`. It becomes a user setting, defaulting to the browser's time zone, alongside the trading-day rollover time that's already a setting.
-- **What it affects:** check that the trading day, financial-year boundaries, calendar times, reminders and economic-event times all follow the user's zone. The existing time and daylight-saving tests get extra cases for a non-Perth user.
-- **Economic events:** fetched once by the server using your FRED key and shown to everyone in their own time zone. The per-user FRED key setting goes away.
+- **What it affects:** check that the trading day, financial-year boundaries, calendar times, reminders and economic-event times all follow the user's zone. The time and daylight-saving tests get extra cases for a non-Perth user.
+- **Economic events:** fetched once for everyone using your FRED key and shown in each user's own time zone. The per-user FRED key setting goes away.
 
 ### Phase 5 — Background jobs and notifications (2–3 days)
-- **Jobs for every user:** jobs run per user on the always-on server, as they do today but looping over accounts: long-session "still going?", check-ins, calendar reminders, recurring expenses, renewal reminders, and backups of the shared database. The FRED refresh stays one shared job.
+- **The tick:** a protected `POST /api/jobs/tick` endpoint, which needs a secret header, runs one round of jobs for all users:
+  - "still going?" long-session alerts
+  - check-ins
+  - calendar reminders
+  - recurring expenses
+  - renewal reminders
+  - nightly demo reset
+  - FRED refresh, at most every 12 hours as now
+- **The trigger:** Supabase's `pg_cron` calls the tick every minute through `pg_net`.
+- **Short runs:** each run must finish well inside Vercel's free-plan time limit. With a dozen users this is easy, and the FRED refresh can be split over several ticks if needed.
+- **Duplicate protection:** the jobs already record what they've sent, such as "renewal notified" and "long session notified". These records move to the database per user, so a repeated tick never sends a notification twice.
 - **Push notifications:** macOS pop-ups become **web push**. Testers allow notifications once in their browser.
   - Works on Windows, Mac and Android.
   - On iPhone it works once the app is added to the home screen (iOS 16.4 or later).
-- **Fallbacks:** the in-app check-in card and the floating timer still work without push. Email reminders (via Resend, free tier) are an optional extra for renewals.
+- **Fallbacks:** the in-app check-in card and the floating timer still work without push. They already poll from the browser.
 
 ### Phase 6 — Replace the Mac-only pieces (1–2 days)
 
-| Today (on your Mac) | In the cloud |
+| Today (on your Mac) | On Supabase + Vercel |
 |---|---|
 | macOS notifications (`notify.ts`, node-notifier) | Web push (Phase 5) |
 | "Choose folder" for backups (AppleScript) | Removed |
-| Scheduled zip backups to iCloud or Drive | Nightly dump of the whole database to cloud storage (Cloudflare R2 or Backblaze, free tier), plus Supabase's own backups. Each user can still **download a full export** of their data. |
+| Scheduled zip backups to iCloud or Drive | **Nightly `pg_dump` by a GitHub Action**, kept as a private workflow artifact or in Cloudflare R2's free tier. Files are already in Supabase Storage. Each user can still **download a full export** of their own data. |
 | Restore a backup by swapping the data folder | **Import an export into your account**, used to bring your own data across and to restore a single user |
-| launchd starts the app at login | The host runs and restarts the server |
-| Separate demo server on port +3 | Demo account, reset nightly |
+| launchd starts the app at login | Nothing to run. Vercel serves requests and the scheduler wakes the jobs. |
+| Separate demo server on port +3 | Demo account, reset nightly by the tick |
+| In-process timers (croner) | `pg_cron` calling `/api/jobs/tick` |
 
 ### Phase 7 — Mobile pass (2–3 days)
-- **Installable app:** add an app manifest, icons and a small service worker so it can be installed from the browser on phone or desktop.
+- **Installable app:** add an app manifest, icons and a small service worker, which web push needs anyway, so it installs to phones and desktops.
 - **Phone layouts for key screens:**
   - Dashboard: Tonight card, timer, to-dos.
   - Journal: day cards become stacked rows instead of wide columns.
@@ -111,11 +132,14 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
   - Time log: timer and sessions.
 - **Touch targets:** at least 44px, as the design already uses.
 
-### Phase 8 — Deploy and operations (1–2 days)
-- **Container and deploy:** a Dockerfile for the server and web build, and a one-command deploy. Database migrations run on deploy.
-- **Region and checks:** Sydney region, HTTPS, a health check, automatic restarts.
-- **Monitoring:** Sentry for errors in the server and browser, an uptime alert to your phone, and logs you can read.
-- **Staging (optional):** a second Supabase project to try changes before they reach testers.
+### Phase 8 — Deploy and operations (1 day)
+- **Deploys:** connect the GitHub repo to Vercel. Every push to the `cloud` branch gets a preview address, and the production branch deploys automatically.
+- **Database migrations:** applied by a deploy step or a GitHub Action, never by hand against production.
+- **Sentry:** catches errors in the API and the browser.
+- **Uptime alert:** sent to your phone.
+- **GitHub Actions:**
+  - the nightly backup
+  - a light keep-alive request every few days, so the free Supabase project isn't paused for inactivity (check this still works under Supabase's current rules)
 
 ### Phase 9 — Bring your data across (half a day)
 - **Import script:** reads your local `~/TradingCompanion` SQLite database and attachments, writes them into your cloud account, and uploads files to Storage.
@@ -123,7 +147,7 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 - **Rehearse first:** run it against a copy, never the live folder, until the numbers match.
 
 ### Phase 10 — Beta launch (1 day)
-- **Onboarding:** first-run setup for time zone and rollover, the first prop firm account, the first Play, and the notification permission prompt.
+- **Onboarding:** first-run setup for time zone and rollover, the first prop firm account, the first Play, and the notification permission prompt (with the iPhone "Add to Home Screen" tip).
 - **In-app feedback:** a "Send feedback" link (email or your Discord) and a short "known issues" note.
 - **Simple privacy and terms page:** what's stored, who can see it (only the user, plus you as admin for support), how to export or delete data, and a clear "journal, not financial or tax advice" disclaimer.
 - **Account deletion:** a "Delete my account and data" control.
@@ -131,50 +155,58 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 
 ## 4. Time and cost
 
-**Build time:** roughly **3–4 weeks** of sessions in total. Phase 1 is the bulk of it, and phases 2, 3 and 7 could overlap.
+**Build time:** roughly **3–4 weeks** of sessions in total, about the same as the server version. The work moves around rather than shrinking: there's no server to set up, but jobs, uploads and backups each need a serverless-friendly approach.
 
-**Running cost for the beta.** Free tiers change, so check them when we start:
+**Running cost for the beta: US$0 a month.** Free tiers change, so check them when we start.
 
-| Item | Beta (about 12 users) | Notes |
+| Item | Free tier (approximate) | Watch out for |
 |---|---|---|
-| Supabase | Free | Roughly 500 MB database, 1 GB file storage, 50k monthly users. **Free projects pause after about a week with no activity**, so an active community is fine, but a quiet week means a short wake-up. |
-| Server (Fly.io or Railway) | About US$5 a month | Free with Oracle Cloud Always Free, at the cost of more setup and less reliability. |
-| Backups (R2 or Backblaze) | Free | Within the free allowance. |
-| Email (Resend) | Free | Only needed for email reminders. |
+| Vercel Hobby | Website and API functions, generous monthly function allowance | **Personal, non-commercial use only.** Fine for a free beta, but a paid product needs Vercel Pro (about US$20 a month). There are function time limits per request, and request bodies are limited to about 4.5 MB (handled by direct uploads). |
+| Supabase Free | About 500 MB database, 1 GB storage, 50k monthly users | **Pauses after about a week with no activity**, which the keep-alive covers. No automatic backups on free, which the GitHub Action covers. Two free projects per account. |
+| Supabase scheduler | `pg_cron` and `pg_net` included | One call a minute is about 43,000 function calls a month. Confirm that fits Vercel Hobby's allowance; if not, run the tick every 2–5 minutes. Reminders would then be up to that much late. |
+| GitHub | Private repo and Actions minutes | The nightly backup and keep-alive use a few minutes a day. |
 | Sentry and uptime monitor | Free | |
 | Domain (optional) | About US$15–20 a year | |
-| **Total** | **About US$0–5 a month** | |
 
-When it becomes a paid product, expect Supabase Pro (about US$25 a month, no pausing, daily backups), plus a bigger server and Stripe fees.
+**If it becomes a paid product:** expect about US$45 a month to start (Vercel Pro and Supabase Pro, with no pausing and daily backups), plus Stripe fees. No re-platforming is needed, because the architecture is the same.
 
 ## 5. Security checklist (beta level)
 - Every API route requires a valid login, and every query is filtered by `user_id`, **and** Postgres row-level security enforces the same.
 - Automated tests prove two users can't see each other's data, including files.
-- Files are in a private bucket and only served through short-lived signed links.
-- Secrets live only in the host's settings and never in git. The Supabase service key never goes to the browser.
-- HTTPS only, secure cookies or tokens, rate limiting on login and uploads (Supabase handles login limits).
+- Files are in a private bucket and only served through short-lived signed links. Uploads use one-time signed URLs.
+- The job endpoint rejects any call without the secret.
+- Secrets live only in Vercel and Supabase settings and never in git. The Supabase service key is used only by the API and never sent to the browser.
+- HTTPS only (Vercel default), with rate limits on login (Supabase) and uploads.
 - Nightly off-site database backups, with a restore that has been tested once.
 - You (admin) can see data in the Supabase dashboard. Testers should know that, so it's on the privacy page.
 
 ## 6. What stays the same
 - Every screen, the Calm design, and all features: Journal, Playbook, Calendar, Time log, Expenses, Payouts, check-ins, imports and reports.
 - The domain logic in `packages/domain`: P&L from fills, grading, stats, recurrence and financial-year maths, with its tests.
+- The Hono API routes. They move from an always-on process to Vercel functions with the same code.
 - Your local app on `main` keeps working throughout.
 
 ## 7. Risks and open questions
 - **Phase 1 is the riskiest part.** Converting about 185 database calls can introduce subtle bugs, so the existing tests are run against Postgres before anything else moves.
-- **Supabase free-tier pausing** could annoy testers in a quiet week. If it does, the fix is Supabase Pro or a small scheduled "keep-alive".
-- **iPhone push** only works after "Add to Home Screen". The onboarding needs to explain this.
-- **Reports:** the printable PDF reports use the browser's print-to-PDF, so they work anywhere, but they need a quick check on phones.
+- **Free-tier limits** could change or prove tight:
+  - Supabase pausing is covered by the keep-alive.
+  - Vercel's function allowance is affected by the per-minute tick.
+  - Function time limits matter for big exports or imports.
+  - The fallback is to slow the tick or move to a paid tier.
+- **Reminder timing:** jobs run once a minute at best, so reminders and check-ins can be up to a minute late. Slower if the tick has to be slowed.
+- **Cold starts:** the first request after a quiet spell can take a second or two longer on Vercel.
+- **iPhone push** only works after "Add to Home Screen". The onboarding explains this.
+- **Exports:** large full-data export zips may hit function time or memory limits. A dozen users' data should be fine, but this needs testing with your real data.
 - **Tax features for non-Australian testers** won't make sense. They can ignore Expenses for the beta.
 - **Hard-coded Perth time:** anything still assuming Perth after Phase 4 is a bug. The tests should catch these.
 
 ## 8. Suggested order of work
-1. ~~Confirm the decisions in section 2.~~ Done.
-2. Phase 0, then Phase 1 with all tests green on Postgres.
-3. Phases 2 and 3: login, scoping and files, with the isolation tests passing.
-4. Phases 4 and 5: time zones, jobs and push.
-5. Phases 6 and 8: replace the Mac-only pieces and deploy to a staging address. You use it yourself for a few days.
-6. Phase 9: import your real data, then compare.
-7. Phase 7: the mobile pass, informed by using it on your own phone.
-8. Phase 10: invite the community.
+1. ~~Confirm the decisions in section 2.~~ Done (8 Oct 2026).
+2. Phase 1 on the `cloud` branch, with all tests green on Postgres. No accounts are needed yet.
+3. Phase 0: you create the GitHub, Vercel and Supabase accounts, then I wire them up.
+4. Phases 2 and 3: login, scoping and files, with the isolation tests passing.
+5. Phases 4 and 5: time zones, the job tick and push.
+6. Phases 6 and 8: replace the Mac-only pieces and deploy to a Vercel preview address. You use it yourself for a few days.
+7. Phase 9: import your real data, then compare.
+8. Phase 7: the mobile pass, informed by using it on your own phone.
+9. Phase 10: invite the community.
