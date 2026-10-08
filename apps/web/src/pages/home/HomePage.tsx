@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useState } from 'react';
-import { financialYear, financialYearOf, LOCAL_ZONE, tradingDay } from '@tc/domain';
+import { currentZone, financialYear, financialYearOf, tradingDay } from '@tc/domain';
 import { MenuButton } from '../../components/Menu';
 import { Button } from '../../components/ui';
 import { api } from '../../lib/api';
@@ -34,7 +34,7 @@ export function HomePage() {
   const [dialog, setDialog] = useState<'trade' | 'expense' | 'event' | null>(null);
   if (!settings) return null;
 
-  const local = DateTime.fromJSDate(now).setZone(LOCAL_ZONE);
+  const local = DateTime.fromJSDate(now).setZone(currentZone());
   const greeting = local.hour < 12 ? 'Good morning' : local.hour < 18 ? 'Good afternoon' : 'Good evening';
   const firstName = settings.reportName?.trim().split(/\s+/)[0];
 

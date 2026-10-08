@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { formatLocal, gradeTrade, isOnTick, latestReadingBefore, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule } from '@tc/domain';
+import { formatLocal, gradeTrade, isOnTick, latestReadingBefore, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule, zoneLabel } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
 import { Dialog } from '../../components/Dialog';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
@@ -460,7 +460,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
           <>
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h3 className={sectionTitle + ' mb-0'}>3 · Execution (Perth time, size for ×1 accounts)</h3>
+            <h3 className={sectionTitle + ' mb-0'}>3 · Execution ({zoneLabel()} time, size for ×1 accounts)</h3>
             <button type="button" className="text-xs text-ember hover:underline" onClick={() => set('mode', form.mode === 'simple' ? 'fills' : 'simple')}>
               {form.mode === 'simple' ? 'Scaled in or out? Enter individual fills' : 'Single entry and exit'}
             </button>

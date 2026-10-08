@@ -1,6 +1,7 @@
 import { eq, like, not } from 'drizzle-orm';
 import { schema, type Db } from '@tc/db';
 import { z } from 'zod';
+import { isValidZone } from '@tc/domain';
 import { currentScope, db } from './context';
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM (24-hour)');
@@ -8,6 +9,8 @@ const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM (24-hour)'
 /** Every user-editable setting. Stored one row per key so new settings appear without migrations. */
 const settingsShape = z.object({
   rolloverTime: hhmm,
+  /** IANA time zone for trading days, calendar times and reminders. Null until chosen (treated as Perth). */
+  timeZone: z.string().refine(isValidZone, 'Choose a valid time zone').nullable(),
   theme: z.enum(['system', 'light', 'dark']),
   backupFolder: z.string().nullable(),
   backupIntervalHours: z.union([z.literal(0), z.literal(6), z.literal(12), z.literal(24), z.literal(168)]),
@@ -36,6 +39,7 @@ export type Settings = z.infer<typeof settingsShape>;
 
 export const defaultSettings: Settings = {
   rolloverTime: '10:00',
+  timeZone: null,
   theme: 'system',
   backupFolder: null,
   backupIntervalHours: 24,
@@ -92,6 +96,7 @@ function parseSettings(rows: { key: string; value: unknown }[]): Settings {
 
 export async function updateSettings(patch: Partial<Settings>): Promise<Settings> {
   const valid = settingsPatchSchema.parse(patch);
+  const before = getSettings();
   const now = new Date().toISOString();
   for (const [key, value] of Object.entries(valid)) {
     if (value === undefined) continue;
@@ -107,6 +112,11 @@ export async function updateSettings(patch: Partial<Settings>): Promise<Settings
   }
   const scope = currentScope();
   scope.settings = await loadSettings(scope.tx);
+  // Trading days depend on the rollover time and the time zone, so re-date sessions when either changes.
+  if (scope.settings.rolloverTime !== before.rolloverTime || scope.settings.timeZone !== before.timeZone) {
+    const { recomputeTradingDays } = await import('./sessions');
+    await recomputeTradingDays(scope.settings.rolloverTime);
+  }
   return scope.settings;
 }
 

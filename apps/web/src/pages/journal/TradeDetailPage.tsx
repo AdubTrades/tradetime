@@ -2,7 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, BookImage, History, Pencil, Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useState } from 'react';
-import { formatLocal } from '@tc/domain';
+import { formatLocal, zoneLabel } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import { HistoryDialog } from '../../components/HistoryDialog';
@@ -148,7 +148,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
       <Card title="Execution">
         <div className="grid gap-6 lg:grid-cols-2">
           <div>
-            <h3 className="mb-1 text-xs font-medium text-muted">Fills (×1 size, Perth time)</h3>
+            <h3 className="mb-1 text-xs font-medium text-muted">Fills (×1 size, {zoneLabel()} time)</h3>
             <table className="w-full text-sm">
               <tbody className="divide-y divide-border">
                 {baseFills.map((f) => (

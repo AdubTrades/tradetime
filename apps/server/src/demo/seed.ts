@@ -3,7 +3,7 @@ import {
   financialYear,
   financialYearOf,
   fomcEvents,
-  LOCAL_ZONE,
+  currentZone,
   simpleFills,
   zonedToUtc,
   type MarketEventInput,
@@ -23,7 +23,8 @@ import { createTrade, saveDailyReview } from '../trades';
 import { chartPng, rng } from './chartImage';
 
 const DAYS = 56; // about eight weeks of trading history
-const perth = (date: string, time: string) => zonedToUtc(date, time, LOCAL_ZONE);
+/** A wall-clock time in the account's time zone (the demo trader is in Perth by default). */
+const perth = (date: string, time: string) => zonedToUtc(date, time, currentZone());
 const plusMin = (iso: string, m: number) => new Date(Date.parse(iso) + m * 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
 const tick = (p: number) => Math.round(p * 4) / 4;
 
@@ -34,7 +35,7 @@ const tick = (p: number) => Math.round(p * 4) / 4;
 export async function seedDemo(): Promise<void> {
   const r = rng(20261002);
   const pick = <T>(xs: readonly T[]): T => xs[Math.floor(r() * xs.length)]!;
-  const now = DateTime.now().setZone(LOCAL_ZONE);
+  const now = DateTime.now().setZone(currentZone());
   const today = now.toISODate()!;
 
   await updateSettings({ reportName: 'Alex Morgan', homeHidePnl: false, backupIntervalHours: 0, includeMediumEvents: true });

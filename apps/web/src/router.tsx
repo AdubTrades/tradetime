@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet, redirect, useParams } from '@tanstack/react-router';
 import { financialYearOf, localDate } from '@tc/domain';
 import { AppShell } from './components/AppShell';
+import { useSettings } from './lib/settings';
 import { CalendarPage } from './pages/calendar/CalendarPage';
 import { HomePage } from './pages/home/HomePage';
 import { DemoSwitch } from './pages/DemoSwitch';
@@ -17,7 +18,14 @@ import { SettingsPage } from './pages/SettingsPage';
 import { TimeLogPage } from './pages/timelog/TimeLogPage';
 import { TimeLogReport } from './pages/timelog/TimeLogReport';
 
-const rootRoute = createRootRoute({ component: Outlet });
+/** Pages wait for the user's settings, so dates and times are in their time zone from the first render. */
+function Root() {
+  const { data, error } = useSettings();
+  if (error) return <p className="p-8 text-sm text-loss">Couldn’t load your settings: {error.message}</p>;
+  return data ? <Outlet /> : null;
+}
+
+const rootRoute = createRootRoute({ component: Root });
 
 /** Screens inside the app window with the left navigation. */
 const shellRoute = createRoute({ getParentRoute: () => rootRoute, id: 'shell', component: AppShell });

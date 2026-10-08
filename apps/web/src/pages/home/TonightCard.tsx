@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
-import { durationMinutes, formatDuration, formatLocal, LOCAL_ZONE, stats } from '@tc/domain';
+import { currentZone, durationMinutes, formatDuration, formatLocal, stats } from '@tc/domain';
 import { Pnl } from '../../components/GradeBadge';
 import { SessionTimer } from '../../components/SessionTimer';
 import { SegmentedTabs } from '../../components/ui';
@@ -126,7 +126,7 @@ function Agenda({ now, today, types }: { now: Date; today: string; types: Sessio
 
     // The next thing after tonight, shown muted.
     const after = (data?.occurrences ?? [])
-      .filter((o) => !o.isTask && o.date > today && (o.startAt ? Date.parse(o.startAt) > nowMs : o.date > DateTime.fromJSDate(now).setZone(LOCAL_ZONE).toISODate()!))
+      .filter((o) => !o.isTask && o.date > today && (o.startAt ? Date.parse(o.startAt) > nowMs : o.date > DateTime.fromJSDate(now).setZone(currentZone()).toISODate()!))
       .sort((a, b) => (a.startAt ?? a.date).localeCompare(b.startAt ?? b.date))[0];
     const nextItem: AgendaItem | null = after
       ? {
@@ -144,7 +144,7 @@ function Agenda({ now, today, types }: { now: Date; today: string; types: Sessio
     return { tonight: items, next: nextItem, overdue: overdueTasks };
   }, [data, eventTypes, now, today, usual, tradingSessionTypes]);
 
-  const nowLabel = DateTime.fromJSDate(now).setZone(LOCAL_ZONE).toFormat('HH:mm');
+  const nowLabel = DateTime.fromJSDate(now).setZone(currentZone()).toFormat('HH:mm');
 
   return (
     <>

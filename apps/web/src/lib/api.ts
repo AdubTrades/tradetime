@@ -44,6 +44,8 @@ export const api = {
 export type Theme = 'system' | 'light' | 'dark';
 export interface Settings {
   rolloverTime: string;
+  /** IANA time zone, or null until chosen (the app then picks up the browser's zone). */
+  timeZone: string | null;
   theme: Theme;
   backupFolder: string | null;
   backupIntervalHours: 0 | 6 | 12 | 24 | 168;

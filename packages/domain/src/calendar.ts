@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { LOCAL_ZONE, zonedToUtc, type IsoDate } from './time';
+import { currentZone, zonedToUtc, type IsoDate } from './time';
 
 // ---------- Recurring events ----------
 
@@ -113,8 +113,8 @@ export function blockMinutes(start: string | null, end: string | null): number {
   return diff > 0 ? diff : diff + 24 * 60;
 }
 
-/** Instant of a Perth wall time on a date. */
-export const localInstant = (date: IsoDate, time: string): string => zonedToUtc(date, time, LOCAL_ZONE);
+/** Instant of a local wall time on a date (the user's time zone unless given). */
+export const localInstant = (date: IsoDate, time: string, zone = currentZone()): string => zonedToUtc(date, time, zone);
 
 // ---------- Month grid ----------
 

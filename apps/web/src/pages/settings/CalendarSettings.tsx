@@ -8,6 +8,7 @@ import { api, type CalendarEventType, type MarketStatus, type Settings } from '.
 import { useEventTypes, useMarketStatus } from '../../lib/calendar';
 import { useSessionTypes } from '../../lib/sessions';
 import { useUpdateSettings } from '../../lib/settings';
+import { useHealth } from '../../lib/demo';
 
 export function CalendarSettings({ settings, demo = false }: { settings: Settings; demo?: boolean }) {
   const qc = useQueryClient();
@@ -30,14 +31,19 @@ export function CalendarSettings({ settings, demo = false }: { settings: Setting
       },
     );
 
+  const serverKey = !!useHealth().data?.fredConfigured;
+
   return (
-    <Card title="Calendar" description="High-impact US economic releases are fetched from FRED and stored locally, so past and upcoming events work offline.">
+    <Card title="Calendar" description="High-impact US economic releases are fetched from FRED and kept by TradeTime, so past and upcoming events are always there.">
       <div className="space-y-6">
         <div className="space-y-2">
           {demo ? (
             <p className="text-sm text-muted">The demo shows sample economic releases; fetching from FRED is switched off.</p>
           ) : (
             <>
+          {serverKey ? (
+            <p className="text-sm text-muted">Economic releases are fetched for everyone by TradeTime, so there's no key to add.</p>
+          ) : (
           <Field
             label="FRED API key"
             hint={
@@ -46,7 +52,7 @@ export function CalendarSettings({ settings, demo = false }: { settings: Setting
                 <a href="https://fredaccount.stlouisfed.org/apikeys" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-ember hover:underline">
                   fredaccount.stlouisfed.org <ExternalLink size={11} aria-hidden />
                 </a>{' '}
-                and request an API key. It's stored only in your local database (and its backups).
+                and request an API key. It's stored with your account.
               </>
             }
             error={update.error?.message}
@@ -69,6 +75,7 @@ export function CalendarSettings({ settings, demo = false }: { settings: Setting
               )}
             </div>
           </Field>
+          )}
           <div className="flex flex-wrap items-center gap-3 rounded-md border border-border-subtle bg-inset p-3 text-sm">
             <span className="flex-1">
               {status?.lastSuccessAt ? (
@@ -80,7 +87,7 @@ export function CalendarSettings({ settings, demo = false }: { settings: Setting
               )}
               {status?.lastError && <span className="block text-loss">Last attempt failed: {status.lastError}</span>}
             </span>
-            <Button disabled={!settings.fredApiKey || refresh.isPending} onClick={() => refresh.mutate()}>
+            <Button disabled={(!settings.fredApiKey && !serverKey) || refresh.isPending} onClick={() => refresh.mutate()}>
               <RefreshCw size={14} aria-hidden className={refresh.isPending ? 'animate-spin' : ''} /> Refresh now
             </Button>
           </div>
@@ -92,7 +99,7 @@ export function CalendarSettings({ settings, demo = false }: { settings: Setting
           </label>
           <p className="text-xs text-muted">
             Covered: CPI, Non-Farm Payrolls, PPI, GDP, PCE and Retail Sales (high); jobless claims and JOLTS (medium). Times are the standard US
-            release times converted to Perth, with US daylight saving handled. FOMC statements come from the Federal Reserve's published meeting
+            release times converted to your time zone, with daylight saving handled. FOMC statements come from the Federal Reserve's published meeting
             schedule, built in through {DateTime.fromISO(FOMC_SCHEDULE_ENDS).toFormat('LLLL yyyy')}
             {FOMC_SCHEDULE_ENDS < DateTime.now().plus({ months: 3 }).toISODate()! && <strong className="text-warning"> — the app needs updating with next year's dates</strong>}. This product uses the FRED® API but is not endorsed or
             certified by the Federal Reserve Bank of St. Louis.{' '}

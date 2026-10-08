@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import { decimalHours, durationMinutes, financialYearOf, formatLocal, tradingDay } from '@tc/domain';
+import { decimalHours, durationMinutes, financialYearOf, formatLocal, tradingDay, zoneLabel } from '@tc/domain';
 import { getSettings } from '../settings';
 import { createReading, relinkSessionTrades } from '../checkins';
 import { toCsv } from '../csv';
@@ -132,7 +132,7 @@ export const sessionRoutes = new Hono()
     const totalMinutes = sessions.reduce((sum, s) => sum + durationMinutes(s), 0);
     rows.push([], ['Total', '', '', '', '', Math.round(totalMinutes), decimalHours(totalMinutes).toFixed(2)]);
     const csv = toCsv(
-      ['Trading day', 'Day', 'Type', 'Start (Perth)', 'End (Perth)', 'Minutes', 'Hours', 'Recorded by', 'Edited', 'Notes'],
+      ['Trading day', 'Day', 'Type', `Start (${zoneLabel()})`, `End (${zoneLabel()})`, 'Minutes', 'Hours', 'Recorded by', 'Edited', 'Notes'],
       rows,
     );
     c.header('Content-Type', 'text/csv; charset=utf-8');

@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, isNull, lte, or, sql } from 'drizzle-orm';
 import { DateTime } from 'luxon';
 import { schema, type Recurrence } from '@tc/db';
-import { durationMinutes, expandOccurrences, localInstant, newId, tradingDay, type Occurrence } from '@tc/domain';
+import { currentZone, durationMinutes, expandOccurrences, localInstant, newId, tradingDay, type Occurrence } from '@tc/domain';
 import { db } from './context';
 import { AppError } from './errors';
 import { listExpenses, renewalsBetween } from './expenses';
@@ -204,7 +204,7 @@ export async function calendarRange(from: string, to: string) {
   for (const e of expenses) day(e.date).expensesCents += e.incGstCents;
   for (const d of reviewDays) day(d).hasReview = true;
 
-  // Market events are bucketed by the trading day they fall on (Perth time, after rollover).
+  // Market events are bucketed by the trading day they fall on (the user's local time, after rollover).
   const { rolloverTime } = getSettings();
   const fromInstant = localInstant(from, rolloverTime);
   const toInstant = localInstant(DateTime.fromISO(to).plus({ days: 1 }).toISODate()!, rolloverTime);
@@ -232,8 +232,8 @@ export async function upcoming(days = 7) {
 
 /** Occurrences whose reminder time fell in (since, now]. */
 export async function dueReminders(since: number, now = Date.now()) {
-  const from = DateTime.fromMillis(since).setZone('Australia/Perth').minus({ days: 1 }).toISODate()!;
-  const to = DateTime.fromMillis(now).setZone('Australia/Perth').plus({ days: 2 }).toISODate()!;
+  const from = DateTime.fromMillis(since).setZone(currentZone()).minus({ days: 1 }).toISODate()!;
+  const to = DateTime.fromMillis(now).setZone(currentZone()).plus({ days: 2 }).toISODate()!;
   return (await listOccurrences(from, to)).filter((o) => {
     if (o.reminderMinutes == null || o.done) return false;
     const base = o.startAt ?? localInstant(o.date, '09:00');

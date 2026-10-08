@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { financialYearOf, formatLocal, localDate, tradingDay, zonedToUtc } from './time';
+import { afterEach, describe, expect, it } from 'vitest';
+import { localInstant } from './calendar';
+import { currentZone, DEFAULT_ZONE, financialYearOf, formatLocal, isValidZone, localDate, setZoneResolver, tradingDay, zonedToUtc, zoneLabel } from './time';
 
 describe('tradingDay (Perth, 10:00 rollover)', () => {
   it('keeps a session that crosses midnight on the day it started', () => {
@@ -51,5 +52,40 @@ describe('US events in Perth time across US daylight saving', () => {
   it('shifts back when US DST ends (1 Nov 2026)', () => {
     expect(formatLocal(zonedToUtc('2026-10-30', '08:30', 'America/New_York'), 'HH:mm')).toBe('20:30');
     expect(formatLocal(zonedToUtc('2026-11-03', '08:30', 'America/New_York'), 'HH:mm')).toBe('21:30');
+  });
+});
+
+describe('per-user time zone', () => {
+  afterEach(() => setZoneResolver(() => DEFAULT_ZONE));
+
+  it('defaults to Perth', () => {
+    expect(currentZone()).toBe('Australia/Perth');
+  });
+
+  it('follows the current user’s zone for trading days, dates and formatting', () => {
+    setZoneResolver(() => 'America/New_York');
+    // 2026-10-06 02:00 UTC is 22:00 on the 5th in New York (EDT), 10:00 on the 6th in Perth.
+    expect(localDate('2026-10-06T02:00:00Z')).toBe('2026-10-05');
+    expect(tradingDay('2026-10-06T02:00:00Z', '04:00')).toBe('2026-10-05');
+    expect(formatLocal('2026-10-06T02:00:00Z', 'HH:mm')).toBe('22:00');
+    // An explicit zone still wins.
+    expect(localDate('2026-10-06T02:00:00Z', 'Australia/Perth')).toBe('2026-10-06');
+  });
+
+  it('turns local wall times into instants across daylight saving', () => {
+    setZoneResolver(() => 'America/New_York');
+    expect(localInstant('2026-10-30', '09:30')).toBe('2026-10-30T13:30:00Z'); // EDT
+    expect(localInstant('2026-11-03', '09:30')).toBe('2026-11-03T14:30:00Z'); // EST
+    setZoneResolver(() => 'Australia/Perth');
+    expect(localInstant('2026-11-03', '21:30')).toBe('2026-11-03T13:30:00Z');
+  });
+
+  it('validates zone names and gives a short label', () => {
+    expect(isValidZone('Australia/Sydney')).toBe(true);
+    expect(isValidZone('Europe/London')).toBe(true);
+    expect(isValidZone('Mars/Olympus')).toBe(false);
+    expect(isValidZone('')).toBe(false);
+    expect(zoneLabel('Australia/Perth')).toBe('Perth');
+    expect(zoneLabel('America/New_York')).toBe('New York');
   });
 });

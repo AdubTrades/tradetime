@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import type { Cents } from './money';
-import { LOCAL_ZONE } from './time';
+import { currentZone } from './time';
 
 export interface TradeOutcome {
   netCents: Cents;
@@ -87,7 +87,7 @@ export function equityCurve(trades: readonly (TradeOutcome & { at: string })[]):
 export const maxDrawdown = (curve: readonly EquityPoint[]): Cents => curve.reduce((m, p) => Math.min(m, p.drawdownCents), 0);
 
 /** Perth hour bucket like "21:00" for time-of-day breakdowns. */
-export const hourBucket = (instant: string): string => `${DateTime.fromISO(instant, { zone: 'utc' }).setZone(LOCAL_ZONE).toFormat('HH')}:00`;
+export const hourBucket = (instant: string, zone = currentZone()): string => `${DateTime.fromISO(instant, { zone: 'utc' }).setZone(zone).toFormat('HH')}:00`;
 
 export const weekdayOf = (isoDate: string): string => DateTime.fromISO(isoDate).toFormat('ccc');
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;

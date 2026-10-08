@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, FileUp } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { formatLocal } from '@tc/domain';
+import { currentZone, formatLocal, zoneLabel } from '@tc/domain';
 import { Dialog } from '../../components/Dialog';
 import { Pnl } from '../../components/GradeBadge';
 import { Button, Field, Input, Select } from '../../components/ui';
@@ -61,12 +61,13 @@ const fieldLabels: { key: ColumnKey; label: string; required?: boolean }[] = [
   { key: 'id', label: 'Fill/execution id' },
   { key: 'commission', label: 'Commission' },
 ];
-const zones = [
-  { id: 'Australia/Perth', label: 'Perth (AWST)' },
+const baseZones = [
   { id: 'America/New_York', label: 'New York' },
   { id: 'America/Chicago', label: 'Chicago (exchange time)' },
   { id: 'UTC', label: 'UTC' },
 ];
+/** The export's time zone choices: your own zone first, then the usual platform zones. */
+const zoneOptions = () => [{ id: currentZone(), label: `${zoneLabel()} (your time zone)` }, ...baseZones.filter((z) => z.id !== currentZone())];
 
 /** Import fills from a NinjaTrader (or Tradovate) export, preview the trades they make, and save them. */
 export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -82,7 +83,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
     defaultAccount?: string;
     accountMap: Record<string, string>;
     attachToLogged: boolean;
-  }>({ zone: 'Australia/Perth', accountMap: {}, attachToLogged: true });
+  }>({ zone: currentZone(), accountMap: {}, attachToLogged: true });
   const [result, setResult] = useState<Result | null>(null);
 
   const preview = useMutation({
@@ -106,7 +107,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
   const reset = () => {
     setCsv(null);
     setFileName('');
-    setOpts({ zone: 'Australia/Perth', accountMap: {}, attachToLogged: true });
+    setOpts({ zone: currentZone(), accountMap: {}, attachToLogged: true });
     setResult(null);
     preview.reset();
     commit.reset();
@@ -207,7 +208,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
                 </Field>
                 <Field label="Times in the file are" hint="NinjaTrader uses your computer's time zone">
                   <Select value={opts.zone} onChange={(e) => refresh({ zone: e.target.value })}>
-                    {zones.map((z) => (
+                    {zoneOptions().map((z) => (
                       <option key={z.id} value={z.id}>
                         {z.label}
                       </option>

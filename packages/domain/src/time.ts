@@ -1,7 +1,33 @@
 import { DateTime } from 'luxon';
 
-export const LOCAL_ZONE = 'Australia/Perth';
+/** Time zone used when a user hasn't chosen one (TradeTime started in Perth). */
+export const DEFAULT_ZONE = 'Australia/Perth';
+/** @deprecated Use `currentZone()`: the zone now comes from the signed-in user's settings. */
+export const LOCAL_ZONE = DEFAULT_ZONE;
 export const DEFAULT_ROLLOVER = '10:00';
+
+let zoneResolver: () => string = () => DEFAULT_ZONE;
+
+/**
+ * Tell the date helpers where "local" is. The server points this at the signed-in user's time zone for each
+ * request; the web app at the user's setting once it loads. Everything that works in local time (trading days,
+ * calendar dates, formatting) uses `currentZone()` unless given a zone explicitly.
+ */
+export function setZoneResolver(resolver: () => string): void {
+  zoneResolver = resolver;
+}
+
+export const currentZone = (): string => zoneResolver();
+
+/** True for an IANA time zone name Luxon understands, e.g. "Australia/Perth" or "America/New_York". */
+export function isValidZone(zone: string): boolean {
+  return /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(zone) && DateTime.now().setZone(zone).isValid;
+}
+
+/** Friendly name for labels like "Perth time": the city part of the zone, e.g. "New York" for America/New_York. */
+export function zoneLabel(zone = currentZone()): string {
+  return (zone.split('/').pop() ?? zone).replace(/_/g, ' ');
+}
 
 /** Calendar date as YYYY-MM-DD. */
 export type IsoDate = string;
@@ -23,15 +49,15 @@ function toDateTime(instant: string | Date, zone: string): DateTime {
 
 /**
  * The trading day an instant belongs to. The day rolls over at `rollover`
- * local time, so a US session running 23:30–02:00 Perth stays on the day it started.
+ * local time, so a US session running 23:30–02:00 (Perth) stays on the day it started.
  */
-export function tradingDay(instant: string | Date, rollover = DEFAULT_ROLLOVER, zone = LOCAL_ZONE): IsoDate {
+export function tradingDay(instant: string | Date, rollover = DEFAULT_ROLLOVER, zone = currentZone()): IsoDate {
   const { hours, minutes } = parseHhMm(rollover);
   return toDateTime(instant, zone).minus({ hours, minutes }).toISODate()!;
 }
 
 /** Plain local calendar date of an instant (used for expenses, payouts, FY). */
-export function localDate(instant: string | Date, zone = LOCAL_ZONE): IsoDate {
+export function localDate(instant: string | Date, zone = currentZone()): IsoDate {
   return toDateTime(instant, zone).toISODate()!;
 }
 
@@ -73,6 +99,6 @@ export function zonedToUtc(date: IsoDate, time: string, zone: string): string {
 }
 
 /** Format a UTC instant in the local zone. */
-export function formatLocal(instant: string, format = 'ccc d LLL HH:mm', zone = LOCAL_ZONE): string {
+export function formatLocal(instant: string, format = 'ccc d LLL HH:mm', zone = currentZone()): string {
   return toDateTime(instant, zone).toFormat(format);
 }

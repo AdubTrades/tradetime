@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Cloud, Download, FolderOpen, HardDrive } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { formatLocal } from '@tc/domain';
+import { currentZone, formatLocal, zoneLabel } from '@tc/domain';
 import { Button, Card, Field, Input, PageHeader, Select } from '../components/ui';
 import { api, type BackupStatus, type Settings } from '../lib/api';
 import { authEnabled, signOut, useAuth } from '../lib/auth';
 import { useHealth } from '../lib/demo';
-import { useSettings, useUpdateSettings } from '../lib/settings';
+import { browserZone, useSettings, useUpdateSettings } from '../lib/settings';
 import { AccountSettings } from './settings/AccountSettings';
 import { DemoSettings } from './settings/DemoSettings';
 import { DataHealth } from './settings/DataHealth';
@@ -74,8 +74,16 @@ function AccountCard() {
   );
 }
 
+/** Every IANA zone the browser knows (with the current one guaranteed), sorted by name. */
+function zoneList(current: string): string[] {
+  const all = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
+  return [...new Set([...all, current])].sort();
+}
+
 function GeneralSettings({ settings }: { settings: Settings }) {
   const update = useUpdateSettings();
+  const zone = settings.timeZone ?? currentZone();
+  const browser = browserZone();
   const [rollover, setRollover] = useState(settings.rolloverTime);
   useEffect(() => setRollover(settings.rolloverTime), [settings.rolloverTime]);
 
@@ -83,8 +91,24 @@ function GeneralSettings({ settings }: { settings: Settings }) {
     <Card title="General">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
+          label="Time zone"
+          hint={
+            browser && browser !== zone
+              ? `Your device is set to ${browser.replace(/_/g, ' ')}. Trading days, the calendar, reminders and reports use this zone.`
+              : 'Trading days, the calendar, reminders and reports use this zone.'
+          }
+        >
+          <Select aria-label="Time zone" value={zone} onChange={(e) => e.target.value !== zone && update.mutate({ timeZone: e.target.value })}>
+            {zoneList(zone).map((z) => (
+              <option key={z} value={z}>
+                {z.replace(/_/g, ' ').replace(/\//g, ' / ')}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field
           label="Trading day rolls over at"
-          hint="Perth time. Trades and sessions before this time count toward the previous trading day."
+          hint={`${zoneLabel()} time. Trades and sessions before this time count toward the previous trading day.`}
           error={update.error?.message}
         >
           <Input

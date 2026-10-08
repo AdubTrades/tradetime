@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdirSync } from 'node:fs';
 import { asUser, ensureUserSeeded, openDb, type Database, type Db } from '@tc/db';
+import { DEFAULT_ZONE, setZoneResolver } from '@tc/domain';
 import { databaseUrl, paths } from './config';
 import { loadSettings, type Settings } from './settings';
 
@@ -15,6 +16,9 @@ interface UserScope {
 
 let database: Database | null = null;
 const scope = new AsyncLocalStorage<UserScope>();
+
+// Date maths ("today", trading days, calendar times) follows the signed-in user's time zone for each request.
+setZoneResolver(() => scope.getStore()?.settings.timeZone ?? DEFAULT_ZONE);
 
 /** Open the database once (Supabase when DATABASE_URL is set, else PGlite on disk) and apply migrations. */
 export async function initDb(opts?: { url?: string; dir?: string; memory?: boolean }): Promise<Database> {

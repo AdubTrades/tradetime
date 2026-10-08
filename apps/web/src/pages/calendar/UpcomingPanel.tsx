@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { ExternalLink, Receipt, Repeat } from 'lucide-react';
 import { DateTime } from 'luxon';
 import type { ReactNode } from 'react';
-import { formatLocal, formatMoney } from '@tc/domain';
+import { formatLocal, formatMoney, zoneLabel } from '@tc/domain';
 import { cn } from '../../components/ui';
 import { api, type EventRecurrence, type MarketEvent, type OccurrenceView, type Renewal } from '../../lib/api';
 import { useCalendarMutation, useUpcoming } from '../../lib/calendar';
@@ -27,7 +27,7 @@ export function describeRecurrence(r: EventRecurrence, date: string): string {
 /** A recurring event that shows up this often in the week is listed once, not on every day. */
 const FREQUENT = 3;
 
-/** Next 7 days of market events and your own events and to-dos, in Perth time. Open to-dos stay until done. */
+/** Next 7 days of market events and your own events and to-dos, in the user's time zone. Open to-dos stay until done. */
 export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void }) {
   const { data } = useUpcoming(7);
   const toggleDone = useCalendarMutation((o: OccurrenceView) =>
@@ -58,7 +58,7 @@ export function UpcomingPanel({ onOpen }: { onOpen: (o: OccurrenceView) => void 
         <h2 id="up-h" className="text-base font-medium">
           Next 7 days
         </h2>
-        <span className="text-xs text-dark-faint">Perth time</span>
+        <span className="text-xs text-dark-faint">{zoneLabel()} time</span>
       </div>
       {items.length === 0 && <p className="text-sm text-dark-muted">Nothing scheduled.</p>}
       {days.map((day, i) => (

@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { lazy, Suspense, useCallback, useMemo, type ReactNode } from 'react';
-import { GRADES, stats } from '@tc/domain';
+import { GRADES, stats, zoneLabel } from '@tc/domain';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import type { TradeRow } from '../../lib/api';
 import { useAccounts, useList } from '../../lib/expenses';
@@ -100,7 +100,7 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <Breakdown title="By instrument" rows={stats.summariseBy(trades, (t) => contracts.find((c) => c.id === t.contractId)?.symbol ?? '?')} />
         <Breakdown title="By account" rows={stats.summariseBy(accountRows, (r) => r.accountId).map((r) => ({ ...r, key: accounts.find((a) => a.id === r.key)?.name ?? '?' }))} note="Each account's own result." />
-        <Breakdown title="By time of day (entry, Perth)" rows={stats.summariseBy([...trades].sort((a, b) => stats.hourBucket(a.openedAt).localeCompare(stats.hourBucket(b.openedAt))), (t) => stats.hourBucket(t.openedAt))} />
+        <Breakdown title={`By time of day (entry, ${zoneLabel()} time)`} rows={stats.summariseBy([...trades].sort((a, b) => stats.hourBucket(a.openedAt).localeCompare(stats.hourBucket(b.openedAt))), (t) => stats.hourBucket(t.openedAt))} />
         <Breakdown title="By day of week" rows={stats.summariseBy(trades, (t) => stats.weekdayOf(t.tradingDay), stats.WEEKDAYS)} />
       </div>
 

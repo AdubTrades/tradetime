@@ -4,6 +4,7 @@ import { Button, cn, Field, Input, Select } from '../../components/ui';
 import { api, type EventRecurrence, type OccurrenceView } from '../../lib/api';
 import { useCalendarMutation, useEventTypes } from '../../lib/calendar';
 import { todayLocal } from '../../lib/localTime';
+import { zoneLabel } from '@tc/domain';
 
 type Repeat = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly';
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -188,7 +189,7 @@ export function EventDialog({ open, onClose, occurrence, defaultDate, defaultTyp
           </Field>
           {!form.allDay && (
             <>
-              <Field label="Start" hint="Perth time">
+              <Field label="Start" hint={`${zoneLabel()} time`}>
                 <Input type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} />
               </Field>
               <Field label="End" hint={form.endTime && form.startTime && form.endTime <= form.startTime ? 'Next day' : undefined}>

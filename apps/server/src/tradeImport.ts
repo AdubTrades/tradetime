@@ -10,6 +10,7 @@ import {
   rowsToExecutions,
   suggestImportMapping,
   tradingDay,
+  currentZone,
   type DateOrder,
   type FormatPreset,
   type ImportMapping,
@@ -93,7 +94,7 @@ async function analyse(opts: ImportOptions) {
   const timeCol = format === 'ninjatrader-executions' ? 'Time' : format === 'tradovate-performance' ? 'boughtTimestamp' : mapping.time;
   const detectedOrder = detectDateOrder(rows.slice(0, 200).map((r) => (timeCol ? (r[timeCol] ?? '') : '')));
   const dateOrder = opts.dateOrder ?? detectedOrder ?? 'dmy';
-  const zone = opts.zone ?? 'Australia/Perth';
+  const zone = opts.zone ?? currentZone();
   if (format === 'generic') {
     const missing = (['time', 'side', 'qty', 'price', 'symbol'] as const).filter((f) => !mapping[f]);
     if (missing.length) return { headers, format, mapping, zone, dateOrder, detectedOrder, missing, accountsInFile: [], trades: [] as PreviewTrade[], counts: { rows: rows.length, executions: 0, duplicates: 0, open: 0, issues: 0 }, rowIssues: [], merged: [] as ImportTrade[] };

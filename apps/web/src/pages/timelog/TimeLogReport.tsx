@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
-import { decimalHours, durationMinutes, formatDuration, formatLocal, summarise, type FinancialYear } from '@tc/domain';
+import { currentZone, decimalHours, durationMinutes, formatDuration, formatLocal, summarise, type FinancialYear, zoneLabel } from '@tc/domain';
 import { ReportHeader } from '../../components/ReportHeader';
 import { api, type Session } from '../../lib/api';
 import { useSessionTypes } from '../../lib/sessions';
@@ -27,7 +27,7 @@ export function TimeLogReport({ fy: fyYear }: { fy: number }) {
     <div className="mx-auto max-w-4xl bg-white p-8 text-[13px] text-black print:p-0">
       <ReportHeader
         title={`Business hours log — FY ${fy.label}`}
-        subtitle={`${DateTime.fromISO(fy.start).toFormat('d LLLL yyyy')} to ${DateTime.fromISO(fy.end).toFormat('d LLLL yyyy')} · times in Perth (AWST)`}
+        subtitle={`${DateTime.fromISO(fy.start).toFormat('d LLLL yyyy')} to ${DateTime.fromISO(fy.end).toFormat('d LLLL yyyy')} · times in ${zoneLabel()} time (${currentZone()})`}
       />
       <div className="mb-6 grid grid-cols-3 gap-4">
         <div className="rounded border border-black/20 p-3">

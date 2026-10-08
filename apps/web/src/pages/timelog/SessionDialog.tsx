@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { durationMinutes, formatDuration, formatLocal } from '@tc/domain';
+import { durationMinutes, formatDuration, formatLocal, zoneLabel } from '@tc/domain';
 import { Dialog } from '../../components/Dialog';
 import { Button, Field, Input, Select } from '../../components/ui';
 import { api, ApiError, type Session, type SessionType } from '../../lib/api';
@@ -120,7 +120,7 @@ export function SessionDialog({ open, onClose, types, session, defaultDate }: Pr
               ))}
             </Select>
           </Field>
-          <Field label="Date (start)" hint="Perth time">
+          <Field label="Date (start)" hint={`${zoneLabel()} time`}>
             <Input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
           </Field>
           <Field label="Start">

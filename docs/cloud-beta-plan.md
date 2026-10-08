@@ -2,7 +2,7 @@
 
 **Goal:** put TradeTime online so about a dozen traders from your community can use it, each with their own private account and data, from any computer or phone, **for free**, while you decide whether to turn it into a paid product. The product features stay as they are. This is also the foundation for a later paid, two-tier product, so nothing here is throwaway.
 
-**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phases 1–3 are built on the `cloud` branch** (8 Oct 2026): Postgres with per-user rows and row-level security, Supabase sign-in, and Supabase file storage, which switch on once you create the project (see `docs/supabase-setup.md`).
+**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phases 1–4 are built on the `cloud` branch** (8 Oct 2026): Postgres with per-user rows and row-level security, Supabase sign-in, and Supabase file storage, which switch on once you create the project (see `docs/supabase-setup.md`).
 
 ---
 
@@ -109,7 +109,16 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 - **Imports:** CSV imports from NinjaTrader, Tradovate and expense files stay small enough to go through the API as now. They're checked against a size limit.
 - **Limits:** per-file size limits and a per-user storage cap, to stay inside the free tier.
 
-### Phase 4 — Per-user time zone and settings (1–2 days)
+### Phase 4 — Per-user time zone ✅ built 8 Oct 2026
+
+**As built:**
+- A Time zone setting (any zone the browser knows). A new account picks up the browser's zone, and Perth is used until then.
+- The shared date maths follows the signed-in user's zone on the server (per request) and in the browser, so trading days, "today", calendar and reminder times, reports and imports all follow it.
+- Changing the zone re-dates sessions, as a rollover change does.
+- Labels read "Perth time" / "New York time".
+- Economic events use the server's shared FRED key, and the personal key field only shows when the server has none.
+
+**Original plan:**
 - **Time zone setting:** Perth is hard-coded in 35 places, through `LOCAL_ZONE`. It becomes a user setting, defaulting to the browser's time zone, alongside the trading-day rollover time that's already a setting.
 - **What it affects:** check that the trading day, financial-year boundaries, calendar times, reminders and economic-event times all follow the user's zone. The time and daylight-saving tests get extra cases for a non-Perth user.
 - **Economic events:** fetched once for everyone using your FRED key and shown in each user's own time zone. The per-user FRED key setting goes away.

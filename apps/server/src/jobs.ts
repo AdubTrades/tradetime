@@ -1,7 +1,7 @@
 import { Cron } from 'croner';
 import { DateTime } from 'luxon';
 import { listUserIds } from '@tc/db';
-import { formatDuration, formatMoney, localDate, LOCAL_ZONE } from '@tc/domain';
+import { currentZone, formatDuration, formatMoney, localDate } from '@tc/domain';
 import { dueReminders } from './calendar';
 import { checkInToNotify } from './checkins';
 import { rootDb, withUser } from './context';
@@ -51,7 +51,8 @@ async function recurringCheck() {
   const today = localDate(new Date());
   const created = await generateRecurringExpenses(today);
   if (created) console.log(`[recurring] created ${created} expense(s)`);
-  if (DateTime.now().setZone(LOCAL_ZONE).hour < 9) return;
+  // In the user's own time zone (each job runs inside that user's scope).
+  if (DateTime.now().setZone(currentZone()).hour < 9) return;
   for (const r of await renewalsToNotify(today)) {
     const days = Math.round(DateTime.fromISO(r.nextDate).diff(DateTime.fromISO(today), 'days').days);
     notify(`${r.name} renews ${days === 1 ? 'tomorrow' : `in ${days} days`}`, `${formatMoney(r.incGstCents)} on ${DateTime.fromISO(r.nextDate).toFormat('cccc d LLLL')}. Cancel or change it before then if you need to.`);
