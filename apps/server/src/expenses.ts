@@ -40,11 +40,11 @@ export interface ExpenseInput {
   businessUsePct?: number;
 }
 
-function validateRefs(input: Partial<ExpenseInput>) {
-  assertListItem('expense_category', input.categoryId);
-  assertListItem('expense_type', input.typeId);
-  assertListItem('payment_method', input.paymentMethodId);
-  assertAccount(input.accountId);
+async function validateRefs(input: Partial<ExpenseInput>) {
+  await assertListItem('expense_category', input.categoryId);
+  await assertListItem('expense_type', input.typeId);
+  await assertListItem('payment_method', input.paymentMethodId);
+  await assertAccount(input.accountId);
   if (input.businessUsePct !== undefined && (input.businessUsePct < 0 || input.businessUsePct > 100)) {
     throw new AppError(422, 'Business use must be between 0 and 100%');
   }
@@ -54,10 +54,10 @@ function validateRefs(input: Partial<ExpenseInput>) {
 const clean = (s: string | null | undefined) => (s?.trim() ? s.trim() : null);
 
 /** Financial years (start year, newest first) with expenses or payouts, always including the current one. */
-export function expenseFinancialYears(currentStartYear: number): number[] {
+export async function expenseFinancialYears(currentStartYear: number): Promise<number[]> {
   const months = [
-    ...db.selectDistinct({ month: sql<string>`substr(${expense.date}, 1, 7)` }).from(expense).where(isNull(expense.deletedAt)).all(),
-    ...db.selectDistinct({ month: sql<string>`substr(${payout.receivedDate}, 1, 7)` }).from(payout).where(isNull(payout.deletedAt)).all(),
+    ...(await db.selectDistinct({ month: sql<string>`substr(${expense.date}, 1, 7)` }).from(expense).where(isNull(expense.deletedAt))),
+    ...(await db.selectDistinct({ month: sql<string>`substr(${payout.receivedDate}, 1, 7)` }).from(payout).where(isNull(payout.deletedAt))),
   ];
   const years = new Set([currentStartYear]);
   for (const { month } of months) {
@@ -67,26 +67,25 @@ export function expenseFinancialYears(currentStartYear: number): number[] {
   return [...years].sort((a, b) => b - a);
 }
 
-export function listExpenses(range: { from: string; to: string }) {
+export async function listExpenses(range: { from: string; to: string }) {
   return db
     .select()
     .from(expense)
     .where(and(isNull(expense.deletedAt), gte(expense.date, range.from), lte(expense.date, range.to)))
-    .orderBy(desc(expense.date), desc(expense.createdAt))
-    .all();
+    .orderBy(desc(expense.date), desc(expense.createdAt));
 }
 
-function getExpenseRow(id: string) {
-  const row = db.select().from(expense).where(eq(expense.id, id)).get();
+async function getExpenseRow(id: string) {
+  const [row] = await db.select().from(expense).where(eq(expense.id, id));
   if (!row || row.deletedAt) throw new AppError(404, 'Expense not found');
   return row;
 }
 
 /** Create an expense. The client may supply the id so receipts can be attached before the first save. */
-export function createExpense(input: ExpenseInput & { id?: string }) {
-  validateRefs(input);
-  return db.transaction((tx) => {
-    const row = tx
+export async function createExpense(input: ExpenseInput & { id?: string }) {
+  await validateRefs(input);
+  return db.transaction(async (tx) => {
+    const [row] = await tx
       .insert(expense)
       .values({
         id: input.id ?? newId(),
@@ -103,16 +102,15 @@ export function createExpense(input: ExpenseInput & { id?: string }) {
         incGstCents: incGst(input.exGstCents, input.gstCents),
         businessUsePct: input.businessUsePct ?? 100,
       })
-      .returning()
-      .get();
-    auditEvent(tx, 'expense', row.id, 'create', row);
-    return row;
+      .returning();
+    await auditEvent(tx, 'expense', row!.id, 'create', row);
+    return row!;
   });
 }
 
-export function updateExpense(id: string, patch: Partial<ExpenseInput>, reason: string | null) {
-  const before = getExpenseRow(id);
-  validateRefs(patch);
+export async function updateExpense(id: string, patch: Partial<ExpenseInput>, reason: string | null) {
+  const before = await getExpenseRow(id);
+  await validateRefs(patch);
   const next = {
     ...patch,
     ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
@@ -122,37 +120,36 @@ export function updateExpense(id: string, patch: Partial<ExpenseInput>, reason: 
   const exGstCents = patch.exGstCents ?? before.exGstCents;
   const gstCents = patch.gstCents ?? before.gstCents;
   const changes = { ...next, incGstCents: incGst(exGstCents, gstCents) };
-  return db.transaction((tx) => {
-    const row = tx.update(expense).set({ ...changes, updatedAt: nowIso() }).where(eq(expense.id, id)).returning().get();
-    auditUpdate(tx, 'expense', id, before, changes, reason ?? undefined);
-    return row;
+  return db.transaction(async (tx) => {
+    const [row] = await tx.update(expense).set({ ...changes, updatedAt: nowIso() }).where(eq(expense.id, id)).returning();
+    await auditUpdate(tx, 'expense', id, before, changes, reason ?? undefined);
+    return row!;
   });
 }
 
-export function deleteExpense(id: string) {
-  const row = getExpenseRow(id);
-  db.transaction((tx) => {
-    tx.update(expense).set({ deletedAt: nowIso() }).where(eq(expense.id, id)).run();
-    auditEvent(tx, 'expense', id, 'delete', row);
+export async function deleteExpense(id: string) {
+  const row = await getExpenseRow(id);
+  await db.transaction(async (tx) => {
+    await tx.update(expense).set({ deletedAt: nowIso() }).where(eq(expense.id, id));
+    await auditEvent(tx, 'expense', id, 'delete', row);
   });
 }
 
-export function restoreExpense(id: string) {
-  const row = db.select().from(expense).where(eq(expense.id, id)).get();
+export async function restoreExpense(id: string) {
+  const [row] = await db.select().from(expense).where(eq(expense.id, id));
   if (!row?.deletedAt) throw new AppError(404, 'No deleted expense with that id');
-  db.transaction((tx) => {
-    tx.update(expense).set({ deletedAt: null, updatedAt: nowIso() }).where(eq(expense.id, id)).run();
-    auditEvent(tx, 'expense', id, 'restore');
+  await db.transaction(async (tx) => {
+    await tx.update(expense).set({ deletedAt: null, updatedAt: nowIso() }).where(eq(expense.id, id));
+    await auditEvent(tx, 'expense', id, 'restore');
   });
 }
 
-export function entityHistory(entity: 'expense' | 'payout', id: string) {
+export async function entityHistory(entity: 'expense' | 'payout', id: string) {
   return db
     .select()
     .from(auditLog)
     .where(and(eq(auditLog.entity, entity), eq(auditLog.entityId, id)))
-    .orderBy(asc(auditLog.at), asc(auditLog.id))
-    .all();
+    .orderBy(asc(auditLog.at), asc(auditLog.id));
 }
 
 /** Two expenses on the same date with the same name and inc-GST amount are treated as the same charge. */
@@ -160,16 +157,11 @@ const duplicateKey = (e: { date: string; name: string; incGstCents: number }) =>
 
 // ---------- Recurring ----------
 
-export type RecurringInput = Omit<typeof recurringExpense.$inferInsert, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
+export type RecurringInput = Omit<typeof recurringExpense.$inferInsert, 'userId' | 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
 
-export function listRecurring(today: string) {
-  return db
-    .select()
-    .from(recurringExpense)
-    .where(isNull(recurringExpense.deletedAt))
-    .orderBy(asc(recurringExpense.name))
-    .all()
-    .map((r) => ({ ...r, nextDate: r.active ? nextOccurrence(r, today) : null }));
+export async function listRecurring(today: string) {
+  const rows = await db.select().from(recurringExpense).where(isNull(recurringExpense.deletedAt)).orderBy(asc(recurringExpense.name));
+  return rows.map((r) => ({ ...r, nextDate: r.active ? nextOccurrence(r, today) : null }));
 }
 
 /** How many days before a renewal the reminder goes out. */
@@ -179,70 +171,66 @@ export const RENEWAL_LEAD_DAYS = 7;
  * Active recurring expenses renewing between `from` and `to` (inclusive). Weekly items are left out:
  * a week's notice would land on the day of the previous charge.
  */
-export function renewalsBetween(today: string, from: string, to: string) {
-  return listRecurring(today)
+export async function renewalsBetween(today: string, from: string, to: string) {
+  return (await listRecurring(today))
     .filter((r) => r.nextDate && r.nextDate >= from && r.nextDate <= to && !(r.frequency === 'weekly' && r.interval === 1))
     .map((r) => ({ id: r.id, name: r.name, vendor: r.vendor, nextDate: r.nextDate!, incGstCents: incGst(r.exGstCents, r.gstCents), frequency: r.frequency, interval: r.interval }))
     .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
 }
 
-type Renewal = ReturnType<typeof renewalsBetween>[number];
+type Renewal = Awaited<ReturnType<typeof renewalsBetween>>[number];
 const RENEWAL_STATE = 'renewalNotified';
 
 /** Renewals coming up within the lead time that haven't been notified yet (once per renewal date). */
-export function renewalsToNotify(today: string): Renewal[] {
-  const sent = getState<Record<string, string>>(RENEWAL_STATE) ?? {};
+export async function renewalsToNotify(today: string): Promise<Renewal[]> {
+  const sent = (await getState<Record<string, string>>(RENEWAL_STATE)) ?? {};
   const from = DateTime.fromISO(today).plus({ days: 1 }).toISODate()!;
   const to = DateTime.fromISO(today).plus({ days: RENEWAL_LEAD_DAYS }).toISODate()!;
-  return renewalsBetween(today, from, to).filter((r) => sent[r.id] !== r.nextDate);
+  return (await renewalsBetween(today, from, to)).filter((r) => sent[r.id] !== r.nextDate);
 }
 
-export function markRenewalNotified(r: Pick<Renewal, 'id' | 'nextDate'>): void {
-  setState(RENEWAL_STATE, { ...(getState<Record<string, string>>(RENEWAL_STATE) ?? {}), [r.id]: r.nextDate });
+export async function markRenewalNotified(r: Pick<Renewal, 'id' | 'nextDate'>): Promise<void> {
+  await setState(RENEWAL_STATE, { ...((await getState<Record<string, string>>(RENEWAL_STATE)) ?? {}), [r.id]: r.nextDate });
 }
 
-export function createRecurring(input: RecurringInput) {
-  validateRefs(input);
-  return db.insert(recurringExpense).values({ ...input, id: newId(), name: input.name.trim() }).returning().get();
+export async function createRecurring(input: RecurringInput) {
+  await validateRefs(input);
+  const [row] = await db.insert(recurringExpense).values({ ...input, id: newId(), name: input.name.trim() }).returning();
+  return row!;
 }
 
-export function updateRecurring(id: string, patch: Partial<RecurringInput>) {
-  validateRefs(patch);
-  const row = db.update(recurringExpense).set({ ...patch, updatedAt: nowIso() }).where(eq(recurringExpense.id, id)).returning().get();
+export async function updateRecurring(id: string, patch: Partial<RecurringInput>) {
+  await validateRefs(patch);
+  const [row] = await db.update(recurringExpense).set({ ...patch, updatedAt: nowIso() }).where(eq(recurringExpense.id, id)).returning();
   if (!row) throw new AppError(404, 'Recurring expense not found');
   return row;
 }
 
-export function deleteRecurring(id: string) {
-  db.update(recurringExpense).set({ deletedAt: nowIso(), active: false }).where(eq(recurringExpense.id, id)).run();
+export async function deleteRecurring(id: string) {
+  await db.update(recurringExpense).set({ deletedAt: nowIso(), active: false }).where(eq(recurringExpense.id, id));
 }
 
 /**
  * Create the real expense rows for every occurrence up to `today` that doesn't exist yet.
  * A unique (recurring_id, date) index makes this idempotent and stops deleted occurrences coming back.
  */
-export function generateRecurringExpenses(today: string): number {
-  const templates = db
+export async function generateRecurringExpenses(today: string): Promise<number> {
+  const templates = await db
     .select()
     .from(recurringExpense)
-    .where(and(isNull(recurringExpense.deletedAt), eq(recurringExpense.active, true)))
-    .all();
+    .where(and(isNull(recurringExpense.deletedAt), eq(recurringExpense.active, true)));
+  if (templates.length === 0) return 0;
   let created = 0;
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     // Skip dates already covered by an identical expense entered by hand or imported (same date, name, amount).
     const existing = new Set(
-      tx
-        .select({ date: expense.date, name: expense.name, incGstCents: expense.incGstCents })
-        .from(expense)
-        .where(isNull(expense.deletedAt))
-        .all()
-        .map(duplicateKey),
+      (await tx.select({ date: expense.date, name: expense.name, incGstCents: expense.incGstCents }).from(expense).where(isNull(expense.deletedAt))).map(duplicateKey),
     );
     for (const t of templates) {
       const inc = incGst(t.exGstCents, t.gstCents);
       for (const date of recurrenceDates(t, t.startDate, today)) {
         if (existing.has(duplicateKey({ date, name: t.name, incGstCents: inc }))) continue;
-        const res = tx
+        const inserted = await tx
           .insert(expense)
           .values({
             id: newId(),
@@ -261,8 +249,8 @@ export function generateRecurringExpenses(today: string): number {
             recurringId: t.id,
           })
           .onConflictDoNothing()
-          .run();
-        created += res.changes;
+          .returning({ id: expense.id });
+        created += inserted.length;
       }
     }
   });
@@ -291,19 +279,14 @@ export type PreviewRow =
   | { line: number; status: 'error'; errors: string[]; warnings: string[] };
 
 /** Parse the CSV with a mapping (suggested if omitted) and report what would be imported. */
-export function previewImport(text: string, mapping?: ExpenseImportMapping) {
+export async function previewImport(text: string, mapping?: ExpenseImportMapping) {
   const { headers, rows } = parseCsv(text);
   const map = mapping ?? suggestExpenseMapping(headers);
   for (const [field, header] of Object.entries(map)) {
     if (header && !headers.includes(header)) throw new AppError(422, `Column "${header}" (for ${field}) isn't in the file`);
   }
   const existing = new Set(
-    db
-      .select({ date: expense.date, name: expense.name, incGstCents: expense.incGstCents })
-      .from(expense)
-      .where(isNull(expense.deletedAt))
-      .all()
-      .map(duplicateKey),
+    (await db.select({ date: expense.date, name: expense.name, incGstCents: expense.incGstCents }).from(expense).where(isNull(expense.deletedAt))).map(duplicateKey),
   );
   const seen = new Set<string>();
   const result: PreviewRow[] = [];
@@ -340,20 +323,21 @@ export function previewImport(text: string, mapping?: ExpenseImportMapping) {
 }
 
 /** Import all valid, non-duplicate rows in one transaction. New categories/types/payment methods are created. */
-export function commitImport(text: string, mapping: ExpenseImportMapping, options: { includeDuplicates?: boolean } = {}) {
-  const preview = previewImport(text, mapping);
+export async function commitImport(text: string, mapping: ExpenseImportMapping, options: { includeDuplicates?: boolean } = {}) {
+  const preview = await previewImport(text, mapping);
   const toImport = preview.rows.filter(
     (r): r is Extract<PreviewRow, { value: ParsedExpenseRow }> => r.status === 'ok' || (r.status === 'duplicate' && !!options.includeDuplicates),
   );
   const batchId = newId();
-  const before = {
-    category: listItems('expense_category').length,
-    type: listItems('expense_type').length,
-    payment: listItems('payment_method').length,
-  };
-  db.transaction((tx) => {
+  const counts = async () => ({
+    category: (await listItems('expense_category')).length,
+    type: (await listItems('expense_type')).length,
+    payment: (await listItems('payment_method')).length,
+  });
+  const before = await counts();
+  await db.transaction(async (tx) => {
     for (const { value: v } of toImport) {
-      const row = tx
+      const [row] = await tx
         .insert(expense)
         .values({
           id: newId(),
@@ -361,28 +345,28 @@ export function commitImport(text: string, mapping: ExpenseImportMapping, option
           vendor: v.vendor,
           date: v.date,
           description: v.description,
-          categoryId: v.category ? findOrCreateListItem('expense_category', v.category, tx) : null,
-          typeId: v.type ? findOrCreateListItem('expense_type', v.type, tx) : null,
-          paymentMethodId: v.paymentMethod ? findOrCreateListItem('payment_method', v.paymentMethod, tx) : null,
+          categoryId: v.category ? await findOrCreateListItem('expense_category', v.category, tx) : null,
+          typeId: v.type ? await findOrCreateListItem('expense_type', v.type, tx) : null,
+          paymentMethodId: v.paymentMethod ? await findOrCreateListItem('payment_method', v.paymentMethod, tx) : null,
           exGstCents: v.exGstCents,
           gstCents: v.gstCents,
           incGstCents: v.incGstCents,
           businessUsePct: v.businessUsePct,
           importBatchId: batchId,
         })
-        .returning()
-        .get();
-      auditEvent(tx, 'expense', row.id, 'create', { ...row, source: 'csv-import' });
+        .returning();
+      await auditEvent(tx, 'expense', row!.id, 'create', { ...row, source: 'csv-import' });
     }
   });
+  const after = await counts();
   return {
     batchId,
     imported: toImport.length,
     skippedDuplicates: preview.counts.duplicate - (options.includeDuplicates ? preview.counts.duplicate : 0),
     skippedErrors: preview.counts.error,
-    newCategories: listItems('expense_category').length - before.category,
-    newTypes: listItems('expense_type').length - before.type,
-    newPaymentMethods: listItems('payment_method').length - before.payment,
+    newCategories: after.category - before.category,
+    newTypes: after.type - before.type,
+    newPaymentMethods: after.payment - before.payment,
   };
 }
 
@@ -397,57 +381,55 @@ export interface PayoutInput {
   notes?: string | null;
 }
 
-export function listPayouts(range: { from: string; to: string }) {
+export async function listPayouts(range: { from: string; to: string }) {
   return db
     .select()
     .from(payout)
     .where(and(isNull(payout.deletedAt), gte(payout.receivedDate, range.from), lte(payout.receivedDate, range.to)))
-    .orderBy(desc(payout.receivedDate))
-    .all();
+    .orderBy(desc(payout.receivedDate));
 }
 
-export function createPayout(input: PayoutInput & { id?: string }) {
-  assertAccount(input.accountId);
-  return db.transaction((tx) => {
-    const row = tx
+export async function createPayout(input: PayoutInput & { id?: string }) {
+  await assertAccount(input.accountId);
+  return db.transaction(async (tx) => {
+    const [row] = await tx
       .insert(payout)
       .values({ ...input, id: input.id ?? newId(), notes: clean(input.notes) })
-      .returning()
-      .get();
-    auditEvent(tx, 'payout', row.id, 'create', row);
-    return row;
+      .returning();
+    await auditEvent(tx, 'payout', row!.id, 'create', row);
+    return row!;
   });
 }
 
-export function updatePayout(id: string, patch: Partial<PayoutInput>, reason: string | null) {
-  const before = db.select().from(payout).where(eq(payout.id, id)).get();
+export async function updatePayout(id: string, patch: Partial<PayoutInput>, reason: string | null) {
+  const [before] = await db.select().from(payout).where(eq(payout.id, id));
   if (!before || before.deletedAt) throw new AppError(404, 'Payout not found');
-  assertAccount(patch.accountId);
+  await assertAccount(patch.accountId);
   const changes = { ...patch, ...(patch.notes !== undefined ? { notes: clean(patch.notes) } : {}) };
-  return db.transaction((tx) => {
-    const row = tx.update(payout).set({ ...changes, updatedAt: nowIso() }).where(eq(payout.id, id)).returning().get();
-    auditUpdate(tx, 'payout', id, before, changes, reason ?? undefined);
-    return row;
+  return db.transaction(async (tx) => {
+    const [row] = await tx.update(payout).set({ ...changes, updatedAt: nowIso() }).where(eq(payout.id, id)).returning();
+    await auditUpdate(tx, 'payout', id, before, changes, reason ?? undefined);
+    return row!;
   });
 }
 
-export function deletePayout(id: string) {
-  const row = db.select().from(payout).where(eq(payout.id, id)).get();
+export async function deletePayout(id: string) {
+  const [row] = await db.select().from(payout).where(eq(payout.id, id));
   if (!row || row.deletedAt) throw new AppError(404, 'Payout not found');
-  db.transaction((tx) => {
-    tx.update(payout).set({ deletedAt: nowIso() }).where(eq(payout.id, id)).run();
-    auditEvent(tx, 'payout', id, 'delete', row);
+  await db.transaction(async (tx) => {
+    await tx.update(payout).set({ deletedAt: nowIso() }).where(eq(payout.id, id));
+    await auditEvent(tx, 'payout', id, 'delete', row);
   });
 }
 
 // ---------- Financial-year summary ----------
 
-export function financialYearSummary(startYear: number) {
+export async function financialYearSummary(startYear: number) {
   const fy = financialYear(startYear);
   const { gstRegistered } = getSettings();
-  const expenses = listExpenses({ from: fy.start, to: fy.end });
-  const payouts = listPayouts({ from: fy.start, to: fy.end });
-  const categoryNames = new Map(listItems('expense_category').map((c) => [c.id, c.name]));
+  const expenses = await listExpenses({ from: fy.start, to: fy.end });
+  const payouts = await listPayouts({ from: fy.start, to: fy.end });
+  const categoryNames = new Map((await listItems('expense_category')).map((c) => [c.id, c.name]));
 
   type Totals = { count: number; exGstCents: number; gstCents: number; incGstCents: number; deductibleCents: number; gstCreditCents: number };
   const zero = (): Totals => ({ count: 0, exGstCents: 0, gstCents: 0, incGstCents: 0, deductibleCents: 0, gstCreditCents: 0 });

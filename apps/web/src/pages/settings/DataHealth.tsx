@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 
 interface Health {
   checks: { id: string; label: string; status: 'ok' | 'warn' | 'fail'; detail: string }[];
-  dbBytes: number;
+  dbBytes?: number;
 }
 
 const icon = { ok: <CheckCircle2 size={16} className="text-text" />, warn: <AlertTriangle size={16} className="text-warning" />, fail: <XCircle size={16} className="text-loss" /> };
@@ -25,7 +25,7 @@ export function DataHealth() {
         ))}
       </ul>
       <div className="mt-3 flex items-center justify-between text-xs text-muted">
-        <span>{data && `Database size ${(data.dbBytes / 1024 / 1024).toFixed(1)} MB`}</span>
+        <span>{data?.dbBytes != null && `Database size ${(data.dbBytes / 1024 / 1024).toFixed(1)} MB`}</span>
         <Button variant="ghost" disabled={isFetching} onClick={() => void refetch()}>
           <RefreshCw size={14} aria-hidden className={isFetching ? 'animate-spin' : ''} /> Check again
         </Button>

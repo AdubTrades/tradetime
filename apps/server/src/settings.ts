@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
-import { schema } from '@tc/db';
+import { eq, like, not } from 'drizzle-orm';
+import { schema, type Db } from '@tc/db';
 import { z } from 'zod';
-import { db } from './context';
+import { currentScope, db } from './context';
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM (24-hour)');
 
@@ -56,8 +56,27 @@ export const defaultSettings: Settings = {
 // No defaults here: a patch must only touch the keys it names.
 export const settingsPatchSchema = settingsShape.partial().strict();
 
+/** Read the user's settings from the database (once per request; see `withUser`). */
+export async function loadSettings(tx: Db): Promise<Settings> {
+  const rows = await tx.select().from(schema.setting).where(not(like(schema.setting.key, 'state.%')));
+  return parseSettings(rows);
+}
+
+/** The current user's settings, loaded at the start of the request. */
 export function getSettings(): Settings {
-  const rows = db.select().from(schema.setting).all();
+  return currentScope().settings;
+}
+
+/** Settings if there's a signed-in user in scope (background work may run outside one). */
+export function trySettings(): Settings | null {
+  try {
+    return currentScope().settings;
+  } catch {
+    return null;
+  }
+}
+
+function parseSettings(rows: { key: string; value: unknown }[]): Settings {
   const stored = Object.fromEntries(rows.filter((r) => r.key in defaultSettings).map((r) => [r.key, r.value]));
   const merged = { ...defaultSettings, ...stored };
   // Fall back to defaults for any stored value that no longer validates.
@@ -71,36 +90,50 @@ export function getSettings(): Settings {
   return settingsShape.parse(repaired);
 }
 
-export function updateSettings(patch: Partial<Settings>): Settings {
+export async function updateSettings(patch: Partial<Settings>): Promise<Settings> {
   const valid = settingsPatchSchema.parse(patch);
   const now = new Date().toISOString();
-  db.transaction((tx) => {
-    for (const [key, value] of Object.entries(valid)) {
-      if (value === undefined) continue;
-      if (value === null) {
-        // Null means "back to default"; the column can't hold SQL NULL.
-        tx.delete(schema.setting).where(eq(schema.setting.key, key)).run();
-        continue;
-      }
-      tx.insert(schema.setting)
-        .values({ key, value, updatedAt: now })
-        .onConflictDoUpdate({ target: schema.setting.key, set: { value, updatedAt: now } })
-        .run();
+  for (const [key, value] of Object.entries(valid)) {
+    if (value === undefined) continue;
+    if (value === null) {
+      // Null means "back to default"; the column can't hold SQL NULL.
+      await db.delete(schema.setting).where(eq(schema.setting.key, key));
+      continue;
     }
-  });
-  return getSettings();
+    await db
+      .insert(schema.setting)
+      .values({ key, value, updatedAt: now })
+      .onConflictDoUpdate({ target: [schema.setting.userId, schema.setting.key], set: { value, updatedAt: now } });
+  }
+  const scope = currentScope();
+  scope.settings = await loadSettings(scope.tx);
+  return scope.settings;
 }
 
 /** Internal state (not user-editable), e.g. last backup result. */
-export function getState<T>(key: string): T | undefined {
-  const row = db.select().from(schema.setting).where(eq(schema.setting.key, `state.${key}`)).get();
+export async function getState<T>(key: string): Promise<T | undefined> {
+  const [row] = await db.select().from(schema.setting).where(eq(schema.setting.key, `state.${key}`));
   return row?.value as T | undefined;
 }
 
-export function setState(key: string, value: unknown): void {
+export async function setState(key: string, value: unknown): Promise<void> {
   const now = new Date().toISOString();
-  db.insert(schema.setting)
+  await db
+    .insert(schema.setting)
     .values({ key: `state.${key}`, value, updatedAt: now })
-    .onConflictDoUpdate({ target: schema.setting.key, set: { value, updatedAt: now } })
-    .run();
+    .onConflictDoUpdate({ target: [schema.setting.userId, schema.setting.key], set: { value, updatedAt: now } });
+}
+
+/** App-wide state shared by everyone (economic-events fetch status). */
+export async function getAppState<T>(key: string): Promise<T | undefined> {
+  const [row] = await db.select().from(schema.appState).where(eq(schema.appState.key, key));
+  return row?.value as T | undefined;
+}
+
+export async function setAppState(key: string, value: unknown): Promise<void> {
+  const now = new Date().toISOString();
+  await db
+    .insert(schema.appState)
+    .values({ key, value, updatedAt: now })
+    .onConflictDoUpdate({ target: schema.appState.key, set: { value, updatedAt: now } });
 }

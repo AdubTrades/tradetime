@@ -2,7 +2,7 @@
 
 **Goal:** put TradeTime online so about a dozen traders from your community can use it, each with their own private account and data, from any computer or phone, **for free**, while you decide whether to turn it into a paid product. The product features stay as they are. This is also the foundation for a later paid, two-tier product, so nothing here is throwaway.
 
-**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. Nothing has been built yet.
+**Status:** revised 8 Oct 2026 to run entirely on Supabase and Vercel free tiers. This replaces the 7 Oct "middle path" with a separate always-on server. **Phase 1 is done on the `cloud` branch** (8 Oct 2026): Postgres schema with per-user rows and row-level security, async server, all 144 tests passing on PGlite.
 
 ---
 
@@ -62,7 +62,16 @@ Estimates assume focused build sessions like the ones so far, and include testin
   - set up error monitoring (Sentry free tier) and an uptime monitor (Better Stack or UptimeRobot free tier)
 - **Secrets** stay in Vercel's and Supabase's settings, never in the repo: database URL, Supabase keys, FRED key, push keys and the job-endpoint secret.
 
-### Phase 1 — Move the database to Postgres (4–6 days, the biggest phase)
+### Phase 1 — Move the database to Postgres ✅ done 8 Oct 2026
+
+**As built:**
+- Per-user filtering is done by Postgres row-level security rather than by adding `user_id` checks to every query. Each request runs in one transaction as a restricted role with `app.user_id` set, and `user_id` fills itself on insert.
+- Keys are `(user_id, id)`, so the seeded defaults keep their fixed ids per user, and foreign keys include `user_id`, so one user's records can't point at another's.
+- Tables live in their own `tradetime` schema, outside Supabase's public API.
+- Until Phase 2, every request acts as one local user.
+- The file backups, restore and the separate demo process are removed and hidden in the web app. Phase 6 replaces them.
+
+**Original plan:**
 Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instant answer" style, 23 transactions and 8 migrations.
 - **Schema:** rewrite the Drizzle schema for Postgres. Money stays in integer cents, and times stay as UTC ISO strings to keep changes small.
 - **Per-user data:** add a `user_id` to every table that belongs to someone, with indexes. Uniqueness rules become per user; for example, "one running session" becomes one per user.

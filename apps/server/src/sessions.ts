@@ -15,32 +15,31 @@ const notDeleted = isNull(session.deletedAt);
 
 // ---------- Session types ----------
 
-export function listSessionTypes() {
-  return db.select().from(sessionType).where(isNull(sessionType.deletedAt)).orderBy(asc(sessionType.sortOrder), asc(sessionType.name)).all();
+export async function listSessionTypes() {
+  return db.select().from(sessionType).where(isNull(sessionType.deletedAt)).orderBy(asc(sessionType.sortOrder), asc(sessionType.name));
 }
 
-export function createSessionType(input: { name: string; isTrading?: boolean; color?: string }) {
-  const maxOrder = db.select({ max: sql<number>`coalesce(max(${sessionType.sortOrder}), -1)` }).from(sessionType).get()?.max ?? -1;
-  return db
+export async function createSessionType(input: { name: string; isTrading?: boolean; color?: string }) {
+  const [max] = await db.select({ max: sql<number>`coalesce(max(${sessionType.sortOrder}), -1)` }).from(sessionType);
+  const [row] = await db
     .insert(sessionType)
-    .values({ id: newId(), name: input.name.trim(), isTrading: input.isTrading ?? false, color: input.color ?? '#9a958c', sortOrder: maxOrder + 1 })
-    .returning()
-    .get();
+    .values({ id: newId(), name: input.name.trim(), isTrading: input.isTrading ?? false, color: input.color ?? '#9a958c', sortOrder: (max?.max ?? -1) + 1 })
+    .returning();
+  return row!;
 }
 
-export function updateSessionType(id: string, patch: Partial<{ name: string; isTrading: boolean; color: string; archived: boolean; sortOrder: number }>) {
-  const row = db
+export async function updateSessionType(id: string, patch: Partial<{ name: string; isTrading: boolean; color: string; archived: boolean; sortOrder: number }>) {
+  const [row] = await db
     .update(sessionType)
     .set({ ...patch, ...(patch.name ? { name: patch.name.trim() } : {}), updatedAt: nowIso() })
     .where(eq(sessionType.id, id))
-    .returning()
-    .get();
+    .returning();
   if (!row) throw new AppError(404, 'Session type not found');
   return row;
 }
 
-function requireActiveType(typeId: string) {
-  const type = db.select().from(sessionType).where(eq(sessionType.id, typeId)).get();
+async function requireActiveType(typeId: string) {
+  const [type] = await db.select().from(sessionType).where(eq(sessionType.id, typeId));
   if (!type || type.deletedAt) throw new AppError(422, 'Unknown session type');
   if (type.archived) throw new AppError(422, `"${type.name}" is archived`);
   return type;
@@ -60,25 +59,23 @@ const sessionColumns = {
   createdAt: session.createdAt,
 };
 
-export type SessionView = ReturnType<typeof listSessions>[number];
+export type SessionView = Awaited<ReturnType<typeof listSessions>>[number];
 
 /** Sessions whose trading day falls in [from, to], newest first. */
-export function listSessions(range: { from: string; to: string }) {
+export async function listSessions(range: { from: string; to: string }) {
   return db
     .select(sessionColumns)
     .from(session)
     .where(and(notDeleted, gte(session.tradingDay, range.from), lte(session.tradingDay, range.to)))
-    .orderBy(desc(session.start))
-    .all();
+    .orderBy(desc(session.start));
 }
 
 /** Financial years (start year, newest first) that have sessions, always including the current one. */
-export function sessionFinancialYears(currentStartYear: number): number[] {
-  const months = db
+export async function sessionFinancialYears(currentStartYear: number): Promise<number[]> {
+  const months = await db
     .selectDistinct({ month: sql<string>`substr(${session.tradingDay}, 1, 7)` })
     .from(session)
-    .where(notDeleted)
-    .all();
+    .where(notDeleted);
   const years = new Set([currentStartYear]);
   for (const { month } of months) {
     const [y, m] = month.split('-').map(Number) as [number, number];
@@ -87,23 +84,23 @@ export function sessionFinancialYears(currentStartYear: number): number[] {
   return [...years].sort((a, b) => b - a);
 }
 
-export function getRunningSession() {
-  return db.select(sessionColumns).from(session).where(and(notDeleted, isNull(session.end))).get() ?? null;
+export async function getRunningSession() {
+  const [row] = await db.select(sessionColumns).from(session).where(and(notDeleted, isNull(session.end)));
+  return row ?? null;
 }
 
-function getSessionRow(id: string): SessionRow {
-  const row = db.select().from(session).where(eq(session.id, id)).get();
+async function getSessionRow(id: string): Promise<SessionRow> {
+  const [row] = await db.select().from(session).where(eq(session.id, id));
   if (!row || row.deletedAt) throw new AppError(404, 'Session not found');
   return row;
 }
 
-export function sessionHistory(id: string) {
+export async function sessionHistory(id: string) {
   return db
     .select()
     .from(auditLog)
     .where(and(eq(auditLog.entity, 'session'), eq(auditLog.entityId, id)))
-    .orderBy(asc(auditLog.at), asc(auditLog.id))
-    .all();
+    .orderBy(asc(auditLog.at), asc(auditLog.id));
 }
 
 // ---------- Validation ----------
@@ -121,53 +118,50 @@ function validateTimes(start: string, end: string | null) {
 }
 
 /** Throw 409 with the overlapping sessions unless the caller chose to save anyway. */
-function checkOverlaps(candidate: { id?: string; start: string; end: string | null }, force: boolean) {
+async function checkOverlaps(candidate: { id?: string; start: string; end: string | null }, force: boolean) {
   if (force) return;
   const windowStart = new Date(Date.parse(candidate.start) - MAX_SESSION_HOURS * 3_600_000).toISOString();
   const windowEnd = candidate.end ?? nowIso();
-  const nearby = db
+  const nearby = await db
     .select(sessionColumns)
     .from(session)
-    .where(and(notDeleted, lte(session.start, windowEnd), gte(sql`coalesce(${session.end}, ${nowIso()})`, windowStart)))
-    .all();
+    .where(and(notDeleted, lte(session.start, windowEnd), gte(sql`coalesce(${session.end}, ${nowIso()})`, windowStart)));
   const overlaps = findOverlaps(candidate, nearby);
   if (overlaps.length) throw new AppError(409, 'This session overlaps an existing session', { overlaps });
 }
 
 // ---------- Timer ----------
 
-export function startTimer(typeId: string, startedAt = nowIso()) {
-  requireActiveType(typeId);
-  if (getRunningSession()) throw new AppError(409, 'A session is already running');
+export async function startTimer(typeId: string, startedAt = nowIso()) {
+  await requireActiveType(typeId);
+  if (await getRunningSession()) throw new AppError(409, 'A session is already running');
   const { rolloverTime } = getSettings();
-  return db.transaction((tx) => {
-    const row = tx
+  return db.transaction(async (tx) => {
+    const [row] = await tx
       .insert(session)
       .values({ id: newId(), typeId, start: startedAt, end: null, tradingDay: tradingDay(startedAt, rolloverTime), source: 'timer' })
-      .returning()
-      .get();
-    auditEvent(tx, 'session', row.id, 'create', { typeId, start: row.start, source: 'timer' });
-    return row;
+      .returning();
+    await auditEvent(tx, 'session', row!.id, 'create', { typeId, start: row!.start, source: 'timer' });
+    return row!;
   });
 }
 
 /** Stop the running timer, optionally at an earlier time (e.g. "I actually finished at 01:30"). */
-export function stopTimer(id: string, endAt?: string) {
-  const row = getSessionRow(id);
+export async function stopTimer(id: string, endAt?: string) {
+  const row = await getSessionRow(id);
   if (row.end) throw new AppError(409, 'Session is already stopped');
   const now = nowIso();
   const end = endAt ?? now;
   validateTimes(row.start, end);
   const adjusted = endAt !== undefined && Math.abs(Date.parse(endAt) - Date.parse(now)) > 60_000;
-  return db.transaction((tx) => {
-    const updated = tx
+  return db.transaction(async (tx) => {
+    const [updated] = await tx
       .update(session)
       .set({ end, updatedAt: now, ...(adjusted ? { editedAt: now } : {}) })
       .where(eq(session.id, id))
-      .returning()
-      .get();
-    if (adjusted) auditUpdate(tx, 'session', id, { end: now }, { end }, 'Stopped with an adjusted end time');
-    return updated;
+      .returning();
+    if (adjusted) await auditUpdate(tx, 'session', id, { end: now }, { end }, 'Stopped with an adjusted end time');
+    return updated!;
   });
 }
 
@@ -180,13 +174,13 @@ export interface ManualSessionInput {
   notes?: string | null;
 }
 
-export function createManualSession(input: ManualSessionInput, force = false) {
-  requireActiveType(input.typeId);
+export async function createManualSession(input: ManualSessionInput, force = false) {
+  await requireActiveType(input.typeId);
   validateTimes(input.start, input.end);
-  checkOverlaps({ start: input.start, end: input.end }, force);
+  await checkOverlaps({ start: input.start, end: input.end }, force);
   const { rolloverTime } = getSettings();
-  return db.transaction((tx) => {
-    const row = tx
+  return db.transaction(async (tx) => {
+    const [row] = await tx
       .insert(session)
       .values({
         id: newId(),
@@ -197,10 +191,9 @@ export function createManualSession(input: ManualSessionInput, force = false) {
         source: 'manual',
         notes: input.notes?.trim() || null,
       })
-      .returning()
-      .get();
-    auditEvent(tx, 'session', row.id, 'create', { typeId: row.typeId, start: row.start, end: row.end, source: 'manual' });
-    return row;
+      .returning();
+    await auditEvent(tx, 'session', row!.id, 'create', { typeId: row!.typeId, start: row!.start, end: row!.end, source: 'manual' });
+    return row!;
   });
 }
 
@@ -212,9 +205,9 @@ export interface SessionPatch {
 }
 
 /** Edit a session. Every changed field is kept in the audit log with its old value. */
-export function updateSession(id: string, patch: SessionPatch, reason: string | null, force = false) {
-  const before = getSessionRow(id);
-  if (patch.typeId && patch.typeId !== before.typeId) requireActiveType(patch.typeId);
+export async function updateSession(id: string, patch: SessionPatch, reason: string | null, force = false) {
+  const before = await getSessionRow(id);
+  if (patch.typeId && patch.typeId !== before.typeId) await requireActiveType(patch.typeId);
   if (before.end === null && patch.end !== undefined) throw new AppError(422, 'Stop the timer before editing its end time');
 
   const next = {
@@ -224,12 +217,12 @@ export function updateSession(id: string, patch: SessionPatch, reason: string | 
     notes: patch.notes === undefined ? before.notes : patch.notes?.trim() || null,
   };
   validateTimes(next.start, next.end);
-  if (next.start !== before.start || next.end !== before.end) checkOverlaps({ id, start: next.start, end: next.end }, force);
+  if (next.start !== before.start || next.end !== before.end) await checkOverlaps({ id, start: next.start, end: next.end }, force);
 
   const timesOrTypeChanged = next.typeId !== before.typeId || next.start !== before.start || next.end !== before.end;
   const now = nowIso();
-  return db.transaction((tx) => {
-    const updated = tx
+  return db.transaction(async (tx) => {
+    const [updated] = await tx
       .update(session)
       .set({
         ...next,
@@ -238,58 +231,55 @@ export function updateSession(id: string, patch: SessionPatch, reason: string | 
         ...(timesOrTypeChanged ? { editedAt: now } : {}),
       })
       .where(eq(session.id, id))
-      .returning()
-      .get();
-    auditUpdate(tx, 'session', id, before, next, reason ?? undefined);
+      .returning();
+    await auditUpdate(tx, 'session', id, before, next, reason ?? undefined);
     // The session-start checklist is "at the start", so it moves with the start time.
     if (next.start !== before.start) {
-      tx.update(stateReading).set({ at: next.start }).where(and(eq(stateReading.sessionId, id), eq(stateReading.kind, 'start'))).run();
+      await tx.update(stateReading).set({ at: next.start }).where(and(eq(stateReading.sessionId, id), eq(stateReading.kind, 'start')));
     }
-    return updated;
+    return updated!;
   });
 }
 
-export function deleteSession(id: string) {
-  const row = getSessionRow(id);
-  db.transaction((tx) => {
-    tx.update(session).set({ deletedAt: nowIso() }).where(eq(session.id, id)).run();
-    auditEvent(tx, 'session', id, 'delete', row);
+export async function deleteSession(id: string) {
+  const row = await getSessionRow(id);
+  await db.transaction(async (tx) => {
+    await tx.update(session).set({ deletedAt: nowIso() }).where(eq(session.id, id));
+    await auditEvent(tx, 'session', id, 'delete', row);
   });
 }
 
-export function restoreSession(id: string) {
-  const row = db.select().from(session).where(eq(session.id, id)).get();
+export async function restoreSession(id: string) {
+  const [row] = await db.select().from(session).where(eq(session.id, id));
   if (!row?.deletedAt) throw new AppError(404, 'No deleted session with that id');
-  if (row.end === null && getRunningSession()) throw new AppError(409, 'Another session is running');
-  db.transaction((tx) => {
-    tx.update(session).set({ deletedAt: null, updatedAt: nowIso() }).where(eq(session.id, id)).run();
-    auditEvent(tx, 'session', id, 'restore');
+  if (row.end === null && (await getRunningSession())) throw new AppError(409, 'Another session is running');
+  await db.transaction(async (tx) => {
+    await tx.update(session).set({ deletedAt: null, updatedAt: nowIso() }).where(eq(session.id, id));
+    await auditEvent(tx, 'session', id, 'restore');
   });
 }
 
 /** Re-derive every session's trading day, e.g. after the rollover time changes. */
-export function recomputeTradingDays(rolloverTime: string): number {
-  const rows = db.select({ id: session.id, start: session.start, tradingDay: session.tradingDay }).from(session).all();
+export async function recomputeTradingDays(rolloverTime: string): Promise<number> {
+  const rows = await db.select({ id: session.id, start: session.start, tradingDay: session.tradingDay }).from(session);
   let changed = 0;
-  db.transaction((tx) => {
-    for (const r of rows) {
-      const day = tradingDay(r.start, rolloverTime);
-      if (day === r.tradingDay) continue;
-      tx.update(session).set({ tradingDay: day }).where(eq(session.id, r.id)).run();
-      changed++;
-    }
-  });
+  for (const r of rows) {
+    const day = tradingDay(r.start, rolloverTime);
+    if (day === r.tradingDay) continue;
+    await db.update(session).set({ tradingDay: day }).where(eq(session.id, r.id));
+    changed++;
+  }
   return changed;
 }
 
 // ---------- Reports ----------
 
-export function sessionsForFinancialYear(startYear: number) {
+export async function sessionsForFinancialYear(startYear: number) {
   const fy = financialYear(startYear);
-  return { fy, sessions: listSessions({ from: fy.start, to: fy.end }).filter((s) => s.end !== null).reverse() };
+  return { fy, sessions: (await listSessions({ from: fy.start, to: fy.end })).filter((s) => s.end !== null).reverse() };
 }
 
-export function runningMinutes(now = new Date()): number | null {
-  const running = getRunningSession();
+export async function runningMinutes(now = new Date()): Promise<number | null> {
+  const running = await getRunningSession();
   return running ? durationMinutes(running, now) : null;
 }

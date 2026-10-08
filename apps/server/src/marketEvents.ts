@@ -2,9 +2,10 @@ import { and, asc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { DateTime } from 'luxon';
 import { schema } from '@tc/db';
 import { FRED_RELEASES, fomcEvents, fredToEvents, newId, zonedToUtc, type MarketEventInput } from '@tc/domain';
+import { fredApiKey as serverFredKey } from './config';
 import { db } from './context';
 import { AppError } from './errors';
-import { getSettings, getState, setState } from './settings';
+import { getAppState, getSettings, setAppState, trySettings } from './settings';
 
 const { marketEvent } = schema;
 
@@ -15,7 +16,16 @@ export interface MarketFetchStatus {
   count: number;
 }
 
-export const getMarketStatus = (): MarketFetchStatus => ({ lastSuccessAt: null, lastAttemptAt: null, lastError: null, count: 0, ...getState<MarketFetchStatus>('market') });
+export const getMarketStatus = async (): Promise<MarketFetchStatus> => ({
+  lastSuccessAt: null,
+  lastAttemptAt: null,
+  lastError: null,
+  count: 0,
+  ...(await getAppState<MarketFetchStatus>('market')),
+});
+
+/** The server's FRED key; locally, the signed-in user's own key from Settings if the server has none. */
+const fredKey = (): string | null => serverFredKey ?? trySettings()?.fredApiKey ?? null;
 
 type Fetcher = (url: string) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
 
@@ -46,25 +56,23 @@ export async function fetchFredEvents(apiKey: string, from: string, to: string, 
  * Store events, and soft-delete stored events from the same providers within the window that the source
  * no longer lists (rescheduled or withdrawn releases), so nothing doubles up.
  */
-export function upsertMarketEvents(events: MarketEventInput[], window?: { fromInstant: string; toInstant: string; providers: string[] }): number {
+export async function upsertMarketEvents(events: MarketEventInput[], window?: { fromInstant: string; toInstant: string; providers: string[] }): Promise<number> {
   const now = new Date().toISOString();
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     if (window) {
       const keep = new Set(events.map((e) => `${e.provider}|${e.providerId}`));
-      const stored = tx
+      const stored = await tx
         .select({ id: marketEvent.id, provider: marketEvent.provider, providerId: marketEvent.providerId })
         .from(marketEvent)
-        .where(and(isNull(marketEvent.deletedAt), inArray(marketEvent.provider, window.providers), gte(marketEvent.at, window.fromInstant), lte(marketEvent.at, window.toInstant)))
-        .all();
-      for (const r of stored) {
-        if (!keep.has(`${r.provider}|${r.providerId}`)) tx.update(marketEvent).set({ deletedAt: now }).where(eq(marketEvent.id, r.id)).run();
-      }
+        .where(and(isNull(marketEvent.deletedAt), inArray(marketEvent.provider, window.providers), gte(marketEvent.at, window.fromInstant), lte(marketEvent.at, window.toInstant)));
+      const gone = stored.filter((r) => !keep.has(`${r.provider}|${r.providerId}`)).map((r) => r.id);
+      if (gone.length) await tx.update(marketEvent).set({ deletedAt: now }).where(inArray(marketEvent.id, gone));
     }
     for (const e of events) {
-      tx.insert(marketEvent)
+      await tx
+        .insert(marketEvent)
         .values({ id: newId(), ...e, fetchedAt: now })
-        .onConflictDoUpdate({ target: [marketEvent.provider, marketEvent.providerId], set: { title: e.title, at: e.at, impact: e.impact, fetchedAt: now, deletedAt: null } })
-        .run();
+        .onConflictDoUpdate({ target: [marketEvent.provider, marketEvent.providerId], set: { title: e.title, at: e.at, impact: e.impact, fetchedAt: now, deletedAt: null } });
     }
   });
   return events.length;
@@ -76,10 +84,10 @@ let running: Promise<MarketFetchStatus> | null = null;
 export function refreshMarketEvents(fetcher?: Fetcher): Promise<MarketFetchStatus> {
   running ??= (async () => {
     const attemptAt = new Date().toISOString();
-    const prev = getMarketStatus();
-    const { fredApiKey } = getSettings();
+    const prev = await getMarketStatus();
+    const fredApiKey = fredKey();
     try {
-      if (!fredApiKey) throw new Error('Add your FRED API key in Settings to fetch economic events');
+      if (!fredApiKey) throw new Error('No FRED API key is set, so economic events can’t be fetched');
       const today = DateTime.now().setZone('America/New_York');
       const from = today.minus({ days: 30 }).toISODate()!;
       const to = today.plus({ days: 120 }).toISODate()!;
@@ -90,13 +98,13 @@ export function refreshMarketEvents(fetcher?: Fetcher): Promise<MarketFetchStatu
         toInstant: zonedToUtc(DateTime.fromISO(to).plus({ days: 1 }).toISODate()!, '00:00', 'America/New_York'),
         providers: ['fred', 'fomc'],
       };
-      const count = upsertMarketEvents(events, window);
+      const count = await upsertMarketEvents(events, window);
       const status = { lastSuccessAt: new Date().toISOString(), lastAttemptAt: attemptAt, lastError: null, count };
-      setState('market', status);
+      await setAppState('market', status);
       return status;
     } catch (err) {
       const status = { ...prev, lastAttemptAt: attemptAt, lastError: (err as Error).message };
-      setState('market', status);
+      await setAppState('market', status);
       return status;
     }
   })().finally(() => {
@@ -106,9 +114,9 @@ export function refreshMarketEvents(fetcher?: Fetcher): Promise<MarketFetchStatu
 }
 
 /** Due if a key is set and the last success is more than 12 hours old (retry failures hourly). */
-export function isMarketRefreshDue(now = Date.now()): boolean {
-  if (!getSettings().fredApiKey) return false;
-  const s = getMarketStatus();
+export async function isMarketRefreshDue(now = Date.now()): Promise<boolean> {
+  if (!fredKey()) return false;
+  const s = await getMarketStatus();
   if (s.lastError && s.lastAttemptAt && now - Date.parse(s.lastAttemptAt) < 3_600_000) return false;
   return !s.lastSuccessAt || now - Date.parse(s.lastSuccessAt) > 12 * 3_600_000;
 }
@@ -121,6 +129,5 @@ export function listMarketEvents(fromInstant: string, toInstant: string, impacts
     .select()
     .from(marketEvent)
     .where(and(isNull(marketEvent.deletedAt), gte(marketEvent.at, fromInstant), lte(marketEvent.at, toInstant), inArray(marketEvent.impact, wanted)))
-    .orderBy(asc(marketEvent.at))
-    .all();
+    .orderBy(asc(marketEvent.at));
 }

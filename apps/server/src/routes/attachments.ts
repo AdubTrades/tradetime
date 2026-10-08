@@ -35,8 +35,8 @@ export const attachmentRoutes = new Hono()
     for (const file of files) {
       if (!isAllowedMime(file.type)) return c.json({ error: `Unsupported file type: ${file.type || 'unknown'}` }, 415);
       if (file.size > MAX_ATTACHMENT_BYTES) return c.json({ error: `${file.name} is larger than 25 MB` }, 413);
-      const attachment = storeAttachment(Buffer.from(await file.arrayBuffer()), file.type, file.name || null);
-      const link = ownerType && ownerId ? linkAttachment(attachment.id, ownerType, ownerId, role) : null;
+      const attachment = await storeAttachment(Buffer.from(await file.arrayBuffer()), file.type, file.name || null);
+      const link = ownerType && ownerId ? await linkAttachment(attachment.id, ownerType, ownerId, role) : null;
       results.push({ attachment, link });
     }
     return c.json(results, 201);
@@ -44,16 +44,16 @@ export const attachmentRoutes = new Hono()
   .post('/links', async (c) => {
     const parsed = linkSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: formatZodError(parsed.error) }, 400);
-    if (!getAttachment(parsed.data.attachmentId)) return c.json({ error: 'Attachment not found' }, 404);
+    if (!(await getAttachment(parsed.data.attachmentId))) return c.json({ error: 'Attachment not found' }, 404);
     const { attachmentId, ownerType, ownerId, role } = parsed.data;
-    return c.json(linkAttachment(attachmentId, ownerType, ownerId, role ?? null), 201);
+    return c.json(await linkAttachment(attachmentId, ownerType, ownerId, role ?? null), 201);
   })
-  .delete('/links/:id', (c) => (unlinkAttachment(c.req.param('id')) ? c.body(null, 204) : c.json({ error: 'Not found' }, 404)))
-  .get('/for/:ownerType/:ownerId', (c) => c.json(attachmentsFor(c.req.param('ownerType'), c.req.param('ownerId'))))
-  .get('/:id/file', (c) => {
-    const row = getAttachment(c.req.param('id'));
+  .delete('/links/:id', async (c) => ((await unlinkAttachment(c.req.param('id'))) ? c.body(null, 204) : c.json({ error: 'Not found' }, 404)))
+  .get('/for/:ownerType/:ownerId', async (c) => c.json(await attachmentsFor(c.req.param('ownerType'), c.req.param('ownerId'))))
+  .get('/:id/file', async (c) => {
+    const row = await getAttachment(c.req.param('id'));
     if (!row) return c.json({ error: 'Not found' }, 404);
-    const file = attachmentPath(row.sha256, row.mime);
+    const file = await attachmentPath(row.sha256, row.mime);
     if (!existsSync(file)) return c.json({ error: 'File missing from attachments folder' }, 410);
     c.header('Content-Type', row.mime);
     c.header('Content-Length', String(row.bytes));

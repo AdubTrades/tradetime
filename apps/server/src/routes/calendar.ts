@@ -40,12 +40,12 @@ const eventSchema = z.object({
 });
 
 export const calendarRoutes = new Hono()
-  .get('/range', (c) => c.json(calendarRange(isoDate.parse(c.req.query('from')), isoDate.parse(c.req.query('to')))))
-  .get('/upcoming', (c) => c.json(upcoming(Math.min(31, Math.max(1, Number(c.req.query('days') ?? 7))))))
-  .get('/types', (c) => c.json(listEventTypes()))
+  .get('/range', async (c) => c.json(await calendarRange(isoDate.parse(c.req.query('from')), isoDate.parse(c.req.query('to')))))
+  .get('/upcoming', async (c) => c.json(await upcoming(Math.min(31, Math.max(1, Number(c.req.query('days') ?? 7))))))
+  .get('/types', async (c) => c.json(await listEventTypes()))
   .post('/types', async (c) =>
     c.json(
-      createEventType(
+      await createEventType(
         await body(c.req, z.object({ name: z.string().trim().min(1).max(60), color: z.string(), sessionTypeId: z.string().nullable().optional(), isNoTrade: z.boolean().optional() })),
       ),
       201,
@@ -53,7 +53,7 @@ export const calendarRoutes = new Hono()
   )
   .patch('/types/:id', async (c) =>
     c.json(
-      updateEventType(
+      await updateEventType(
         c.req.param('id'),
         await body(
           c.req,
@@ -65,15 +65,15 @@ export const calendarRoutes = new Hono()
       ),
     ),
   )
-  .post('/events', async (c) => c.json(createEvent(await body(c.req, eventSchema)), 201))
-  .patch('/events/:id', async (c) => c.json(updateEvent(c.req.param('id'), await body(c.req, eventSchema.partial().strict()))))
-  .delete('/events/:id', (c) => {
-    deleteEvent(c.req.param('id'));
+  .post('/events', async (c) => c.json(await createEvent(await body(c.req, eventSchema)), 201))
+  .patch('/events/:id', async (c) => c.json(await updateEvent(c.req.param('id'), await body(c.req, eventSchema.partial().strict()))))
+  .delete('/events/:id', async (c) => {
+    await deleteEvent(c.req.param('id'));
     return c.body(null, 204);
   })
   .post('/events/:id/done', async (c) => {
     const { done } = await body(c.req, z.object({ done: z.boolean() }));
-    setTaskDone(c.req.param('id'), done);
+    await setTaskDone(c.req.param('id'), done);
     return c.body(null, 204);
   })
   /** Change a single occurrence of a repeating event. */
@@ -89,10 +89,10 @@ export const calendarRoutes = new Hono()
           .optional(),
       }),
     );
-    upsertException(c.req.param('id'), isoDate.parse(c.req.param('date')), change);
+    await upsertException(c.req.param('id'), isoDate.parse(c.req.param('date')), change);
     return c.body(null, 204);
   })
-  .get('/market/status', (c) => c.json(getMarketStatus()))
+  .get('/market/status', async (c) => c.json(await getMarketStatus()))
   .post('/market/refresh', async (c) => {
     const status = await refreshMarketEvents();
     return c.json(status, status.lastError ? 502 : 200);

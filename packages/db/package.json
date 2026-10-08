@@ -10,11 +10,12 @@
     "generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
-    "drizzle-orm": "^0.45.3"
+    "@electric-sql/pglite": "^0.5.8",
+    "drizzle-orm": "^0.45.3",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.4",
     "drizzle-kit": "^0.31.11"
   }
 }

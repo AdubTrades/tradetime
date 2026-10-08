@@ -56,40 +56,40 @@ const rangeQuery = (q: { from?: string; to?: string; fy?: string }) => {
 };
 
 export const expenseRoutes = new Hono()
-  .get('/', (c) => c.json(listExpenses(rangeQuery(c.req.query()))))
-  .get('/years', (c) => c.json(expenseFinancialYears(financialYearOf(today()).startYear)))
-  .post('/', async (c) => c.json(createExpense(await body(c.req, z.object({ id: ulid.optional(), ...expenseFields }))), 201))
+  .get('/', async (c) => c.json(await listExpenses(rangeQuery(c.req.query()))))
+  .get('/years', async (c) => c.json(await expenseFinancialYears(financialYearOf(today()).startYear)))
+  .post('/', async (c) => c.json(await createExpense(await body(c.req, z.object({ id: ulid.optional(), ...expenseFields }))), 201))
   .patch('/:id', async (c) => {
     const { reason, ...patch } = await body(c.req, z.object({ ...expenseFields, reason: z.string().max(500).nullable() }).partial().strict());
-    return c.json(updateExpense(c.req.param('id'), patch, reason ?? null));
+    return c.json(await updateExpense(c.req.param('id'), patch, reason ?? null));
   })
-  .delete('/:id', (c) => {
-    deleteExpense(c.req.param('id'));
+  .delete('/:id', async (c) => {
+    await deleteExpense(c.req.param('id'));
     return c.body(null, 204);
   })
-  .post('/:id/restore', (c) => {
-    restoreExpense(c.req.param('id'));
+  .post('/:id/restore', async (c) => {
+    await restoreExpense(c.req.param('id'));
     return c.body(null, 204);
   })
-  .get('/:id/history', (c) => c.json(entityHistory('expense', c.req.param('id'))))
-  .get('/summary', (c) => c.json(financialYearSummary(fyParam(c.req.query('fy')))))
+  .get('/:id/history', async (c) => c.json(await entityHistory('expense', c.req.param('id'))))
+  .get('/summary', async (c) => c.json(await financialYearSummary(fyParam(c.req.query('fy')))))
   .post('/import/preview', async (c) => {
     const { csv, mapping } = await body(c.req, z.object({ csv: z.string().min(1), mapping: mappingSchema.optional() }));
-    return c.json(previewImport(csv, mapping));
+    return c.json(await previewImport(csv, mapping));
   })
   .post('/import', async (c) => {
     const { csv, mapping, includeDuplicates } = await body(c.req, z.object({ csv: z.string().min(1), mapping: mappingSchema, includeDuplicates: z.boolean().optional() }));
-    return c.json(commitImport(csv, mapping, { includeDuplicates }), 201);
+    return c.json(await commitImport(csv, mapping, { includeDuplicates }), 201);
   })
-  .get('/export.csv', (c) => {
+  .get('/export.csv', async (c) => {
     const startYear = fyParam(c.req.query('fy'));
     const fy = financialYear(startYear);
     const { gstRegistered } = getSettings();
     const names = new Map(
-      [...listItems('expense_category'), ...listItems('expense_type'), ...listItems('payment_method')].map((i) => [i.id, i.name]),
+      [...(await listItems('expense_category')), ...(await listItems('expense_type')), ...(await listItems('payment_method'))].map((i) => [i.id, i.name]),
     );
-    const accounts = new Map(listAccounts().map((a) => [a.id, a.name]));
-    const rows = listExpenses({ from: fy.start, to: fy.end })
+    const accounts = new Map((await listAccounts()).map((a) => [a.id, a.name]));
+    const rows = (await listExpenses({ from: fy.start, to: fy.end }))
       .reverse()
       .map((e) => {
         const cl = claimable(e, gstRegistered);
@@ -154,19 +154,19 @@ const recurringFields = {
 const today = () => localDate(new Date());
 
 export const recurringRoutes = new Hono()
-  .get('/', (c) => c.json(listRecurring(today())))
+  .get('/', async (c) => c.json(await listRecurring(today())))
   .post('/', async (c) => {
-    const row = createRecurring(await body(c.req, z.object(recurringFields)));
-    const generated = generateRecurringExpenses(today());
+    const row = await createRecurring(await body(c.req, z.object(recurringFields)));
+    const generated = await generateRecurringExpenses(today());
     return c.json({ ...row, generated }, 201);
   })
   .patch('/:id', async (c) => {
-    const row = updateRecurring(c.req.param('id'), await body(c.req, z.object(recurringFields).partial().strict()));
-    const generated = generateRecurringExpenses(today());
+    const row = await updateRecurring(c.req.param('id'), await body(c.req, z.object(recurringFields).partial().strict()));
+    const generated = await generateRecurringExpenses(today());
     return c.json({ ...row, generated });
   })
-  .delete('/:id', (c) => {
-    deleteRecurring(c.req.param('id'));
+  .delete('/:id', async (c) => {
+    await deleteRecurring(c.req.param('id'));
     return c.body(null, 204);
   });
 
@@ -180,21 +180,21 @@ const payoutFields = {
 };
 
 export const payoutRoutes = new Hono()
-  .get('/', (c) => c.json(listPayouts(rangeQuery(c.req.query()))))
-  .post('/', async (c) => c.json(createPayout(await body(c.req, z.object({ id: ulid.optional(), ...payoutFields }))), 201))
+  .get('/', async (c) => c.json(await listPayouts(rangeQuery(c.req.query()))))
+  .post('/', async (c) => c.json(await createPayout(await body(c.req, z.object({ id: ulid.optional(), ...payoutFields }))), 201))
   .patch('/:id', async (c) => {
     const { reason, ...patch } = await body(c.req, z.object({ ...payoutFields, reason: z.string().max(500).nullable() }).partial().strict());
-    return c.json(updatePayout(c.req.param('id'), patch, reason ?? null));
+    return c.json(await updatePayout(c.req.param('id'), patch, reason ?? null));
   })
-  .delete('/:id', (c) => {
-    deletePayout(c.req.param('id'));
+  .delete('/:id', async (c) => {
+    await deletePayout(c.req.param('id'));
     return c.body(null, 204);
   })
-  .get('/:id/history', (c) => c.json(entityHistory('payout', c.req.param('id'))))
-  .get('/export.csv', (c) => {
+  .get('/:id/history', async (c) => c.json(await entityHistory('payout', c.req.param('id'))))
+  .get('/export.csv', async (c) => {
     const fy = financialYear(fyParam(c.req.query('fy')));
-    const accounts = new Map(listAccounts().map((a) => [a.id, a.name]));
-    const list = listPayouts({ from: fy.start, to: fy.end }).reverse();
+    const accounts = new Map((await listAccounts()).map((a) => [a.id, a.name]));
+    const list = (await listPayouts({ from: fy.start, to: fy.end })).reverse();
     const rows = list.map((p) => [
       p.receivedDate,
       p.requestedDate ? DateTime.fromISO(p.requestedDate).toISODate() : '',

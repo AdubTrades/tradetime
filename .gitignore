@@ -6,3 +6,4 @@ dist
 /data-dev
 test-results
 playwright-report
+/data-local

@@ -15,10 +15,10 @@ const options = z.object({
 });
 
 export const tradeImportRoutes = new Hono()
-  .post('/preview', async (c) => c.json(previewImport(await body(c.req, options))))
-  .post('/commit', async (c) => c.json(commitImport(await body(c.req, options)), 201))
-  .get('/aliases', (c) => c.json(listAliases()))
-  .delete('/aliases/:alias', (c) => {
-    deleteAlias(decodeURIComponent(c.req.param('alias')));
+  .post('/preview', async (c) => c.json(await previewImport(await body(c.req, options))))
+  .post('/commit', async (c) => c.json(await commitImport(await body(c.req, options)), 201))
+  .get('/aliases', async (c) => c.json(await listAliases()))
+  .delete('/aliases/:alias', async (c) => {
+    await deleteAlias(decodeURIComponent(c.req.param('alias')));
     return c.body(null, 204);
   });

@@ -32,9 +32,9 @@ const contractSchema = z.object({
 });
 
 export const contractRoutes = new Hono()
-  .get('/', (c) => c.json(listContracts()))
-  .post('/', async (c) => c.json(createContract(await body(c.req, contractSchema)), 201))
-  .patch('/:id', async (c) => c.json(updateContract(c.req.param('id'), await body(c.req, contractSchema.partial().strict()))));
+  .get('/', async (c) => c.json(await listContracts()))
+  .post('/', async (c) => c.json(await createContract(await body(c.req, contractSchema)), 201))
+  .patch('/:id', async (c) => c.json(await updateContract(c.req.param('id'), await body(c.req, contractSchema.partial().strict()))));
 
 const groupSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -42,11 +42,11 @@ const groupSchema = z.object({
 });
 
 export const accountGroupRoutes = new Hono()
-  .get('/', (c) => c.json(listAccountGroups()))
-  .post('/', async (c) => c.json(saveAccountGroup(null, await body(c.req, groupSchema)), 201))
-  .put('/:id', async (c) => c.json(saveAccountGroup(c.req.param('id'), await body(c.req, groupSchema))))
-  .delete('/:id', (c) => {
-    deleteAccountGroup(c.req.param('id'));
+  .get('/', async (c) => c.json(await listAccountGroups()))
+  .post('/', async (c) => c.json(await saveAccountGroup(null, await body(c.req, groupSchema)), 201))
+  .put('/:id', async (c) => c.json(await saveAccountGroup(c.req.param('id'), await body(c.req, groupSchema))))
+  .delete('/:id', async (c) => {
+    await deleteAccountGroup(c.req.param('id'));
     return c.body(null, 204);
   });
 
@@ -61,12 +61,12 @@ const exampleSchema = z.object({
 });
 
 export const playRoutes = new Hono()
-  .get('/', (c) => c.json(listPlays()))
-  .post('/', async (c) => c.json(createPlay(await body(c.req, z.object({ title: z.string().trim().min(1).max(120), description: z.string().max(2000).nullable().optional() }))), 201))
-  .get('/:id', (c) => c.json(getPlay(c.req.param('id'))))
+  .get('/', async (c) => c.json(await listPlays()))
+  .post('/', async (c) => c.json(await createPlay(await body(c.req, z.object({ title: z.string().trim().min(1).max(120), description: z.string().max(2000).nullable().optional() }))), 201))
+  .get('/:id', async (c) => c.json(await getPlay(c.req.param('id'))))
   .patch('/:id', async (c) =>
     c.json(
-      updatePlay(
+      await updatePlay(
         c.req.param('id'),
         await body(
           c.req,
@@ -85,22 +85,22 @@ export const playRoutes = new Hono()
     ),
   )
   .post('/:id/criteria', async (c) =>
-    c.json(addCriterion(c.req.param('id'), await body(c.req, z.object({ label: z.string().trim().min(1).max(300), mustHave: z.boolean().optional() }))), 201),
+    c.json(await addCriterion(c.req.param('id'), await body(c.req, z.object({ label: z.string().trim().min(1).max(300), mustHave: z.boolean().optional() }))), 201),
   )
   .patch('/criteria/:id', async (c) =>
     c.json(
-      updateCriterion(
+      await updateCriterion(
         c.req.param('id'),
         await body(c.req, z.object({ label: z.string().trim().min(1).max(300), mustHave: z.boolean(), archived: z.boolean(), sortOrder: z.number().int() }).partial().strict()),
       ),
     ),
   )
-  .post('/:id/examples', async (c) => c.json(addExample(c.req.param('id'), await body(c.req, exampleSchema)), 201))
+  .post('/:id/examples', async (c) => c.json(await addExample(c.req.param('id'), await body(c.req, exampleSchema)), 201))
   .patch('/examples/:id', async (c) =>
-    c.json(updateExample(c.req.param('id'), await body(c.req, exampleSchema.omit({ attachmentId: true }).extend({ sortOrder: z.number().int() }).partial().strict()))),
+    c.json(await updateExample(c.req.param('id'), await body(c.req, exampleSchema.omit({ attachmentId: true }).extend({ sortOrder: z.number().int() }).partial().strict()))),
   )
-  .delete('/examples/:id', (c) => {
-    deleteExample(c.req.param('id'));
+  .delete('/examples/:id', async (c) => {
+    await deleteExample(c.req.param('id'));
     return c.body(null, 204);
   });
 
@@ -126,44 +126,44 @@ const tradeSchema = z.object({
 });
 
 export const tradeRoutes = new Hono()
-  .get('/', (c) => {
+  .get('/', async (c) => {
     const from = isoDate.safeParse(c.req.query('from'));
     const to = isoDate.safeParse(c.req.query('to'));
     if (!from.success || !to.success) throw new AppError(400, 'from and to (YYYY-MM-DD) are required');
-    return c.json(listTrades({ from: from.data, to: to.data }));
+    return c.json(await listTrades({ from: from.data, to: to.data }));
   })
-  .post('/', async (c) => c.json(createTrade(await body(c.req, tradeSchema)), 201))
-  .get('/:id', (c) => c.json(getTrade(c.req.param('id'))))
+  .post('/', async (c) => c.json(await createTrade(await body(c.req, tradeSchema)), 201))
+  .get('/:id', async (c) => c.json(await getTrade(c.req.param('id'))))
   .put('/:id', async (c) => {
     const { reason, ...input } = await body(c.req, tradeSchema.extend({ reason: z.string().max(500).nullable().optional() }));
-    return c.json(updateTrade(c.req.param('id'), input, reason ?? null));
+    return c.json(await updateTrade(c.req.param('id'), input, reason ?? null));
   })
-  .delete('/:id', (c) => {
-    deleteTrade(c.req.param('id'));
+  .delete('/:id', async (c) => {
+    await deleteTrade(c.req.param('id'));
     return c.body(null, 204);
   })
-  .get('/:id/history', (c) => c.json(tradeHistory(c.req.param('id'))))
+  .get('/:id/history', async (c) => c.json(await tradeHistory(c.req.param('id'))))
   /** Add one of the trade's screenshots to its Play's gallery at the trade's grade. */
   .post('/:id/send-to-playbook', async (c) => {
     const { attachmentId, caption } = await body(c.req, z.object({ attachmentId: z.string().min(1), caption: z.string().max(500).nullable().optional() }));
-    const t = getTrade(c.req.param('id'));
+    const t = await getTrade(c.req.param('id'));
     if (!t.playId) throw new AppError(422, 'This trade has no Play');
     if (!t.grade) throw new AppError(422, "Outside-plan trades don't have a grade, so they can't go on a grade shelf");
-    if (!getAttachment(attachmentId)) throw new AppError(422, 'Unknown attachment');
+    if (!(await getAttachment(attachmentId))) throw new AppError(422, 'Unknown attachment');
     return c.json(
-      addExample(t.playId, { grade: t.grade, attachmentId, caption: caption ?? null, date: t.tradingDay, resultLabel: resultLabel(t), sourceTradeId: t.id }),
+      await addExample(t.playId, { grade: t.grade, attachmentId, caption: caption ?? null, date: t.tradingDay, resultLabel: resultLabel(t), sourceTradeId: t.id }),
       201,
     );
   });
 
 export const dailyReviewRoutes = new Hono()
-  .get('/', (c) => {
+  .get('/', async (c) => {
     const from = isoDate.parse(c.req.query('from'));
     const to = isoDate.parse(c.req.query('to'));
-    return c.json(listDailyReviewDays({ from, to }));
+    return c.json(await listDailyReviewDays({ from, to }));
   })
-  .get('/:day', (c) => c.json(getDailyReview(isoDate.parse(c.req.param('day')))))
+  .get('/:day', async (c) => c.json(await getDailyReview(isoDate.parse(c.req.param('day')))))
   .put('/:day', async (c) => {
     const { notes } = await body(c.req, z.object({ notes: z.string().max(20000) }));
-    return c.json(saveDailyReview(isoDate.parse(c.req.param('day')), notes));
+    return c.json(await saveDailyReview(isoDate.parse(c.req.param('day')), notes));
   });

@@ -2,13 +2,12 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
-import { isDemo, realAppUrl } from './config';
+import { fredApiKey, localUserId } from './config';
+import { withUser } from './context';
 import { dataHealth } from './health';
 import { calendarRoutes } from './routes/calendar';
-import { demoRoutes } from './routes/demo';
 import { tradeImportRoutes } from './routes/tradeImport';
 import { checkInRoutes, questionRoutes, readingRoutes } from './routes/checkins';
-import { backupRoutes } from './routes/backup';
 import { expenseRoutes, payoutRoutes, recurringRoutes } from './routes/expenses';
 import { accountGroupRoutes, contractRoutes, dailyReviewRoutes, playRoutes, tradeRoutes } from './routes/journal';
 import { accountRoutes, firmRoutes, listRoutes } from './routes/lists';
@@ -33,29 +32,27 @@ app.use('/api/*', async (c, next) => {
 });
 
 const startedAt = new Date().toISOString();
-app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: isDemo, realAppUrl, ...(isDemo ? { pid: process.pid } : {}) }));
+app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: false, realAppUrl: null, cloud: true, fredConfigured: !!fredApiKey }));
 
-// In the demo copy, block anything that could reach outside it: backups, restore, folder pickers and data fetches.
-const demoBlocked: [string, RegExp][] = [
-  ['POST', /^\/api\/backup\/(run|restore|upload)$/],
-  ['POST', /^\/api\/settings\/choose-folder$/],
-  ['POST', /^\/api\/calendar\/market\/refresh$/],
-  ['POST', /^\/api\/demo\/(start|stop)$/],
-];
+/**
+ * Every other API request runs as one user, in one transaction with row-level security on. Until sign-in
+ * arrives (Phase 2) that's the single local user. If the handler fails, the whole request is rolled back.
+ */
 app.use('/api/*', async (c, next) => {
-  if (isDemo) {
-    if (demoBlocked.some(([m, re]) => c.req.method === m && re.test(c.req.path))) throw new HTTPException(403, { message: 'Not available in demo mode' });
-    if (c.req.method === 'PATCH' && c.req.path === '/api/settings') {
-      const body = (await c.req.raw.clone().json().catch(() => ({}))) as Record<string, unknown>;
-      if ('backupFolder' in body || 'fredApiKey' in body) throw new HTTPException(403, { message: 'Not available in demo mode' });
-    }
+  if (c.req.path === '/api/health') return next();
+  try {
+    await withUser(localUserId, async () => {
+      await next();
+      if (c.error) throw c.error;
+    });
+  } catch (err) {
+    // The error response was already rendered by onError; rethrow anything else.
+    if (err !== c.error) throw err;
   }
-  await next();
 });
-app.get('/api/health/data', (c) => c.json(dataHealth()));
+app.get('/api/health/data', async (c) => c.json(await dataHealth()));
 app.route('/api/settings', settingsRoutes);
 app.route('/api/attachments', attachmentRoutes);
-app.route('/api/backup', backupRoutes);
 app.route('/api/sessions', sessionRoutes);
 app.route('/api/session-types', sessionTypeRoutes);
 app.route('/api/lists', listRoutes);
@@ -73,7 +70,6 @@ app.route('/api/questions', questionRoutes);
 app.route('/api/readings', readingRoutes);
 app.route('/api/check-ins', checkInRoutes);
 app.route('/api/calendar', calendarRoutes);
-app.route('/api/demo', demoRoutes);
 app.route('/api/trade-import', tradeImportRoutes);
 
 app.onError((err, c) => {

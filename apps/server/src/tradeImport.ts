@@ -49,23 +49,21 @@ function readCsv(text: string) {
   }
 }
 
-const aliases = () => new Map(db.select().from(accountAlias).all().map((a) => [a.alias, a.accountId]));
+const aliases = async () => new Map((await db.select().from(accountAlias)).map((a) => [a.alias, a.accountId]));
 
 /** Best guess at which TradeTime account a broker account name means, from saved aliases or a name match. */
-function guessAccount(name: string, saved: Map<string, string>): string | null {
+function guessAccount(name: string, saved: Map<string, string>, accounts: Awaited<ReturnType<typeof listAccounts>>): string | null {
   if (saved.has(name)) return saved.get(name)!;
-  const accounts = listAccounts();
   const n = name.toLowerCase();
   return accounts.find((a) => a.name.toLowerCase() === n || a.name.toLowerCase().includes(n) || (a.notes ?? '').toLowerCase().includes(n))?.id ?? null;
 }
 
 /** A manual trade logged live that these fills belong to: same day, contract and direction, entry within 3 minutes. */
-function findLoggedTrade(day: string, contractId: string, direction: string, openedAt: string): string | null {
-  const candidates = db
+async function findLoggedTrade(day: string, contractId: string, direction: string, openedAt: string): Promise<string | null> {
+  const candidates = await db
     .select({ id: trade.id, openedAt: trade.openedAt })
     .from(trade)
-    .where(and(isNull(trade.deletedAt), eq(trade.tradingDay, day), eq(trade.contractId, contractId), eq(trade.direction, direction as 'long'), eq(trade.source, 'manual')))
-    .all();
+    .where(and(isNull(trade.deletedAt), eq(trade.tradingDay, day), eq(trade.contractId, contractId), eq(trade.direction, direction as 'long'), eq(trade.source, 'manual')));
   const near = candidates
     .map((c) => ({ ...c, gap: Math.abs(Date.parse(c.openedAt) - Date.parse(openedAt)) }))
     .filter((c) => c.gap <= 3 * 60_000)
@@ -88,7 +86,7 @@ export interface PreviewTrade {
   issues: string[];
 }
 
-function analyse(opts: ImportOptions) {
+async function analyse(opts: ImportOptions) {
   const { headers, rows } = readCsv(opts.csv);
   const format = opts.format ?? detectFormat(headers);
   const mapping = format === 'generic' ? (opts.mapping ?? suggestImportMapping(headers)) : {};
@@ -109,23 +107,25 @@ function analyse(opts: ImportOptions) {
   for (let i = 0; i < ids.length; i += 500) {
     const chunk = ids.slice(i, i + 500);
     const variants = chunk.flatMap((id) => [id, `${id}#close`, `${id}#open`]);
-    for (const r of db.select({ id: fill.externalId }).from(fill).where(inArray(fill.externalId, variants)).all()) if (r.id) seen.add(r.id.replace(/#(close|open)$/, ''));
+    for (const r of await db.select({ id: fill.externalId }).from(fill).where(inArray(fill.externalId, variants))) if (r.id) seen.add(r.id.replace(/#(close|open)$/, ''));
   }
   const fresh = executions.filter((e) => !seen.has(e.externalId));
   const { trips, open } = groupRoundTrips(fresh);
   const merged = mergeCopyTrades(trips);
 
-  const saved = aliases();
+  const saved = await aliases();
+  const allAccounts = await listAccounts();
   const names = [...new Set(executions.map((e) => e.account))];
-  const accountsInFile = names.map((name) => ({ name, accountId: opts.accountMap?.[name] ?? guessAccount(name, saved), saved: saved.has(name) }));
+  const accountsInFile = names.map((name) => ({ name, accountId: opts.accountMap?.[name] ?? guessAccount(name, saved, allAccounts), saved: saved.has(name) }));
   const accountFor = (name: string) => {
     const id = accountsInFile.find((a) => a.name === name)?.accountId;
     return id && id !== 'skip' ? id : null;
   };
-  const contracts = listContracts();
+  const contracts = await listContracts();
   const { rolloverTime } = getSettings();
 
-  const trades: PreviewTrade[] = merged.map((t, i) => {
+  const trades: PreviewTrade[] = [];
+  for (const [i, t] of merged.entries()) {
     const c = contracts.find((x) => x.symbol === t.root) ?? null;
     const issues: string[] = [];
     if (!c) issues.push(`${t.root} isn't a contract in TradeTime — add it in Settings → Contracts`);
@@ -145,8 +145,8 @@ function analyse(opts: ImportOptions) {
     if (accounts.length === 0) issues.push('All accounts in this trade are set to skip');
     if (accounts.some((a) => !a.accountId)) issues.push('Choose a TradeTime account for every account in the file');
     const day = tradingDay(t.openedAt, rolloverTime);
-    const attachTo = c && opts.attachToLogged !== false ? findLoggedTrade(day, c.id, t.direction, t.openedAt) : null;
-    return {
+    const attachTo = c && opts.attachToLogged !== false ? await findLoggedTrade(day, c.id, t.direction, t.openedAt) : null;
+    trades.push({
       key: `${i}`,
       tradingDay: day,
       contractId: c?.id ?? null,
@@ -159,8 +159,8 @@ function analyse(opts: ImportOptions) {
       status: issues.length ? 'error' : attachTo ? 'attach' : 'new',
       attachTo,
       issues,
-    };
-  });
+    });
+  }
 
   return {
     headers,
@@ -179,27 +179,30 @@ function analyse(opts: ImportOptions) {
 }
 
 /** Read an export and report what would be imported, without saving anything. */
-export function previewImport(opts: ImportOptions) {
-  const { merged: _merged, ...rest } = analyse(opts);
+export async function previewImport(opts: ImportOptions) {
+  const { merged: _merged, ...rest } = await analyse(opts);
   void _merged;
   return rest;
 }
 
 /** Import all trades without errors. New trades are flagged "needs review"; fills matching a live-logged trade attach to it. */
-export function commitImport(opts: ImportOptions) {
-  const a = analyse(opts);
+export async function commitImport(opts: ImportOptions) {
+  const a = await analyse(opts);
   if (a.missing.length) throw new AppError(422, `Choose columns for: ${a.missing.join(', ')}`);
   // Remember account mappings for next time.
   for (const acc of a.accountsInFile) {
     if (acc.accountId && acc.accountId !== 'skip' && acc.name) {
-      db.insert(accountAlias).values({ alias: acc.name, accountId: acc.accountId }).onConflictDoUpdate({ target: accountAlias.alias, set: { accountId: acc.accountId } }).run();
+      await db
+        .insert(accountAlias)
+        .values({ alias: acc.name, accountId: acc.accountId })
+        .onConflictDoUpdate({ target: [accountAlias.userId, accountAlias.alias], set: { accountId: acc.accountId } });
     }
   }
   let created = 0;
   let attached = 0;
   const failed: { when: string; message: string }[] = [];
-  a.trades.forEach((p, i) => {
-    if (p.status === 'error' || !p.contractId) return;
+  for (const [i, p] of a.trades.entries()) {
+    if (p.status === 'error' || !p.contractId) continue;
     const t = a.merged[i]!;
     const accounts = t.accounts
       .filter((x) => opts.accountMap?.[x.account] !== 'skip')
@@ -211,14 +214,16 @@ export function commitImport(opts: ImportOptions) {
       }));
     const base = accounts.reduce((m, x) => (x.multiplier < m.multiplier ? x : m), accounts[0]!);
     try {
-      if (p.attachTo) {
+      // Each trade in its own savepoint, so one bad trade doesn't abort the rest of the import.
+      await db.transaction(async () => {
+        if (p.attachTo) {
         // Keep everything you logged live (Play, checklist, notes); replace the fills with the broker's.
-        const logged = getTrade(p.attachTo);
-        updateTrade(
+        const logged = await getTrade(p.attachTo);
+        await updateTrade(
           logged.id,
           {
             tradingDay: logged.tradingDay,
-            contractId: p.contractId,
+            contractId: p.contractId!,
             playId: logged.playId,
             checks: logged.checks.map((c) => ({ criterionId: c.criterionId, checked: c.checked })),
             stopPrice: logged.stopPrice,
@@ -239,18 +244,19 @@ export function commitImport(opts: ImportOptions) {
           'Fills replaced by broker import',
         );
         attached++;
-      } else {
-        createTrade({ tradingDay: p.tradingDay, contractId: p.contractId, fills: base.fills, accounts, source: 'import', needsReview: true });
-        created++;
-      }
+        } else {
+          await createTrade({ tradingDay: p.tradingDay, contractId: p.contractId!, fills: base.fills, accounts, source: 'import', needsReview: true });
+          created++;
+        }
+      });
     } catch (err) {
       failed.push({ when: p.openedAt, message: (err as Error).message });
     }
-  });
+  }
   return { created, attached, skipped: a.trades.filter((t) => t.status === 'error').length, failed, duplicates: a.counts.duplicates, open: a.counts.open };
 }
 
-export const listAliases = () => db.select().from(accountAlias).all();
-export function deleteAlias(alias: string) {
-  db.delete(accountAlias).where(eq(accountAlias.alias, alias)).run();
+export const listAliases = async () => db.select().from(accountAlias);
+export async function deleteAlias(alias: string) {
+  await db.delete(accountAlias).where(eq(accountAlias.alias, alias));
 }

@@ -8,3 +8,9 @@ export class AppError extends Error {
     super(message);
   }
 }
+
+/** True for a Postgres unique-constraint violation (drizzle wraps driver errors in `cause`). */
+export function isUniqueViolation(err: unknown): boolean {
+  const e = err as { code?: string; cause?: { code?: string } } | null;
+  return e?.code === '23505' || e?.cause?.code === '23505';
+}

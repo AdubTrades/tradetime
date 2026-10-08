@@ -11,19 +11,19 @@ const kindParam = (raw: string): ListKind => {
 };
 
 export const listRoutes = new Hono()
-  .get('/:kind', (c) => c.json(listItems(kindParam(c.req.param('kind')))))
+  .get('/:kind', async (c) => c.json(await listItems(kindParam(c.req.param('kind')))))
   .post('/:kind', async (c) => {
     const kind = kindParam(c.req.param('kind'));
     const { name } = await body(c.req, z.object({ name: z.string().trim().min(1).max(80) }));
-    const id = findOrCreateListItem(kind, name);
-    return c.json(listItems(kind).find((i) => i.id === id), 201);
+    const id = await findOrCreateListItem(kind, name);
+    return c.json((await listItems(kind)).find((i) => i.id === id), 201);
   })
   .patch('/item/:id', async (c) => {
     const patch = await body(
       c.req,
       z.object({ name: z.string().trim().min(1).max(80), color: z.string().nullable(), archived: z.boolean(), sortOrder: z.number().int() }).partial().strict(),
     );
-    return c.json(updateListItem(c.req.param('id'), patch));
+    return c.json(await updateListItem(c.req.param('id'), patch));
   });
 
 const accountSchema = z.object({
@@ -38,15 +38,15 @@ const accountSchema = z.object({
 });
 
 export const firmRoutes = new Hono()
-  .get('/', (c) => c.json(listFirms()))
-  .post('/', async (c) => c.json(createFirm(await body(c.req, z.object({ name: z.string().trim().min(1).max(80), website: z.string().nullable().optional() }))), 201))
+  .get('/', async (c) => c.json(await listFirms()))
+  .post('/', async (c) => c.json(await createFirm(await body(c.req, z.object({ name: z.string().trim().min(1).max(80), website: z.string().nullable().optional() }))), 201))
   .patch('/:id', async (c) =>
     c.json(
-      updateFirm(c.req.param('id'), await body(c.req, z.object({ name: z.string().trim().min(1), website: z.string().nullable(), archived: z.boolean() }).partial().strict())),
+      await updateFirm(c.req.param('id'), await body(c.req, z.object({ name: z.string().trim().min(1), website: z.string().nullable(), archived: z.boolean() }).partial().strict())),
     ),
   );
 
 export const accountRoutes = new Hono()
-  .get('/', (c) => c.json(listAccounts()))
-  .post('/', async (c) => c.json(createAccount(await body(c.req, accountSchema.partial({ firmId: true, status: true, startDate: true, endDate: true, startingBalanceCents: true, notes: true }))), 201))
-  .patch('/:id', async (c) => c.json(updateAccount(c.req.param('id'), await body(c.req, accountSchema.partial().strict()))));
+  .get('/', async (c) => c.json(await listAccounts()))
+  .post('/', async (c) => c.json(await createAccount(await body(c.req, accountSchema.partial({ firmId: true, status: true, startDate: true, endDate: true, startingBalanceCents: true, notes: true }))), 201))
+  .patch('/:id', async (c) => c.json(await updateAccount(c.req.param('id'), await body(c.req, accountSchema.partial().strict()))));

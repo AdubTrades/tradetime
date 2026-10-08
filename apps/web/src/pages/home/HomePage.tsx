@@ -95,6 +95,8 @@ function Alerts() {
   const { data: backup } = useQuery({
     queryKey: ['backup-status'],
     queryFn: () => api.get<{ lastSuccessAt: string | null; lastError: string | null }>('/backup/status'),
+    // The hosted version has no file backups to warn about.
+    enabled: appHealth !== undefined && !appHealth.cloud,
   });
   const { data: health } = useQuery({
     queryKey: ['data-health'],
@@ -105,7 +107,7 @@ function Alerts() {
   else if (backup && (!backup.lastSuccessAt || Date.now() - Date.parse(backup.lastSuccessAt) > 72 * 3_600_000))
     items.push({ text: 'No backup in the last 3 days', to: '/settings' });
   for (const c of health?.checks ?? []) if (c.status === 'fail' || (c.id === 'timer' && c.status === 'warn')) items.push({ text: c.detail, to: c.id === 'timer' ? '/time-log' : '/settings' });
-  if (settings && !settings.fredApiKey) items.push({ text: 'Add your FRED API key to see economic events', to: '/settings' });
+  if (settings && !settings.fredApiKey && !appHealth?.fredConfigured) items.push({ text: 'Add your FRED API key to see economic events', to: '/settings' });
   // The demo copy has no backups or FRED key by design, so its alerts would only confuse.
   if (items.length === 0 || appHealth?.demo) return null;
   return (

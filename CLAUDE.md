@@ -1,16 +1,25 @@
 # Notes for Claude Code
 
 - The build plan and confirmed product decisions are in `docs/plan.md`. Follow its phase order.
+- **Branches:** `main` is the local single-user Mac app (SQLite, launchd). `cloud` is the Supabase + Vercel multi-user version being built from `docs/cloud-beta-plan.md`. The notes below marked *(cloud)* apply to the `cloud` branch; the installed app keeps running from `main` until the cloud version replaces it.
+- *(cloud)* Database is Postgres via Drizzle (`packages/db`): Supabase when `DATABASE_URL` is set, otherwise PGlite (in-process Postgres) in `TC_DATA_DIR/pgdata`. Tables live in the `tradetime` schema.
+  - Multi-user: every per-user table has `user_id` and a composite key `(user_id, id)`; foreign keys include `user_id`. Seeded defaults keep fixed ids per user (`st_trading`, `cet_admin`, `ct_mnq`…), created on first use by `ensureUserSeeded` (`packages/db/src/defaults.ts`).
+  - Row-level security does the per-user filtering (migration `0001_rls.sql`): each request runs in `withUser(userId, fn)` (one transaction, `SET LOCAL ROLE tradetime_app`, `app.user_id` set), and `user_id` fills itself on insert. **Service code doesn't filter by user**; it uses the request-scoped `db` proxy from `context.ts`. Never query user tables through `rootDb()`.
+  - The whole request is one transaction and rolls back on error. Inside it, a failed statement aborts the transaction, so wrap anything that catches a DB error and carries on (duplicate names, per-row imports) in `db.transaction(...)` for a savepoint. Use `isUniqueViolation(err)` from `errors.ts`.
+  - `getSettings()` is synchronous: settings are loaded once per `withUser`. `updateSettings`, `getState`/`setState` are async.
+  - Shared tables (`market_event`, `app_state`) aren't anyone's; `getAppState`/`setAppState` for app-wide status. The FRED key comes from `FRED_API_KEY`, falling back to the user's own setting.
+  - Tests: `useTestDb()` + `asUser(fn, userId?)` from `apps/server/src/testing.ts` (in-memory PGlite per file, wiped before each test). Use separate `asUser` calls for steps that are expected to fail at the database level.
+  - `pnpm --filter @tc/server seed:demo` fills the local dev account with the demo trader's data.
 - pnpm lives at `~/.local/bin/pnpm` (`export PATH="$HOME/.local/bin:$PATH"`).
 - Dev ports: web 5173 → API 4318 (`data-dev/`). The installed app uses 4317 and `~/TradingCompanion` — never point dev or tests at the real data folder.
 - Zod 4: `.partial()` still applies `.default()` values, so patch schemas must not have defaults (see `apps/server/src/settings.ts`).
 - archiver v8 has no published types; `apps/server/src/types/archiver.d.ts` covers the subset in use.
-- Migrations may be hand-extended after `drizzle-kit generate` for things Drizzle can't express (seed rows, partial indexes such as `session_one_running_idx` in `0001_sessions.sql`). Never edit a migration that has already shipped. Add a new one instead.
+- Migrations may be hand-extended after `drizzle-kit generate` for things Drizzle can't express (on `main`: seed rows and partial indexes such as `session_one_running_idx` in `0001_sessions.sql`; on `cloud`: the RLS policies in `0001_rls.sql`, written with `drizzle-kit generate --custom`). Never edit a migration that has already shipped. Add a new one instead.
 - Server errors: throw `AppError(status, message, detail?)` from `apps/server/src/errors.ts`. Overlap conflicts return 409 with `detail.overlaps`, and the UI then offers "Save anyway" (`force: true`).
 - To update the installed app after a phase: `pnpm build`, then `launchctl kickstart -k gui/$(id -u)/com.tradingcompanion.server`. Migrations apply on restart.
 - Stay on `@tanstack/react-table` v8 (v9 has a different API).
 - Dialog forms reset in a `useEffect` keyed on `[open, record]` only. Don't add query data (lists, types) to the deps, or a refetch wipes what the user is typing.
-- Restore: `apps/server/src/restore.ts` validates and stages a backup into `restore-pending/`, writes a `pre-restore` safety zip, then exits. launchd restarts the app, and `restoreApply.ts` swaps the data in before the database opens. In dev (tsx watch) you restart by hand.
+- *(main only)* Restore: `apps/server/src/restore.ts` validates and stages a backup into `restore-pending/`, writes a `pre-restore` safety zip, then exits. launchd restarts the app, and `restoreApply.ts` swaps the data in before the database opens. In dev (tsx watch) you restart by hand.
 - FOMC dates are a curated list in `packages/domain/src/calendar.ts` (`FOMC_MEETINGS`). Extend it each year from federalreserve.gov. Don't use FRED rid 101: it's updated daily.
 - The product name is **TradeTime** (wordmark: "Trade" semibold + "Time" regular, `Wordmark` in `AppShell.tsx`). The repo, data folder (`~/TradingCompanion`) and launchd label keep their old names on purpose. Backups are `tradetime-backup-*`, and the old `trading-companion-*` names are still accepted.
 - Design system ("Calm", from the approved `design-handoff/`, which replaced the Ventriloc look). Tokens live in `apps/web/src/styles.css` under the handoff's variable names, with a warm dark set on `:root.dark`:
@@ -24,7 +33,7 @@
   - Old token names (`surface`, `surface-2`, `ivory`, `brass`, `warn`, `accent`) are aliased so un-redesigned pages still render; prefer the new names in new code.
   - Use `swatch()` for user-chosen colours so they stay visible in dark mode.
 - Financial-year pickers list only years with data: `GET /sessions/years` (time log) and `GET /expenses/years` (expenses and payouts), always including the current FY.
-- Demo mode runs a separate copy of the server (`TC_DEMO=1`, data in `<dataDir>/demo`, port = real port + 3, so 4320 for the installed app). It's started and stopped by the real app via `apps/server/src/demo/manager.ts` and the `/demo-switch` page, and it fills itself from `demo/seed.ts` on first start.
+- *(main only; on `cloud` the demo becomes a demo account in Phase 6)* Demo mode runs a separate copy of the server (`TC_DEMO=1`, data in `<dataDir>/demo`, port = real port + 3, so 4320 for the installed app). It's started and stopped by the real app via `apps/server/src/demo/manager.ts` and the `/demo-switch` page, and it fills itself from `demo/seed.ts` on first start.
   - The demo copy never runs jobs or notifications, and blocks backups, restore, folder pickers, FRED and demo start/stop (`app.ts`).
   - When adding a feature, extend `seed.ts` so the demo shows it, using fictional names only.
 - Trade import (`apps/server/src/tradeImport.ts`, domain `tradeImport.ts`):

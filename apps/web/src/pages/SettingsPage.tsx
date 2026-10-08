@@ -28,13 +28,15 @@ const formatBytes = (n: number) => (n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} 
 
 export function SettingsPage() {
   const { data: settings } = useSettings();
-  const demo = !!useHealth().data?.demo;
+  const health = useHealth().data;
+  const demo = !!health?.demo;
+  const cloud = !!health?.cloud;
   if (!settings) return null;
   return (
     <div className="max-w-4xl">
       <PageHeader title="Settings" />
       <div className="space-y-6">
-        <DemoSettings />
+        {!cloud && <DemoSettings />}
         <GeneralSettings settings={settings} />
         <TimeLogSettings settings={settings} />
         <CheckInSettings settings={settings} />
@@ -42,7 +44,7 @@ export function SettingsPage() {
         <AccountSettings />
         <JournalSettings />
         <ExpenseSettings settings={settings} />
-        {demo ? (
+        {cloud ? null : demo ? (
           <Card title="Backups">
             <p className="text-sm text-muted">Backups and restore are switched off in demo mode.</p>
           </Card>

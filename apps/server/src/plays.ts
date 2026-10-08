@@ -7,16 +7,15 @@ import { AppError } from './errors';
 const { play, playCriterion, playExample, attachment } = schema;
 const nowIso = () => new Date().toISOString();
 
-export function listPlays() {
-  const plays = db.select().from(play).where(isNull(play.deletedAt)).orderBy(asc(play.sortOrder), asc(play.title)).all();
-  const criteria = db.select().from(playCriterion).where(isNull(playCriterion.deletedAt)).orderBy(asc(playCriterion.sortOrder)).all();
-  const examples = db
+export async function listPlays() {
+  const plays = await db.select().from(play).where(isNull(play.deletedAt)).orderBy(asc(play.sortOrder), asc(play.title));
+  const criteria = await db.select().from(playCriterion).where(isNull(playCriterion.deletedAt)).orderBy(asc(playCriterion.sortOrder));
+  const examples = await db
     .select({ playId: playExample.playId, attachmentId: playExample.attachmentId, grade: playExample.grade, mime: attachment.mime })
     .from(playExample)
     .innerJoin(attachment, eq(attachment.id, playExample.attachmentId))
     .where(isNull(playExample.deletedAt))
-    .orderBy(asc(playExample.sortOrder), asc(playExample.createdAt))
-    .all();
+    .orderBy(asc(playExample.sortOrder), asc(playExample.createdAt));
   const gradeRank = (g: string) => (GRADES as readonly string[]).indexOf(g);
   return plays.map((p) => {
     const own = examples.filter((e) => e.playId === p.id);
@@ -34,59 +33,57 @@ export function listPlays() {
   });
 }
 
-export function getPlay(id: string) {
-  const p = listPlays().find((x) => x.id === id);
+export async function getPlay(id: string) {
+  const p = (await listPlays()).find((x) => x.id === id);
   if (!p) throw new AppError(404, 'Play not found');
-  const examples = db
+  const rows = await db
     .select({ example: playExample, attachment })
     .from(playExample)
     .innerJoin(attachment, eq(attachment.id, playExample.attachmentId))
     .where(and(eq(playExample.playId, id), isNull(playExample.deletedAt)))
-    .orderBy(asc(playExample.sortOrder), asc(playExample.createdAt))
-    .all()
-    .map(({ example, attachment: a }) => ({ ...example, mime: a.mime }));
+    .orderBy(asc(playExample.sortOrder), asc(playExample.createdAt));
+  const examples = rows.map(({ example, attachment: a }) => ({ ...example, mime: a.mime }));
   return { ...p, examples };
 }
 
-export function createPlay(input: { title: string; description?: string | null }) {
-  const sortOrder = db.select({ max: sql<number>`coalesce(max(${play.sortOrder}), -1)` }).from(play).get()?.max ?? -1;
-  return db
+export async function createPlay(input: { title: string; description?: string | null }) {
+  const [max] = await db.select({ max: sql<number>`coalesce(max(${play.sortOrder}), -1)` }).from(play);
+  const [row] = await db
     .insert(play)
-    .values({ id: newId(), title: input.title.trim(), description: input.description ?? null, gradeRules: defaultGradeRules(), sortOrder: sortOrder + 1 })
-    .returning()
-    .get();
+    .values({ id: newId(), title: input.title.trim(), description: input.description ?? null, gradeRules: defaultGradeRules(), sortOrder: (max?.max ?? -1) + 1 })
+    .returning();
+  return row!;
 }
 
-export function updatePlay(id: string, patch: Partial<{ title: string; description: string | null; gradeRules: GradeRule[]; archived: boolean; sortOrder: number }>) {
+export async function updatePlay(id: string, patch: Partial<{ title: string; description: string | null; gradeRules: GradeRule[]; archived: boolean; sortOrder: number }>) {
   if (patch.gradeRules) {
     const problem = validateGradeRules(patch.gradeRules);
     if (problem) throw new AppError(422, problem);
   }
-  const row = db.update(play).set({ ...patch, updatedAt: nowIso() }).where(eq(play.id, id)).returning().get();
+  const [row] = await db.update(play).set({ ...patch, updatedAt: nowIso() }).where(eq(play.id, id)).returning();
   if (!row) throw new AppError(404, 'Play not found');
   return row;
 }
 
-export function addCriterion(playId: string, input: { label: string; mustHave?: boolean }) {
-  getPlayRow(playId);
-  const sortOrder =
-    db.select({ max: sql<number>`coalesce(max(${playCriterion.sortOrder}), -1)` }).from(playCriterion).where(eq(playCriterion.playId, playId)).get()?.max ?? -1;
-  return db
+export async function addCriterion(playId: string, input: { label: string; mustHave?: boolean }) {
+  await getPlayRow(playId);
+  const [max] = await db.select({ max: sql<number>`coalesce(max(${playCriterion.sortOrder}), -1)` }).from(playCriterion).where(eq(playCriterion.playId, playId));
+  const [row] = await db
     .insert(playCriterion)
-    .values({ id: newId(), playId, label: input.label.trim(), mustHave: input.mustHave ?? false, sortOrder: sortOrder + 1 })
-    .returning()
-    .get();
+    .values({ id: newId(), playId, label: input.label.trim(), mustHave: input.mustHave ?? false, sortOrder: (max?.max ?? -1) + 1 })
+    .returning();
+  return row!;
 }
 
 /** Criteria are archived rather than deleted so past trades keep their checklist. */
-export function updateCriterion(id: string, patch: Partial<{ label: string; mustHave: boolean; archived: boolean; sortOrder: number }>) {
-  const row = db.update(playCriterion).set({ ...patch, updatedAt: nowIso() }).where(eq(playCriterion.id, id)).returning().get();
+export async function updateCriterion(id: string, patch: Partial<{ label: string; mustHave: boolean; archived: boolean; sortOrder: number }>) {
+  const [row] = await db.update(playCriterion).set({ ...patch, updatedAt: nowIso() }).where(eq(playCriterion.id, id)).returning();
   if (!row) throw new AppError(404, 'Criterion not found');
   return row;
 }
 
-function getPlayRow(id: string) {
-  const row = db.select().from(play).where(eq(play.id, id)).get();
+async function getPlayRow(id: string) {
+  const [row] = await db.select().from(play).where(eq(play.id, id));
   if (!row || row.deletedAt) throw new AppError(404, 'Play not found');
   return row;
 }
@@ -104,20 +101,21 @@ const assertGrade = (g: string) => {
   if (!(GRADES as readonly string[]).includes(g)) throw new AppError(422, `Unknown grade ${g}`);
 };
 
-export function addExample(playId: string, input: ExampleInput) {
-  getPlayRow(playId);
+export async function addExample(playId: string, input: ExampleInput) {
+  await getPlayRow(playId);
   assertGrade(input.grade);
-  if (!db.select({ id: attachment.id }).from(attachment).where(eq(attachment.id, input.attachmentId)).get()) throw new AppError(422, 'Unknown attachment');
-  return db.insert(playExample).values({ id: newId(), playId, ...input }).returning().get();
+  if (!(await db.select({ id: attachment.id }).from(attachment).where(eq(attachment.id, input.attachmentId))).length) throw new AppError(422, 'Unknown attachment');
+  const [row] = await db.insert(playExample).values({ id: newId(), playId, ...input }).returning();
+  return row!;
 }
 
-export function updateExample(id: string, patch: Partial<Omit<ExampleInput, 'attachmentId'>> & { sortOrder?: number }) {
+export async function updateExample(id: string, patch: Partial<Omit<ExampleInput, 'attachmentId'>> & { sortOrder?: number }) {
   if (patch.grade) assertGrade(patch.grade);
-  const row = db.update(playExample).set({ ...patch, updatedAt: nowIso() }).where(eq(playExample.id, id)).returning().get();
+  const [row] = await db.update(playExample).set({ ...patch, updatedAt: nowIso() }).where(eq(playExample.id, id)).returning();
   if (!row) throw new AppError(404, 'Example not found');
   return row;
 }
 
-export function deleteExample(id: string) {
-  db.update(playExample).set({ deletedAt: nowIso() }).where(eq(playExample.id, id)).run();
+export async function deleteExample(id: string) {
+  await db.update(playExample).set({ deletedAt: nowIso() }).where(eq(playExample.id, id));
 }

@@ -1,61 +1,19 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1790833796804,
+      "version": "7",
+      "when": 1791435334855,
       "tag": "0000_init",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "6",
-      "when": 1790853051474,
-      "tag": "0001_sessions",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1790856032671,
-      "tag": "0002_expenses",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1790858046103,
-      "tag": "0003_journal",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1790860973931,
-      "tag": "0004_checkins",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1790862283758,
-      "tag": "0005_calendar",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1790867034331,
-      "tag": "0006_tradetime_palette",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1790950008866,
-      "tag": "0007_trade_import",
+      "version": "7",
+      "when": 1791435346544,
+      "tag": "0001_rls",
       "breakpoints": true
     }
   ]
