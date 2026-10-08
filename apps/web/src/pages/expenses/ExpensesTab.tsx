@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Paperclip, Repeat, Search } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { claimable, formatMoney } from '@tc/domain';
 import { CategoryPill, cn, Select, SummaryStrip } from '../../components/ui';
 import type { Expense, Frequency } from '../../lib/api';
@@ -106,9 +106,9 @@ export function ExpensesTab({ fy, onEdit }: { fy: number; onEdit: (e: Expense) =
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <div className="flex min-w-[960px] flex-col gap-4">
-              <div className={cn('grid gap-3 px-5 text-xs text-muted', COLUMNS)}>
+          <div className="sm:overflow-x-auto">
+            <div className="flex flex-col gap-4 sm:min-w-[960px]">
+              <div className={cn('hidden gap-3 px-5 text-xs text-muted sm:grid', COLUMNS)}>
                 <button
                   type="button"
                   onClick={() => setNewestFirst((v) => !v)}
@@ -140,7 +140,7 @@ export function ExpensesTab({ fy, onEdit }: { fy: number; onEdit: (e: Expense) =
                 const name = DateTime.fromISO(`${month}-01`).toFormat('LLLL yyyy');
                 return (
                   <section key={month} aria-label={name} className="card overflow-hidden">
-                    <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-3.5">
+                    <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3.5 sm:px-5">
                       <div className="flex items-baseline gap-2.5">
                         <h3 className="text-[15px] font-semibold tracking-[-0.01em]">{name}</h3>
                         <span className="text-[13px] text-muted">
@@ -152,13 +152,34 @@ export function ExpensesTab({ fy, onEdit }: { fy: number; onEdit: (e: Expense) =
                     <div className="px-2 py-1">
                       {list.map((e) => {
                         const cat = lookups.name(e.categoryId);
+                        const label = `Edit ${e.name}, ${DateTime.fromISO(e.date).toFormat('d LLLL')}, ${formatMoney(e.incGstCents)}`;
                         return (
+                          <Fragment key={e.id}>
+                          {/* Phones: a compact two-line row. */}
                           <button
-                            key={e.id}
                             type="button"
                             onClick={() => onEdit(e)}
-                            aria-label={`Edit ${e.name}, ${DateTime.fromISO(e.date).toFormat('d LLLL')}, ${formatMoney(e.incGstCents)}`}
-                            className={cn('grid min-h-14 w-full items-center gap-3 rounded-sm px-3 py-1.5 text-left text-sm hover:bg-hover', COLUMNS)}
+                            aria-label={label}
+                            className="flex w-full flex-col gap-0.5 rounded-sm px-2 py-2.5 text-left text-sm hover:bg-hover active:bg-hover sm:hidden"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="min-w-0 truncate font-medium">{e.name}</span>
+                              {e.recurringId && <Repeat size={12} strokeWidth={2.2} className="shrink-0 text-muted" aria-label="Recurring" />}
+                              <span className="ml-auto shrink-0 font-medium">{formatMoney(e.incGstCents)}</span>
+                            </span>
+                            <span className="flex items-center gap-2 text-xs text-muted">
+                              <span className="shrink-0">{DateTime.fromISO(e.date).toFormat('d LLL')}</span>
+                              <span className="min-w-0 truncate">{cat || 'Uncategorised'}</span>
+                              <span className="ml-auto shrink-0">
+                                {e.businessUsePct < 100 ? `${e.businessUsePct}% · ` : ''}claim {formatMoney(claimable(e, gstRegistered).deductibleCents)}
+                              </span>
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onEdit(e)}
+                            aria-label={label}
+                            className={cn('hidden min-h-14 w-full items-center gap-3 rounded-sm px-3 py-1.5 text-left text-sm hover:bg-hover sm:grid', COLUMNS)}
                           >
                             <span className="whitespace-nowrap text-secondary">{DateTime.fromISO(e.date).toFormat('d LLL')}</span>
                             <span className="min-w-0">
@@ -181,6 +202,7 @@ export function ExpensesTab({ fy, onEdit }: { fy: number; onEdit: (e: Expense) =
                             <span className="text-right text-secondary">{e.businessUsePct}%</span>
                             <span className="text-right font-medium">{formatMoney(claimable(e, gstRegistered).deductibleCents)}</span>
                           </button>
+                          </Fragment>
                         );
                       })}
                     </div>
@@ -191,7 +213,7 @@ export function ExpensesTab({ fy, onEdit }: { fy: number; onEdit: (e: Expense) =
           </div>
         )}
         <p className="flex items-center gap-1 text-xs text-muted">
-          <Paperclip size={12} aria-hidden /> Click an expense to edit it or attach a receipt.
+          <Paperclip size={12} aria-hidden /> Tap or click an expense to edit it or attach a receipt.
         </p>
       </div>
     </div>

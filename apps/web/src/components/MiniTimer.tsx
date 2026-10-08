@@ -28,7 +28,7 @@ function RunningPill({ session }: { session: Session }) {
       aria-label="Running session"
       aria-hidden={fullVisible}
       inert={fullVisible}
-      className={`fixed right-4 bottom-4 z-40 flex h-12 items-center gap-1 rounded-full bg-dark py-1.5 pr-1.5 pl-2 text-dark-text shadow-menu transition-all duration-200 sm:right-6 sm:bottom-6 ${
+      className={`fixed right-4 bottom-[calc(76px+env(safe-area-inset-bottom))] z-40 flex h-12 items-center gap-1 rounded-full bg-dark py-1.5 pr-1.5 pl-2 text-dark-text shadow-menu transition-all duration-200 md:right-6 md:bottom-6 ${
         fullVisible ? 'pointer-events-none translate-y-3 opacity-0' : 'translate-y-0 opacity-100'
       }`}
     >

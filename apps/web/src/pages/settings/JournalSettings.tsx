@@ -37,8 +37,8 @@ function ContractsEditor() {
         <thead className="text-left text-xs text-muted">
           <tr>
             <th className="py-1 font-medium">Symbol</th>
-            <th className="py-1 font-medium">Name</th>
-            <th className="py-1 text-right font-medium">Tick</th>
+            <th className="hidden py-1 font-medium sm:table-cell">Name</th>
+            <th className="hidden py-1 text-right font-medium sm:table-cell">Tick</th>
             <th className="py-1 text-right font-medium">$ / point</th>
             <th className="py-1 text-right font-medium">$ / tick</th>
             <th className="py-1 text-right font-medium">Fee / side</th>
@@ -49,8 +49,8 @@ function ContractsEditor() {
           {contracts.map((c) => (
             <tr key={c.id} className={c.archived ? 'opacity-50' : ''}>
               <td className="py-1.5 font-medium">{c.symbol}</td>
-              <td className="py-1.5 text-muted">{c.name}</td>
-              <td className="tabular py-1.5 text-right">{c.tickSize}</td>
+              <td className="hidden py-1.5 text-muted sm:table-cell">{c.name}</td>
+              <td className="tabular hidden py-1.5 text-right sm:table-cell">{c.tickSize}</td>
               <td className="tabular py-1.5 text-right">{formatMoney(c.pointValueCents, 'USD')}</td>
               <td className="tabular py-1.5 text-right">{formatMoney(Math.round(c.pointValueCents * c.tickSize), 'USD')}</td>
               <td className="tabular py-1.5 text-right">{formatMoney(c.feePerSideCents, 'USD')}</td>

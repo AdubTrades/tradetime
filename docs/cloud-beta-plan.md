@@ -169,7 +169,19 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 | Separate demo server on port +3 | Demo account, reset nightly by the tick |
 | In-process timers (croner) | `pg_cron` calling `/api/jobs/tick` |
 
-### Phase 7 — Mobile pass (2–3 days)
+### Phase 7 — Mobile pass ✅ built 8 Oct 2026
+
+**As built:**
+- **Installable:** a web app manifest and icons (including a maskable one for Android and an Apple touch icon). Settings → Install the app gives a one-tap install where the browser offers it, and Share → Add to Home Screen steps on iPhone. The title bar follows the light/dark theme, and installed pages respect the notch and home indicator.
+- **Phone navigation:** below tablet width, a slim top bar and a bottom tab bar (Home, Journal, Calendar, Time log, More). More holds Expenses, Playbook, Settings, theme and sign out. The floating timer and check-in card sit above the tab bar.
+- **Forms:** every dialog, including the trade form, opens as a full-screen sheet on phones.
+- **Journal:** trades are two-line rows on phones, and filters fold behind a Filters button. The day page tiles stack.
+- **Calendar:** an agenda list for the month on phones (P&L, win rate, screen time, releases and your events per day); tapping a day opens the day detail. The month grid stays on wider screens.
+- **Expenses:** compact two-line rows; the payout and FY summary tables drop secondary columns on phones.
+- **Touch:** buttons, tabs, menus and pickers are 40–44px tall on touch screens. Fields use 16px text there so iOS doesn't zoom in on focus.
+- No page scrolls sideways at 375px wide.
+
+**Original plan:**
 - **Installable app:** add an app manifest, icons and a small service worker, which web push needs anyway, so it installs to phones and desktops.
 - **Phone layouts for key screens:**
   - Dashboard: Tonight card, timer, to-dos.

@@ -150,6 +150,9 @@ function FilterBar({ range, onRange, filters, onFilters, active, onClear }: Filt
   const set = <K extends keyof TradeFilters>(k: K, v: TradeFilters[K]) => onFilters({ ...filters, [k]: v });
   const { data: reviewCount = 0 } = useReviewCount();
   const common = { highlightActive: true, size: 'sm' as const, className: 'h-[38px] min-w-[130px] w-auto' };
+  // Phones show the date range and a Filters button; the rest open below it.
+  const [open, setOpen] = useState(false);
+  const chosen = [filters.playId, filters.grade, filters.contractId, filters.accountId, filters.result].filter(Boolean).length;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -160,6 +163,15 @@ function FilterBar({ range, onRange, filters, onFilters, active, onClear }: Filt
         <option value="fy">This financial year</option>
         <option value="all">All time</option>
       </Select>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={cn('flex h-[38px] items-center rounded-md border px-3.5 text-[13px] font-medium sm:hidden', chosen ? 'border-text bg-text text-card' : 'border-border bg-card text-text')}
+      >
+        Filters{chosen ? ` (${chosen})` : ''}
+      </button>
+      <div className={cn('contents', !open && 'max-sm:hidden')}>
       <Select aria-label="Play" {...common} value={filters.playId} onChange={(e) => set('playId', e.target.value)}>
         <option value="">All plays</option>
         {plays.map((p) => (
@@ -199,6 +211,7 @@ function FilterBar({ range, onRange, filters, onFilters, active, onClear }: Filt
         <option value="win">Wins only</option>
         <option value="loss">Losses only</option>
       </Select>
+      </div>
       {(reviewCount > 0 || filters.review) && (
         <button
           type="button"
@@ -275,7 +288,7 @@ function TradeList({ trades, loading, filtered, onClear }: { trades: TradeRow[];
         const label = DateTime.fromISO(day).toFormat('cccc d LLLL');
         return (
           <section key={day} aria-label={label} className="card overflow-hidden">
-            <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-5 py-3.5">
+            <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3.5 sm:px-5">
               <div className="flex flex-wrap items-baseline gap-2.5">
                 <h2 className="text-[15px] font-semibold tracking-[-0.01em]">
                   <Link to="/journal/day/$day" params={{ day }} className="rounded-sm hover:underline">
@@ -288,7 +301,28 @@ function TradeList({ trades, loading, filtered, onClear }: { trades: TradeRow[];
               </div>
               <Pnl cents={net} className="text-[15px] font-medium" />
             </div>
-            <div className="overflow-x-auto">
+            {/* Phones: two-line rows. Wider: the full row of columns. */}
+            <div className="divide-y divide-border-subtle sm:hidden">
+              {[...list].reverse().map((t) => (
+                <Link key={t.id} to="/journal/trades/$tradeId" params={{ tradeId: t.id }} className="flex flex-col gap-1 px-4 py-3 hover:bg-hover active:bg-hover">
+                  <span className="flex items-center gap-2.5 text-sm">
+                    <span className="font-mono text-[13px] text-muted">{formatLocal(t.openedAt, 'HH:mm')}</span>
+                    <span className="font-medium">{symbol(t.contractId)}</span>
+                    <span className="flex items-center gap-1 text-[13px] text-secondary capitalize">
+                      <ArrowUpRight size={12} strokeWidth={2.2} className={t.direction === 'short' ? 'rotate-90' : ''} aria-hidden />
+                      {t.direction}
+                    </span>
+                    <Pnl cents={t.netCents} className="ml-auto font-medium" />
+                  </span>
+                  <span className="flex min-w-0 items-center gap-2 text-[13px]">
+                    <span className="min-w-0 truncate text-secondary">{playName(t.playId)}</span>
+                    <span className="shrink-0">{t.needsReview ? <StatusPill className="border-ember/50 text-warning">Needs review</StatusPill> : <GradeBadge grade={t.grade} outsidePlan={t.outsidePlan} />}</span>
+                    <span className="ml-auto shrink-0 text-secondary">{t.r === null ? '' : `${t.r}R`}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto sm:block">
               <div className="min-w-[720px] px-2 py-1">
                 {[...list].reverse().map((t) => (
                   <Link

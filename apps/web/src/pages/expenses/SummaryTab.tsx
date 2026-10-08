@@ -22,13 +22,13 @@ export function SummaryTab({ fy }: { fy: number }) {
 
       <section className="card overflow-x-auto">
         <h2 className="border-b border-border-subtle px-5 py-3.5 text-base font-semibold">By category</h2>
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="w-full text-sm sm:min-w-[560px]">
           <thead className="text-left text-xs text-muted">
             <tr>
               <th className="px-5 py-2.5 font-medium">Category</th>
               <th className="px-5 py-2.5 text-right font-medium">Count</th>
-              <th className="px-5 py-2.5 text-right font-medium">ex GST</th>
-              <th className="px-5 py-2.5 text-right font-medium">GST</th>
+              <th className="hidden px-5 py-2.5 text-right font-medium sm:table-cell">ex GST</th>
+              <th className="hidden px-5 py-2.5 text-right font-medium sm:table-cell">GST</th>
               <th className="px-5 py-2.5 text-right font-medium">inc GST</th>
               <th className="px-5 py-2.5 text-right font-medium">Claimable</th>
             </tr>
@@ -38,8 +38,8 @@ export function SummaryTab({ fy }: { fy: number }) {
               <tr key={c.categoryId ?? 'none'}>
                 <td className="px-5 py-2.5">{c.categoryId ? <CategoryPill name={c.name} /> : <span className="text-muted">{c.name}</span>}</td>
                 <td className="tabular px-5 py-2.5 text-right">{c.count}</td>
-                <td className="tabular px-5 py-2.5 text-right">{formatMoney(c.exGstCents)}</td>
-                <td className="tabular px-5 py-2.5 text-right">{formatMoney(c.gstCents)}</td>
+                <td className="tabular hidden px-5 py-2.5 text-right sm:table-cell">{formatMoney(c.exGstCents)}</td>
+                <td className="tabular hidden px-5 py-2.5 text-right sm:table-cell">{formatMoney(c.gstCents)}</td>
                 <td className="tabular px-5 py-2.5 text-right">{formatMoney(c.incGstCents)}</td>
                 <td className="tabular px-5 py-2.5 text-right font-medium">{formatMoney(c.deductibleCents)}</td>
               </tr>
@@ -49,8 +49,8 @@ export function SummaryTab({ fy }: { fy: number }) {
             <tr>
               <td className="px-5 py-2.5">Total</td>
               <td className="tabular px-5 py-2.5 text-right">{t.count}</td>
-              <td className="tabular px-5 py-2.5 text-right">{formatMoney(t.exGstCents)}</td>
-              <td className="tabular px-5 py-2.5 text-right">{formatMoney(t.gstCents)}</td>
+              <td className="tabular hidden px-5 py-2.5 text-right sm:table-cell">{formatMoney(t.exGstCents)}</td>
+              <td className="tabular hidden px-5 py-2.5 text-right sm:table-cell">{formatMoney(t.gstCents)}</td>
               <td className="tabular px-5 py-2.5 text-right">{formatMoney(t.incGstCents)}</td>
               <td className="tabular px-5 py-2.5 text-right">{formatMoney(t.deductibleCents)}</td>
             </tr>

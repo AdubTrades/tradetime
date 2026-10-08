@@ -6,6 +6,11 @@ const media = () => window.matchMedia('(prefers-color-scheme: dark)');
 export function applyTheme(theme: Theme): void {
   const dark = theme === 'dark' || (theme === 'system' && media().matches);
   document.documentElement.classList.toggle('dark', dark);
+  // The browser / installed-app title bar follows the chosen theme, not just the system one.
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+    m.removeAttribute('media');
+    m.content = dark ? '#121211' : '#f6f5f3';
+  });
   try {
     localStorage.setItem('tc-theme', theme);
   } catch {

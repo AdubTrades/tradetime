@@ -205,7 +205,7 @@ export function Select({ value, onChange, children, className, disabled, id, dar
         onKeyDown={onKeyDown}
         className={cn(
           'flex w-full items-center justify-between gap-2 rounded-md border pr-3 pl-3 text-left text-sm shadow-card transition disabled:opacity-50',
-          size === 'md' ? 'h-10' : 'h-8 text-[13px]',
+          size === 'md' ? 'h-10 pointer-coarse:h-11' : 'h-8 text-[13px] pointer-coarse:h-10',
           dark
             ? 'border-dark-border bg-dark text-dark-text hover:border-dark-muted'
             : isActiveFilter
@@ -242,7 +242,7 @@ export function Select({ value, onChange, children, className, disabled, id, dar
                   onMouseEnter={() => setActive(i)}
                   onClick={() => choose(o)}
                   className={cn(
-                    'flex h-9 w-full items-center justify-between gap-3 rounded-sm px-2.5 text-left text-sm whitespace-nowrap disabled:opacity-40',
+                    'flex h-9 w-full pointer-coarse:h-11 items-center justify-between gap-3 rounded-sm px-2.5 text-left text-sm whitespace-nowrap disabled:opacity-40',
                     i === active && 'bg-hover',
                   )}
                 >

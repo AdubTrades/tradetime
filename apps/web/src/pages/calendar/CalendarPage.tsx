@@ -132,7 +132,19 @@ export function CalendarPage() {
             ]}
           />
 
-          <section aria-label="Month grid" className="card p-4">
+          <MonthAgenda
+            days={monthDays}
+            today={today}
+            fig={fig}
+            marketOn={marketOn}
+            occOn={occOn}
+            isNoTrade={isNoTrade}
+            layers={layers}
+            colorOf={(id) => typeOf(id)?.color ?? '#64748b'}
+            onOpen={setOpenDay}
+          />
+
+          <section aria-label="Month grid" className="card hidden p-4 sm:block">
             <div className="overflow-x-auto">
               <div className="flex min-w-[680px] flex-col gap-1.5">
                 <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_minmax(0,1.1fr)] gap-1.5 px-1 pb-1 text-xs text-muted">
@@ -214,6 +226,94 @@ export function CalendarPage() {
       />
       <EventDialog open={!!eventDialog} onClose={() => setEventDialog(null)} occurrence={eventDialog?.occurrence} defaultDate={eventDialog?.date} />
     </div>
+  );
+}
+
+/**
+ * Phones: the month as an agenda, one row per day that has something on it (trades, releases, your events) plus
+ * today. Tapping a day opens the same day detail as the grid.
+ */
+function MonthAgenda({
+  days,
+  today,
+  fig,
+  marketOn,
+  occOn,
+  isNoTrade,
+  layers,
+  colorOf,
+  onOpen,
+}: {
+  days: string[];
+  today: string;
+  fig: (d: string) => DayFigures;
+  marketOn: (d: string) => MarketEvent[];
+  occOn: (d: string) => OccurrenceView[];
+  isNoTrade: (d: string) => boolean;
+  layers: Set<string>;
+  colorOf: (typeId: string) => string;
+  onOpen: (d: string) => void;
+}) {
+  const rows = days.filter((d) => {
+    const f = fig(d);
+    return d === today || f.trades > 0 || f.tradingMinutes + f.otherMinutes > 0 || isNoTrade(d) || (layers.has('events') && marketOn(d).length > 0) || (layers.has('mine') && occOn(d).length > 0);
+  });
+  return (
+    <section aria-label="Month agenda" className="card divide-y divide-border-subtle overflow-hidden sm:hidden">
+      {rows.length === 0 && <p className="px-4 py-6 text-center text-sm text-muted">Nothing this month.</p>}
+      {rows.map((d) => {
+        const day = DateTime.fromISO(d);
+        const f = fig(d);
+        const market = layers.has('events') ? marketOn(d) : [];
+        const occ = layers.has('mine') ? occOn(d) : [];
+        const showPnl = layers.has('pnl') && f.trades > 0;
+        const screen = f.tradingMinutes + f.otherMinutes;
+        return (
+          <button
+            key={d}
+            type="button"
+            onClick={() => onOpen(d)}
+            aria-current={d === today ? 'date' : undefined}
+            className={cn('flex w-full gap-3.5 px-4 py-3 text-left hover:bg-hover active:bg-hover', isNoTrade(d) && NO_TRADE_HATCH)}
+          >
+            <span className="flex w-10 shrink-0 flex-col items-center pt-0.5">
+              <span className="text-[11px] text-muted uppercase">{day.toFormat('ccc')}</span>
+              <span className={cn('flex h-7 min-w-7 items-center justify-center rounded-full text-[15px] font-medium', d === today && 'bg-ember text-white')}>{day.day}</span>
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              {(showPnl || (layers.has('screen') && screen > 0) || (layers.has('journal') && f.hasReview)) && (
+                <span className="flex items-center gap-2.5 text-sm">
+                  {showPnl && <Pnl cents={f.netCents} className="font-medium" />}
+                  {showPnl && <span className="text-xs text-muted">{Math.round((f.wins / f.trades) * 100)}%</span>}
+                  {layers.has('screen') && screen > 0 && <span className="font-mono text-xs text-faint">{hoursLabel(screen)}</span>}
+                  {layers.has('journal') && f.hasReview && <NotebookPen size={13} className="ml-auto text-faint" aria-label="Journal entry" />}
+                </span>
+              )}
+              {isNoTrade(d) && <span className="text-[10px] font-medium tracking-wide text-muted uppercase">No-trade day</span>}
+              {market.map((m) => (
+                <span key={m.id} className="flex items-center gap-2 text-[13px]">
+                  <span className="font-mono text-xs text-muted">{formatLocal(m.at, 'HH:mm')}</span>
+                  <ImpactMarker impact={m.impact} size={11} />
+                  <span className="truncate">{m.title}</span>
+                </span>
+              ))}
+              {occ.map((o) => (
+                <span key={o.key} className={cn('flex items-center gap-2 text-[13px]', o.done && 'line-through opacity-60')}>
+                  {o.isTask ? (
+                    <span className="h-2 w-2 shrink-0 rounded-[2px] border border-ember" aria-hidden />
+                  ) : (
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: swatch(colorOf(o.typeId)) }} aria-hidden />
+                  )}
+                  {o.startTime && !o.allDay && <span className="font-mono text-xs text-muted">{o.startTime}</span>}
+                  <span className="truncate text-secondary">{o.title}</span>
+                </span>
+              ))}
+              {d === today && f.trades === 0 && market.length === 0 && occ.length === 0 && <span className="text-[13px] text-muted">Today</span>}
+            </span>
+          </button>
+        );
+      })}
+    </section>
   );
 }
 

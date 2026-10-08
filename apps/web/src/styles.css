@@ -225,6 +225,18 @@ body {
   font-variant-numeric: tabular-nums;
   /* Checkboxes, radios and ranges use the near-black primary, not the browser blue. */
   accent-color: var(--text);
+  /* Installed on a phone: no grey flash on tap, and no rubber-band pull past the page. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Touch screens: iOS zooms into any field under 16px when it's focused, so fields use 16px there. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 h1 {

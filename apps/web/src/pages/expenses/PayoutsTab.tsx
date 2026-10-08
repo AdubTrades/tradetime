@@ -29,14 +29,14 @@ export function PayoutsTab({ fy }: { fy: number }) {
         </Button>
       </div>
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="w-full text-sm sm:min-w-[560px]">
           <thead className="border-b border-border-subtle text-left text-xs text-muted">
             <tr>
               <th className="px-5 py-3 font-medium">Received</th>
               <th className="px-5 py-3 font-medium">Account</th>
-              <th className="px-5 py-3 text-right font-medium">Gross (USD)</th>
+              <th className="hidden px-5 py-3 text-right font-medium sm:table-cell">Gross (USD)</th>
               <th className="px-5 py-3 text-right font-medium">Received (AUD)</th>
-              <th className="px-5 py-3 font-medium">Notes</th>
+              <th className="hidden px-5 py-3 font-medium sm:table-cell">Notes</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -44,9 +44,9 @@ export function PayoutsTab({ fy }: { fy: number }) {
               <tr key={p.id} className="cursor-pointer hover:bg-hover" onClick={() => setEditing(p)}>
                 <td className="px-5 py-3">{DateTime.fromISO(p.receivedDate).toFormat('d LLL yyyy')}</td>
                 <td className="px-5 py-3">{accountName(p.accountId)}</td>
-                <td className="tabular px-5 py-3 text-right">{p.grossUsdCents == null ? '—' : formatMoney(p.grossUsdCents, 'USD')}</td>
+                <td className="tabular hidden px-5 py-3 text-right sm:table-cell">{p.grossUsdCents == null ? '—' : formatMoney(p.grossUsdCents, 'USD')}</td>
                 <td className="tabular px-5 py-3 text-right font-medium">{formatMoney(p.audReceivedCents)}</td>
-                <td className="px-5 py-3 text-muted">{p.notes}</td>
+                <td className="hidden px-5 py-3 text-muted sm:table-cell">{p.notes}</td>
               </tr>
             ))}
           </tbody>
@@ -56,9 +56,9 @@ export function PayoutsTab({ fy }: { fy: number }) {
                 <td className="px-5 py-3" colSpan={2}>
                   Total ({payouts.length})
                 </td>
-                <td className="tabular px-5 py-3 text-right">{formatMoney(totalUsd, 'USD')}</td>
+                <td className="tabular hidden px-5 py-3 text-right sm:table-cell">{formatMoney(totalUsd, 'USD')}</td>
                 <td className="tabular px-5 py-3 text-right">{formatMoney(totalAud)}</td>
-                <td />
+                <td className="hidden sm:table-cell" />
               </tr>
             </tfoot>
           )}

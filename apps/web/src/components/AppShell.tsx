@@ -5,6 +5,7 @@ import {
   House,
   Monitor,
   Moon,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Receipt,
@@ -15,7 +16,7 @@ import {
   Timer,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Theme } from '../lib/api';
 import { authEnabled, signOut } from '../lib/auth';
 import { useSettings, useUpdateSettings } from '../lib/settings';
@@ -84,34 +85,31 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen md:flex">
+      <PhoneTopBar />
       <aside
         className={cn(
-          'flex shrink-0 flex-col border-border bg-sidebar transition-[width] duration-200',
-          // Narrow screens: a bar above the content. Wider: a sticky sidebar.
-          'border-b px-4 py-3 md:sticky md:top-0 md:h-screen md:border-r md:border-b-0 md:py-7',
-          collapsed ? 'md:w-[76px] md:px-3' : 'md:w-[232px] md:px-4',
+          // Tablets and up: a sticky sidebar. Phones use the top bar and bottom tabs instead.
+          'hidden shrink-0 flex-col border-r border-border bg-sidebar py-7 transition-[width] duration-200 md:sticky md:top-0 md:flex md:h-screen',
+          collapsed ? 'w-[76px] px-3' : 'w-[232px] px-4',
         )}
       >
         <Link
           to="/home"
           aria-label="TradeTime home"
           title={collapsed ? 'TradeTime' : undefined}
-          className={cn('flex items-center gap-2.5 self-start rounded-md', collapsed ? 'px-3 md:self-center md:px-0' : 'px-3')}
+          className={cn('flex items-center gap-2.5 rounded-md', collapsed ? 'self-center' : 'self-start px-3')}
         >
           <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-ember" aria-hidden />
-          <span className={cn(collapsed && 'md:hidden')}>
+          <span className={cn(collapsed && 'hidden')}>
             <Wordmark />
           </span>
         </Link>
-        <nav aria-label="Main" className="mt-3 flex gap-0.5 overflow-x-auto md:mt-7 md:flex-1 md:flex-col md:overflow-visible">
+        <nav aria-label="Main" className="mt-7 flex flex-1 flex-col gap-0.5">
           {nav.map(({ to, label, icon }) => (
             <NavItem key={to} to={to} label={label} icon={icon} collapsed={collapsed} />
           ))}
-          <span className="md:hidden">
-            <NavItem to="/settings" label="Settings" icon={SettingsIcon} collapsed={false} />
-          </span>
         </nav>
-        <div className="mt-auto hidden flex-col gap-0.5 md:flex">
+        <div className="mt-auto flex flex-col gap-0.5">
           <NavItem to="/settings" label="Settings" icon={SettingsIcon} collapsed={collapsed} textOnly />
           <RailButton label={theme.label} icon={theme.icon} collapsed={collapsed} onClick={() => updateSettings.mutate({ theme: theme.next })} />
           {authEnabled && <RailButton label="Sign out" icon={LogOut} collapsed={collapsed} onClick={() => void signOut()} />}
@@ -127,7 +125,7 @@ export function AppShell() {
       </aside>
       <div className="min-w-0 flex-1">
         <DemoBanner />
-        <main className="px-4 pt-6 pb-24 sm:px-8 md:px-12 md:pt-8 md:pb-24">
+        <main className="px-4 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))] sm:px-8 md:px-12 md:pt-8 md:pb-24">
           <div className={cn('mx-auto', wide ? 'max-w-[1240px]' : 'max-w-[1120px]')}>
             <ErrorBoundary resetKey={pathname}>
               <Outlet />
@@ -137,7 +135,88 @@ export function AppShell() {
       </div>
       <MiniTimer />
       <CheckInPrompt />
+      <PhoneTabBar themeLabel={theme.label} onTheme={() => updateSettings.mutate({ theme: theme.next })} />
     </div>
+  );
+}
+
+/** Phones: the wordmark in a slim bar that clears the status bar / notch when installed. */
+function PhoneTopBar() {
+  return (
+    <header className="sticky top-0 z-30 border-b border-border bg-sidebar/95 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
+      <div className="flex h-12 items-center px-4">
+        <Link to="/home" aria-label="TradeTime home" className="flex items-center gap-2.5 rounded-md">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-ember" aria-hidden />
+          <Wordmark />
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+const phoneTabs = nav.slice(0, 4);
+const moreItems = [...nav.slice(4), { to: '/settings', label: 'Settings', icon: SettingsIcon }] as const;
+
+/** Phones: four main tabs plus More (Expenses, Playbook, Settings, theme, sign out), above the home indicator. */
+function PhoneTabBar({ themeLabel, onTheme }: { themeLabel: string; onTheme: () => void }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [open, setOpen] = useState(false);
+  const sheet = useRef<HTMLDivElement>(null);
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    sheet.current?.querySelector<HTMLElement>('a,button')?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+  const moreActive = moreItems.some((i) => pathname.startsWith(i.to));
+  const tabClass = 'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-md text-[11px] text-muted [&.active]:font-medium [&.active]:text-text';
+
+  return (
+    <>
+      {open && (
+        <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setOpen(false)} aria-hidden />
+      )}
+      {open && (
+        <div
+          ref={sheet}
+          role="dialog"
+          aria-label="More"
+          className="fixed inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom))] z-50 rounded-lg border border-border bg-card p-2 shadow-menu md:hidden"
+        >
+          {moreItems.map(({ to, label, icon: Icon }) => (
+            <Link key={to} to={to} className="flex min-h-12 items-center gap-3 rounded-md px-3 text-[15px] text-secondary hover:bg-hover [&.active]:bg-nav-active [&.active]:font-medium [&.active]:text-text">
+              <Icon size={18} strokeWidth={1.6} aria-hidden /> {label}
+            </Link>
+          ))}
+          <div className="my-1 border-t border-border-subtle" />
+          <button type="button" onClick={onTheme} className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left text-[15px] text-secondary hover:bg-hover">
+            <Monitor size={18} strokeWidth={1.6} aria-hidden /> {themeLabel}
+          </button>
+          {authEnabled && (
+            <button type="button" onClick={() => void signOut()} className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left text-[15px] text-secondary hover:bg-hover">
+              <LogOut size={18} strokeWidth={1.6} aria-hidden /> Sign out
+            </button>
+          )}
+        </div>
+      )}
+      <nav
+        aria-label="Main"
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-sidebar/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
+        {phoneTabs.map(({ to, label, icon: Icon }) => (
+          <Link key={to} to={to} className={tabClass}>
+            <Icon size={20} strokeWidth={1.6} aria-hidden />
+            {label}
+          </Link>
+        ))}
+        <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={cn(tabClass, (moreActive || open) && 'font-medium text-text')}>
+          <MoreHorizontal size={20} strokeWidth={1.6} aria-hidden />
+          More
+        </button>
+      </nav>
+    </>
   );
 }
 
@@ -146,7 +225,7 @@ const itemClass = (collapsed: boolean) =>
   cn(
     'group relative flex min-h-11 shrink-0 items-center gap-3 rounded-md px-3 text-sm whitespace-nowrap text-secondary transition hover:bg-hover hover:text-text',
     '[&.active]:bg-nav-active [&.active]:font-medium [&.active]:text-text',
-    collapsed && 'md:w-[52px] md:justify-center md:px-0',
+    collapsed && 'w-[52px] justify-center px-0',
   );
 
 /** Label shown beside an icon when the rail is collapsed (on hover or keyboard focus). */
@@ -166,7 +245,7 @@ function NavItem({ to, label, icon: Icon, collapsed, textOnly = false }: { to: s
     <Link to={to} className={itemClass(collapsed)} aria-label={collapsed ? label : undefined}>
       {/* Settings is plain text in the full sidebar (as in the design); icons appear on the collapsed rail. */}
       <Icon size={18} strokeWidth={1.6} aria-hidden className={cn(textOnly && !collapsed && 'hidden')} />
-      <span className={cn(collapsed && 'md:hidden')}>{label}</span>
+      <span className={cn(collapsed && 'hidden')}>{label}</span>
       {collapsed && <RailTip>{label}</RailTip>}
     </Link>
   );

@@ -49,8 +49,8 @@ export function DayPage({ day }: { day: string }) {
           </>
         }
       />
-      <div className="grid grid-cols-3 gap-4">
-        <div className="tile px-5 py-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="tile col-span-2 px-5 py-4 sm:col-span-1">
           <div className="text-xs text-muted">Net (USD)</div>
           <div className="font-display mt-1 text-2xl leading-tight">
             <Pnl cents={net} />

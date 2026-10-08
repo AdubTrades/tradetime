@@ -60,7 +60,7 @@ export function MenuButton({ label, items, className, icon = false }: { label: R
             e.preventDefault();
           }
         }}
-        className={icon ? 'flex h-8 w-8 items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-text' : cn(buttonClass('secondary'), 'h-11')}
+        className={icon ? 'flex h-8 w-8 items-center justify-center rounded-sm pointer-coarse:h-11 pointer-coarse:w-11 text-muted hover:bg-hover hover:text-text' : cn(buttonClass('secondary'), 'h-11')}
       >
         {icon ? (
           <MoreHorizontal size={16} aria-hidden />

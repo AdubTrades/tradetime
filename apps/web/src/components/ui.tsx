@@ -25,7 +25,8 @@ const buttonVariants: Record<ButtonVariant, string> = {
 export const buttonClass = (variant: ButtonVariant = 'secondary', size: 'md' | 'sm' = 'md') =>
   cn(
     'inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap transition disabled:pointer-events-none disabled:opacity-40',
-    size === 'md' ? 'h-10 rounded-md px-4 text-sm' : 'h-8 rounded-sm px-3 text-[13px]',
+    // Touch screens get taller buttons (44px / 40px) so they're easy to hit.
+    size === 'md' ? 'h-10 rounded-md px-4 text-sm pointer-coarse:h-11' : 'h-8 rounded-sm px-3 text-[13px] pointer-coarse:h-10',
     buttonVariants[variant],
   );
 
@@ -170,7 +171,7 @@ export function SegmentedTabs<T extends string>({
             onClick={() => onChange(o.value)}
             className={cn(
               'px-3.5 text-[13px] font-medium whitespace-nowrap transition-colors',
-              dark ? 'h-9 rounded-sm' : 'h-8 rounded-[7px]',
+              dark ? 'h-9 rounded-sm pointer-coarse:h-10' : 'h-8 rounded-[7px] pointer-coarse:h-10',
               active
                 ? dark
                   ? 'bg-dark-text text-dark shadow-card'

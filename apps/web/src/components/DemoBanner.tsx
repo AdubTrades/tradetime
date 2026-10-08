@@ -19,7 +19,7 @@ export function DemoBanner() {
     }
   };
   return (
-    <div className="sticky top-0 z-40 flex flex-wrap items-center gap-x-4 gap-y-1 bg-text px-6 py-2 text-sm text-bg">
+    <div className="sticky top-[calc(49px+env(safe-area-inset-top))] z-20 flex flex-wrap items-center gap-x-4 gap-y-1 bg-text px-4 md:top-0 md:z-40 md:px-6 py-2 text-sm text-bg">
       <span className="flex items-center gap-2">
         <span className="h-2 w-2 rounded-full bg-ember" aria-hidden />
         <span className="font-display">Demo mode</span>

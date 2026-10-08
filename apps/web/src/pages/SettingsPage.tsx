@@ -16,6 +16,7 @@ import { ExpenseSettings } from './settings/ExpenseSettings';
 import { JournalSettings } from './settings/JournalSettings';
 import { TimeLogSettings } from './settings/TimeLogSettings';
 import { NotificationSettings } from './settings/NotificationSettings';
+import { InstallSettings } from './settings/InstallSettings';
 
 export function SettingsPage() {
   const { data: settings } = useSettings();
@@ -29,6 +30,7 @@ export function SettingsPage() {
         {(health?.demo || inDemo()) && <DemoSettings />}
         {authEnabled && !inDemo() && <AccountCard />}
         <GeneralSettings settings={settings} />
+        <InstallSettings />
         {!demo && <NotificationSettings />}
         <TimeLogSettings settings={settings} />
         <CheckInSettings settings={settings} />
