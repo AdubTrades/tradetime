@@ -72,6 +72,7 @@ export const useAuth = (): AuthState =>
   );
 
 export const accessToken = (): string | null => state.session?.access_token ?? null;
+export const signedInUserId = (): string | null => state.session?.user.id ?? null;
 export const passwordChosen = () => set({ needsPassword: null });
 export const clearLinkError = () => set({ linkError: null });
 

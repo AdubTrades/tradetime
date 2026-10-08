@@ -8,14 +8,17 @@
     "start": "pnpm --filter @tc/server start",
     "test": "vitest run",
     "typecheck": "pnpm -r typecheck",
-    "db:generate": "pnpm --filter @tc/db generate"
+    "db:generate": "pnpm --filter @tc/db generate",
+    "vercel-build": "node scripts/vercel-build.mjs"
   },
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"
-  }
+  },
+  "packageManager": "pnpm@12.8.1"
 }

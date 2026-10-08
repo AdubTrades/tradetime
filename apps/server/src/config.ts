@@ -80,4 +80,14 @@ export const demo = {
 /** Economic events are fetched once for everyone with the server's FRED key (free from fred.stlouisfed.org). */
 export const fredApiKey = process.env.FRED_API_KEY || null;
 
+/**
+ * Error reports to Sentry (optional): the DSN from the Sentry project. Only the error, the request path and the
+ * user's id are sent. On Vercel the environment and commit come from its own variables.
+ */
+export const errorReporting = {
+  dsn: process.env.SENTRY_DSN || null,
+  environment: process.env.VERCEL_ENV ?? (isProduction ? 'production' : 'development'),
+  release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12),
+};
+
 export const webDist = path.resolve(import.meta.dirname, '../../web/dist');

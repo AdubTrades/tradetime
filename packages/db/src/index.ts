@@ -1,13 +1,9 @@
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { PGlite } from '@electric-sql/pglite';
 import { sql } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
-import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
-import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
-import { migrate as migratePostgres } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
+import journal from '../migrations/meta/_journal.json' with { type: 'json' };
 import { defaultCalendarEventTypes, defaultContracts, defaultListItems, defaultQuestions, defaultSessionTypes } from './defaults';
 import * as schema from './schema';
 
@@ -16,7 +12,8 @@ export * as defaults from './defaults';
 export type { ReadingAnswer, Recurrence } from './schema';
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-const migrationsFolder = fileURLToPath(new URL('../migrations', import.meta.url));
+/** The migration files. Only read when migrating (local dev, tests, and the deploy's migrate step). */
+const migrationsFolder = () => fileURLToPath(new URL('../migrations', import.meta.url));
 
 export interface Database {
   db: Db;
@@ -24,21 +21,32 @@ export interface Database {
 }
 
 /**
- * Open the database and apply pending migrations.
+ * Open the database and (unless `migrate: false`) apply pending migrations.
  * - `url`: a Postgres connection string (Supabase; use the transaction pooler for serverless).
  * - otherwise PGlite, an in-process Postgres: `dir` for a folder on disk (local dev), or in memory (tests).
+ *   Loaded only when used, so the deployed server doesn't carry it.
+ * The deployed server opens with `migrate: false`: production migrations run once, in the deploy's build step.
  */
-export async function openDb(opts: { url?: string; dir?: string } = {}): Promise<Database> {
+export async function openDb(opts: { url?: string; dir?: string; migrate?: boolean } = {}): Promise<Database> {
+  const migrate = opts.migrate !== false;
   if (opts.url) {
     // prepare: false is required by Supabase's transaction-mode pooler.
     const client = postgres(opts.url, { prepare: false, max: Number(process.env.TC_DB_POOL ?? 5), onnotice: () => undefined });
     const db = drizzlePostgres(client, { schema }) as unknown as Db;
-    await migratePostgres(db as never, { migrationsFolder });
+    if (migrate) {
+      const { migrate: run } = await import('drizzle-orm/postgres-js/migrator');
+      await run(db as never, { migrationsFolder: migrationsFolder() });
+    }
     return { db, close: () => client.end() };
   }
+  const { PGlite } = await import('@electric-sql/pglite');
+  const { drizzle: drizzlePglite } = await import('drizzle-orm/pglite');
   const client = new PGlite(opts.dir);
   const db = drizzlePglite(client, { schema }) as unknown as Db;
-  await migratePglite(db as never, { migrationsFolder });
+  if (migrate) {
+    const { migrate: run } = await import('drizzle-orm/pglite/migrator');
+    await run(db as never, { migrationsFolder: migrationsFolder() });
+  }
   return { db, close: () => client.close() };
 }
 
@@ -76,6 +84,5 @@ export async function listUserIds(db: Db): Promise<string[]> {
 
 /** Number of migrations this version of the app knows about. */
 export function knownMigrationCount(): number {
-  const journal = JSON.parse(readFileSync(fileURLToPath(new URL('../migrations/meta/_journal.json', import.meta.url)), 'utf8')) as { entries: unknown[] };
   return journal.entries.length;
 }

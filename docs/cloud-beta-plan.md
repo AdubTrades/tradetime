@@ -192,7 +192,17 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
   - Time log: timer and sessions.
 - **Touch targets:** at least 44px, as the design already uses.
 
-### Phase 8 — Deploy and operations (1 day)
+### Phase 8 — Deploy and operations ✅ built 8 Oct 2026 (going live needs your GitHub, Vercel and Supabase steps in `docs/deploy.md`)
+
+**As built:**
+- **Vercel build:** `pnpm vercel-build` (`scripts/vercel-build.mjs`) writes Vercel's Build Output: the web app as static files, plus the whole API bundled into one Node 22 function in Sydney (`apps/server/src/vercel.ts`). It routes `/api/*` to the function and everything else to the app, with security headers and long caching for hashed files. Tested locally: the bundle runs on its own against a real Postgres connection (sign-in, isolation, demo, export).
+- **Migrations:** production builds run `db:migrate` before going live. Previews never touch the database, and the function never migrates at start-up.
+- **Health:** `/api/health/ping` runs a one-line database query, for uptime monitors and the keep-alive job. The server refuses to start with a clear message if the database, sign-in or storage settings are missing.
+- **Error reports:** optional Sentry via its HTTP API (no SDK) from the API, the scheduled jobs and the browser, sending the user id only.
+- **GitHub Actions:** the nightly backup (Phase 6) and a keep-alive ping every 3 days that emails you if the app or database is down. The every-minute tick already keeps Supabase from pausing.
+- **Uptime alerts:** UptimeRobot on `/api/health/ping`, with the steps in `docs/deploy.md`.
+
+**Original plan:**
 - **Deploys:** connect the GitHub repo to Vercel. Every push to the `cloud` branch gets a preview address, and the production branch deploys automatically.
 - **Database migrations:** applied by a deploy step or a GitHub Action, never by hand against production.
 - **Sentry:** catches errors in the API and the browser.

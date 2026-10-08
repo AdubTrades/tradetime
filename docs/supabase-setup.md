@@ -82,7 +82,7 @@ Your real data comes across in Phase 9.
 3. Restart `pnpm dev`. In **Settings → Notifications**, click **Turn on notifications** on each device, then **Send a test**.
    - On iPhone and iPad this only works once TradeTime is added to the Home Screen (Phase 7 makes that look right).
 
-## 6. Scheduled jobs (after we deploy, Phase 8)
+## 6. Scheduled jobs (after we deploy: see [`deploy.md`](deploy.md))
 Locally, the server runs reminders, check-ins and renewal notices itself every minute. Once it's on Vercel, Supabase triggers them:
 1. Make a secret with `openssl rand -hex 32` and set it as `JOBS_SECRET` in the server's environment on Vercel.
 2. Open [`packages/db/supabase/cron.sql`](../packages/db/supabase/cron.sql), replace `<APP_URL>` and `<JOBS_SECRET>`, and run it in the **SQL Editor**.
@@ -91,7 +91,7 @@ Locally, the server runs reminders, check-ins and renewal notices itself every m
 ## 7. Demo (optional)
 Add `DEMO_SECRET=` plus a value from `openssl rand -hex 32` to the server's environment (`apps/server/.env.local`, and on Vercel later). Signed-in users can then turn on **Settings → Demo mode**. To also let people without an invite look around from the sign-in page, add `DEMO_PUBLIC=1`. Each visitor gets their own copy, and it's deleted after a day.
 
-## 8. Backups (after we push to GitHub)
+## 8. Backups (after we push to GitHub; also in [`deploy.md`](deploy.md) §5)
 A GitHub Action (`.github/workflows/db-backup.yml`) backs up the database every night at about 2am Perth time and keeps 30 days.
 1. In Supabase, **Connect → Session pooler**: copy the connection string (port 5432) and put in your database password.
 2. In the GitHub repo, **Settings → Secrets and variables → Actions → New repository secret**:

@@ -2,9 +2,11 @@ import { Hono } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
-import { auth, authEnabled, demo, fredApiKey, localUserId, storage } from './config';
+import { sql } from 'drizzle-orm';
+import { reportError } from '@tc/domain';
+import { auth, authEnabled, demo, errorReporting, fredApiKey, localUserId, storage } from './config';
 import { tokenFrom, verifyAccessToken, type AuthUser } from './auth';
-import { withUser } from './context';
+import { rootDb, withUser } from './context';
 import { dataHealth } from './health';
 import { calendarRoutes } from './routes/calendar';
 import { tradeImportRoutes } from './routes/tradeImport';
@@ -47,6 +49,18 @@ app.use('/api/*', async (c, next) => {
 const startedAt = new Date().toISOString();
 app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: demoAvailable() ? { public: demo.public || !authEnabled } : null, cloud: true, fredConfigured: !!fredApiKey, auth: authEnabled, storage: storage.remote ? { kind: 'supabase', bucket: storage.bucket } : { kind: 'local' } }));
 
+/** Database check for uptime monitors and the keep-alive job: one tiny query, no sign-in. */
+app.get('/api/health/ping', async (c) => {
+  const started = Date.now();
+  try {
+    await rootDb().execute(sql`select 1`);
+    return c.json({ ok: true, db: 'up', ms: Date.now() - started });
+  } catch (err) {
+    console.error(`[ping] ${(err as Error).message}`);
+    return c.json({ ok: false, db: 'down' }, 503);
+  }
+});
+
 /**
  * Scheduled jobs, called every minute by Supabase pg_cron (cloud) with `Authorization: Bearer <JOBS_SECRET>`.
  * Not a user request, so it's checked before the sign-in step and runs every user's jobs itself.
@@ -87,7 +101,7 @@ const demoBlocked = (method: string, path: string) =>
  * If the handler fails, the whole request is rolled back.
  */
 app.use('/api/*', async (c, next) => {
-  if (c.req.path === '/api/health' || c.req.path === '/api/jobs/tick' || c.req.path === '/api/demo/session') return next();
+  if (c.req.path === '/api/health' || c.req.path === '/api/health/ping' || c.req.path === '/api/jobs/tick' || c.req.path === '/api/demo/session') return next();
   let user: AuthUser = { userId: localUserId, email: null };
   let token = tokenFrom({ method: c.req.method, header: (n) => c.req.header(n) });
   if (token && isDemoToken(token)) {
@@ -149,9 +163,17 @@ app.route('/api/check-ins', checkInRoutes);
 app.route('/api/calendar', calendarRoutes);
 app.route('/api/trade-import', tradeImportRoutes);
 
-app.onError((err, c) => {
+app.onError(async (err, c) => {
   if (err instanceof AppError) return c.json({ error: err.message, detail: err.detail }, err.status);
   if (err instanceof HTTPException) return c.json({ error: err.message }, err.status);
   console.error(err);
+  await reportError(errorReporting.dsn, err, {
+    platform: 'node',
+    environment: errorReporting.environment,
+    release: errorReporting.release,
+    userId: c.get('user')?.userId,
+    url: c.req.path,
+    method: c.req.method,
+  });
   return c.json({ error: err.message || 'Internal error' }, 500);
 });

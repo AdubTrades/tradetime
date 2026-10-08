@@ -1,0 +1,28 @@
+# Checks the live app and its database every 3 days. Supabase pauses free projects after a week without activity;
+# the every-minute scheduled tick already keeps it busy, so this is a backstop, and a failure emails you.
+#
+# Needs a repository variable (Settings → Secrets and variables → Actions → Variables): APP_URL, e.g.
+# https://tradetime.vercel.app (no trailing slash).
+name: Keep alive
+
+on:
+  schedule:
+    - cron: '23 1 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the app and database
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$APP_URL" || { echo "Set the APP_URL repository variable"; exit 1; }
+          curl --fail --silent --show-error --retry 3 --retry-delay 20 --max-time 30 "$APP_URL/api/health/ping"
+          echo

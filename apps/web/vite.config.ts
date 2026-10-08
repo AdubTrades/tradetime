@@ -4,7 +4,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  // Served from your own Mac, so a ~200 KB gzipped main bundle is fine; charts load separately.
+  // Error reports name the deployed commit (Vercel sets VERCEL_GIT_COMMIT_SHA during the build).
+  define: { 'import.meta.env.VITE_RELEASE': JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? '') },
+  // A ~230 KB gzipped main bundle is fine; charts load separately.
   build: { chunkSizeWarningLimit: 800 },
   server: {
     host: '127.0.0.1',

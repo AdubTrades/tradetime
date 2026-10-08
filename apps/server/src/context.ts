@@ -20,11 +20,11 @@ const scope = new AsyncLocalStorage<UserScope>();
 // Date maths ("today", trading days, calendar times) follows the signed-in user's time zone for each request.
 setZoneResolver(() => scope.getStore()?.settings.timeZone ?? DEFAULT_ZONE);
 
-/** Open the database once (Supabase when DATABASE_URL is set, else PGlite on disk) and apply migrations. */
-export async function initDb(opts?: { url?: string; dir?: string; memory?: boolean }): Promise<Database> {
+/** Open the database once (Supabase when DATABASE_URL is set, else PGlite on disk) and apply migrations (unless `migrate: false`). */
+export async function initDb(opts?: { url?: string; dir?: string; memory?: boolean; migrate?: boolean }): Promise<Database> {
   if (database) return database;
   if (opts?.memory) database = await openDb();
-  else if (opts?.url ?? databaseUrl) database = await openDb({ url: opts?.url ?? databaseUrl! });
+  else if (opts?.url ?? databaseUrl) database = await openDb({ url: opts?.url ?? databaseUrl!, migrate: opts?.migrate });
   else {
     mkdirSync(paths.pgdata, { recursive: true });
     database = await openDb({ dir: opts?.dir ?? paths.pgdata });

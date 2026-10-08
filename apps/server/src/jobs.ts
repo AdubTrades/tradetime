@@ -2,7 +2,8 @@ import { Cron } from 'croner';
 import { DateTime } from 'luxon';
 import { sql } from 'drizzle-orm';
 import { listUserIds, schema } from '@tc/db';
-import { currentZone, formatDuration, formatMoney, localDate } from '@tc/domain';
+import { currentZone, formatDuration, formatMoney, localDate, reportError } from '@tc/domain';
+import { errorReporting } from './config';
 import { dueReminders } from './calendar';
 import { checkInToNotify } from './checkins';
 import { cleanUpDemos, isDemoUser } from './demo/account';
@@ -22,6 +23,7 @@ async function forEachUser(label: string, fn: (userId: string) => Promise<void>)
       await withUser(userId, () => fn(userId));
     } catch (err) {
       console.error(`[${label}] ${userId}: ${(err as Error).message}`);
+      await reportError(errorReporting.dsn, err, { platform: 'node', environment: errorReporting.environment, release: errorReporting.release, userId, tags: { job: label } });
     }
   }
   return users.length;

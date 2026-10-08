@@ -7,7 +7,8 @@
     "start": "NODE_ENV=production tsx src/index.ts",
     "typecheck": "tsc -p .",
     "seed:demo": "TC_DATA_DIR=../../data-dev tsx --env-file-if-exists=.env.local src/scripts/seed-demo.ts",
-    "vapid-keys": "tsx src/scripts/vapid-keys.ts"
+    "vapid-keys": "tsx src/scripts/vapid-keys.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env.local src/scripts/migrate.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

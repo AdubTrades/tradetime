@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { report } from '../lib/errors';
 import { Button } from './ui';
 
 interface State {
@@ -15,6 +16,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(error, info.componentStack);
+    report(error, { where: 'page' });
   }
 
   componentDidUpdate(prev: { resetKey?: string }) {
