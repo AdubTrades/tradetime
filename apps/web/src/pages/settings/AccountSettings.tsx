@@ -18,7 +18,7 @@ export function AccountSettings() {
   const firmName = (id: string | null) => firms.find((f) => f.id === id)?.name;
 
   return (
-    <Card title="Trading accounts" description="Prop firm and broker accounts. Used for payouts, fees and (soon) trades.">
+    <Card title="Trading accounts" description="Prop firm and broker accounts. Trades, payouts and fees are recorded against them.">
       <ul className="divide-y divide-border rounded-md border border-border">
         {accounts.length === 0 && <li className="px-3 py-3 text-sm text-muted">No accounts yet.</li>}
         {accounts.map((a) => (

@@ -263,6 +263,22 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
   // Imported trades keep their broker fills; reviewing only adds the Play, checklist, plan and notes.
   const imported = trade?.source === 'import';
   const canSave = imported || (!!fills && !!preview && !preview.error && form.accounts.length > 0 && offTick.length === 0);
+  // Say why Save is off, rather than leaving the buttons greyed out.
+  const missing = imported
+    ? null
+    : form.accounts.length === 0
+      ? accounts.length === 0
+        ? 'Add a trading account first (Settings → Trading accounts)'
+        : 'Choose the account(s) this trade was on'
+      : !fills
+        ? form.mode === 'simple'
+          ? 'Fill in entry and exit times, prices and size'
+          : 'Fill in every fill’s time, quantity and price'
+        : offTick.length
+          ? 'Fix the prices that aren’t on a valid tick'
+          : preview?.error
+            ? preview.error
+            : null;
   const saveAndNext = () =>
     save.mutate(undefined, {
       onSuccess: () => {
@@ -300,12 +316,13 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                 Net <Pnl cents={trade!.netCents} className="font-semibold" />
               </>
             ) : null}
-            {!imported && preview && !preview.error && (
+            {!imported && canSave && preview && !preview.error && (
               <>
                 Net <Pnl cents={preview.net!} className="font-semibold" />
                 {preview.r !== null && <span className="text-muted"> · {preview.r}R</span>}
               </>
             )}
+            {!canSave && missing && <span className="text-[13px] text-warning">{missing}</span>}
           </span>
           <Button variant="ghost" onClick={cancel}>
             {savedCount ? 'Done' : 'Cancel'}
@@ -702,7 +719,7 @@ function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (
             ))}
           </Select>
         )}
-        {accounts.length === 0 && <span className="text-xs text-loss">Add a trading account in Settings first.</span>}
+        {accounts.length === 0 && <span className="text-xs text-loss">Add a trading account in Settings → Trading accounts first.</span>}
       </div>
     </div>
   );

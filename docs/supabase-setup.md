@@ -13,23 +13,22 @@ This turns on sign-in. The steps are yours to do: they involve creating an accou
 
 ## 2. Sign-in settings
 In **Authentication**:
-1. **Sign In / Providers → Email**:
-   - Leave **Email** enabled.
-   - Turn **Allow new users to sign up** **off**. The beta is invite-only, so nobody can create an account from the sign-in page.
-   - Leave **Confirm email** on.
+1. **Sign In / Providers**:
+   - At the top, under **User Signups**, turn **Allow new users to sign up** **off** and save. The beta is invite-only, so nobody can create an account from the sign-in page.
+   - In the provider list below, click **Email**: leave it enabled and leave **Confirm email** on.
 2. **URL Configuration**:
    - **Site URL:** `http://localhost:5173` for now. Change it to the Vercel address when we deploy (Phase 8).
    - **Redirect URLs:** add `http://localhost:5173/**`.
 3. **Emails:** the built-in sender only allows a few emails per hour. That's fine for trying it yourself. Before inviting the community we'll connect a free email service (Resend) under **Authentication → Emails → SMTP Settings** (Phase 10).
 
 ## 3. Copy the settings into the app
-In **Project Settings → API Keys** (and **Data API** for the URL), you need:
-- the **Project URL**, like `https://abcdefgh.supabase.co`
+Click the gear icon (**Project Settings**) at the bottom of the left sidebar. From **Data API** and **API Keys** you need:
+- the **Project URL**, like `https://abcdefgh.supabase.co`. Use just that part, not an address ending in `/rest/v1/`.
 - the **Publishable key**, which starts `sb_publishable_…`. Older projects call it the *anon* key.
 
 Both are safe to have in the browser: the data is protected by sign-in and row-level security. Keep the *secret* key (or *service_role* key) out of the web app entirely. The running app doesn't need it; only the optional demo-seed step in section 4 does, in the server's file.
 
-Create these two git-ignored files yourself, based on the `.env.example` files next to them:
+Put them in these two git-ignored files (based on the `.env.example` files next to them), straight after the `=` with no spaces or quotes:
 
 **`apps/web/.env.local`**
 ```
@@ -48,7 +47,7 @@ With these set, screenshots and receipts are stored in Supabase Storage instead 
 Leave `DATABASE_URL` empty for now. Local development keeps using the built-in PGlite database, and only sign-in goes through Supabase. We point the app at Supabase's database when we deploy.
 
 ### File storage (one-time step)
-Open **SQL Editor** in Supabase, paste in the contents of [`packages/db/supabase/storage.sql`](../packages/db/supabase/storage.sql), and click **Run**. This creates:
+Open **SQL Editor** in Supabase, paste in the contents of [`packages/db/supabase/storage.sql`](../packages/db/supabase/storage.sql), and click **Run**. Supabase warns that the query is "destructive" because of the `drop policy if exists` lines; they only replace TradeTime's own storage rules, so click **Run query**. This creates:
 - a private `attachments` bucket (25 MB per file; images and PDFs only)
 - rules that let each signed-in user read and write only their own folder
 
