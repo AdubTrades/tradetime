@@ -12,6 +12,8 @@ export interface Health {
   fredConfigured?: boolean;
   /** Where screenshots and receipts live. */
   storage?: { kind: 'supabase'; bucket: string } | { kind: 'local' };
+  /** Where testers can reach the person running the beta (shown on the privacy page and feedback form). */
+  supportEmail?: string | null;
   /** Sign-in is switched on (Supabase Auth). */
   auth?: boolean;
 }

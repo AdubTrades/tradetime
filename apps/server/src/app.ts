@@ -4,7 +4,9 @@ import { attachmentRoutes } from './routes/attachments';
 import { AppError } from './errors';
 import { sql } from 'drizzle-orm';
 import { reportError } from '@tc/domain';
-import { auth, authEnabled, demo, errorReporting, fredApiKey, localUserId, storage } from './config';
+import { auth, authEnabled, demo, errorReporting, feedbackConfig, fredApiKey, localUserId, storage } from './config';
+import { feedbackSchema, sendFeedback } from './feedback';
+import { body } from './http';
 import { tokenFrom, verifyAccessToken, type AuthUser } from './auth';
 import { rootDb, withUser } from './context';
 import { dataHealth } from './health';
@@ -47,7 +49,7 @@ app.use('/api/*', async (c, next) => {
 });
 
 const startedAt = new Date().toISOString();
-app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: demoAvailable() ? { public: demo.public || !authEnabled } : null, cloud: true, fredConfigured: !!fredApiKey, auth: authEnabled, storage: storage.remote ? { kind: 'supabase', bucket: storage.bucket } : { kind: 'local' } }));
+app.get('/api/health', (c) => c.json({ ok: true, startedAt, demo: demoAvailable() ? { public: demo.public || !authEnabled } : null, cloud: true, supportEmail: feedbackConfig.supportEmail, fredConfigured: !!fredApiKey, auth: authEnabled, storage: storage.remote ? { kind: 'supabase', bucket: storage.bucket } : { kind: 'local' } }));
 
 /** Database check for uptime monitors and the keep-alive job: one tiny query, no sign-in. */
 app.get('/api/health/ping', async (c) => {
@@ -93,7 +95,7 @@ app.post('/api/demo/session', async (c) => {
 
 /** Things a demo visitor can't do: they'd reach outside the sample account (devices, uploads, imports, the FRED key). */
 const demoBlocked = (method: string, path: string) =>
-  method !== 'GET' && (/^\/api\/push\/(subscribe|test)$/.test(path) || /^\/api\/attachments(\/prepare|\/complete)?$/.test(path) || path.startsWith('/api/account/import'));
+  method !== 'GET' && (/^\/api\/push\/(subscribe|test)$/.test(path) || /^\/api\/attachments(\/prepare|\/complete)?$/.test(path) || path.startsWith('/api/account/import') || (method === 'DELETE' && path === '/api/account'));
 
 /**
  * Who's asking: the signed-in user from their Supabase access token, or the single local user when sign-in isn't
@@ -140,6 +142,11 @@ app.use('/api/*', async (c, next) => {
 });
 app.get('/api/me', (c) => c.json({ demo: false, ...c.get('user'), auth: authEnabled }));
 app.route('/api/account', accountDataRoutes);
+app.post('/api/feedback', async (c) => {
+  const user = c.get('user');
+  const row = await sendFeedback(await body(c.req, feedbackSchema), { email: user.email, userAgent: c.req.header('user-agent') ?? null, demo: !!user.demo });
+  return c.json({ id: row.id }, 201);
+});
 app.get('/api/health/data', async (c) => c.json(await dataHealth()));
 app.route('/api/settings', settingsRoutes);
 app.route('/api/push', pushRoutes);

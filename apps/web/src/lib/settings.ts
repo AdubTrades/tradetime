@@ -11,6 +11,12 @@ export const browserZone = (): string | null => {
   return z && isValidZone(z) ? z : null;
 };
 
+/** Every IANA zone the browser knows (with `current` guaranteed), sorted by name. */
+export function zoneList(current: string): string[] {
+  const all = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
+  return [...new Set([...all, current])].sort();
+}
+
 let adopting = false;
 
 async function fetchSettings(): Promise<Settings> {

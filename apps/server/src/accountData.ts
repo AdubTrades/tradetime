@@ -1,12 +1,13 @@
 import { existsSync } from 'node:fs';
-import { getTableColumns } from 'drizzle-orm';
+import { getTableColumns, sql } from 'drizzle-orm';
 import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 import { knownMigrationCount, schema } from '@tc/db';
 import { z } from 'zod';
 import { attachmentPath, checkFile, objectPath } from './attachments';
 import { withoutOwner } from './audit';
 import { storage } from './config';
-import { currentScope, db } from './context';
+import { currentScope, db, forgetSeeded } from './context';
+import { deleteObjects, storeConfig } from './fileStore';
 import { AppError } from './errors';
 import { loadSettings } from './settings';
 
@@ -137,4 +138,40 @@ export async function importAccount(input: unknown): Promise<{ counts: Record<st
   // Local mode can check the files are on disk; in the cloud the browser has just uploaded them.
   const missingFiles = storage.remote ? 0 : files.filter((f) => !existsSync(attachmentPath(f.sha256, f.mime))).length;
   return { counts, missingFiles };
+}
+
+const rowsOf = (result: unknown): Record<string, unknown>[] => (Array.isArray(result) ? result : ((result as { rows?: Record<string, unknown>[] }).rows ?? []));
+
+/**
+ * "Delete my account": the user's files in storage, every record (devices and profile included), and on Supabase
+ * their sign-in account, so they can't sign in again. Records and sign-in go in the request's transaction, so a
+ * failure leaves the account as it was; files go first, because removing them needs the user's own token.
+ */
+export async function deleteAccount(): Promise<{ files: number; signIn: 'deleted' | 'kept' | 'none' }> {
+  const { userId, token, tx } = currentScope();
+  let files = 0;
+  if (storage.remote) {
+    const rows = await db.select({ sha256: schema.attachment.sha256, mime: schema.attachment.mime }).from(schema.attachment);
+    files = await deleteObjects(storeConfig(), token, rows.map((r) => objectPath(userId, r.sha256, r.mime)));
+  }
+  await wipeAccount({ everything: true });
+
+  let signIn: 'deleted' | 'kept' | 'none' = 'none';
+  const [auth] = rowsOf(await tx.execute(sql`select exists (select 1 from pg_catalog.pg_tables where schemaname = 'auth' and tablename = 'users') as present`));
+  if (auth?.present && /^[0-9a-f-]{36}$/i.test(userId)) {
+    try {
+      // Sign-in accounts aren't visible to the app role, so step out of it for this one statement.
+      await tx.transaction(async (sp) => {
+        await sp.execute(sql`reset role`);
+        await sp.execute(sql`delete from auth.users where id = ${userId}::uuid`);
+        await sp.execute(sql`set local role tradetime_app`);
+      });
+      signIn = 'deleted';
+    } catch (err) {
+      console.error(`[delete account] sign-in for ${userId} not removed: ${(err as Error).message}`);
+      signIn = 'kept';
+    }
+  }
+  forgetSeeded(userId);
+  return { files, signIn };
 }

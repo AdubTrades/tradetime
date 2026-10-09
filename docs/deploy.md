@@ -107,6 +107,33 @@ Do this once you're signed in on the live site. Until you've checked the result,
 Each account can store 100 MB of files during the beta. If your screenshots come to more, the converter warns you;
 raise `TC_STORAGE_CAP_MB` on Vercel before importing.
 
+## 10. Open the beta to testers
+**Emails.** Supabase's built-in sender only manages a few emails an hour and may land in spam, which is fine for you but not for a dozen invites.
+1. **Sender:** sign up for **Resend**, which is free (3,000 emails a month). Sending to other people needs a domain you own (about US$15 a year), so add the domain in Resend and set up the DNS records it shows you.
+2. **SMTP:** in Resend, create an SMTP key. In Supabase, go to **Authentication → Emails → SMTP Settings** and turn on custom SMTP:
+   - Host `smtp.resend.com`, port `465`, user `resend`, password = the key
+   - Sender e.g. `TradeTime <beta@yourdomain.com>`
+3. **Templates:** in **Authentication → Emails → Templates**, paste in the three files from `packages/db/supabase/email-templates/`: **Invite user**, **Magic link** and **Reset password**. Subjects:
+   - "You're invited to the TradeTime beta"
+   - "Your TradeTime sign-in link"
+   - "Reset your TradeTime password"
+
+**Without a domain** you can still invite testers with the built-in sender, a couple an hour. Ask them to check their spam folder.
+
+**Support settings (Vercel → Environment Variables, then redeploy):**
+- `SUPPORT_EMAIL`: the address testers can write to. It's shown on the privacy page and in the feedback form.
+- `FEEDBACK_WEBHOOK_URL` (optional): a Discord channel webhook (channel settings → **Integrations → Webhooks → New webhook → Copy URL**), so feedback pings you there. Slack incoming webhooks work too.
+- Feedback is always saved in the database as well: Supabase → **Table Editor → tradetime → feedback**.
+
+**Invite them.** Go to **Authentication → Users → Add user → Send invitation**, one email per tester. Each person clicks the link, chooses a password and goes through the welcome steps: time zone, first account, first Play and notifications.
+
+**Tell testers:**
+- The address, and to add it to their phone's home screen.
+- That it's a beta: use **Send feedback** for anything odd, and **Settings → Your data → Download my data** now and then.
+- The privacy page is at `/privacy`.
+
+**If someone leaves:** they can delete their own account under **Settings → Your data**, or you can delete the user in Supabase. Their records are removed when they delete it themselves; if you remove only the sign-in, their rows stay in the database until cleared.
+
 ## Day to day
 - **Updates:** I push to `cloud` and Vercel deploys in about a minute. Production deploys apply any new database
   migrations before the new version goes live.

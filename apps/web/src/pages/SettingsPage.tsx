@@ -5,7 +5,7 @@ import { type Settings } from '../lib/api';
 import { authEnabled, signOut, useAuth } from '../lib/auth';
 import { useHealth } from '../lib/demo';
 import { inDemo } from '../lib/demoSession';
-import { browserZone, useSettings, useUpdateSettings } from '../lib/settings';
+import { browserZone, useSettings, useUpdateSettings, zoneList } from '../lib/settings';
 import { AccountSettings } from './settings/AccountSettings';
 import { DemoSettings } from './settings/DemoSettings';
 import { DataHealth } from './settings/DataHealth';
@@ -58,12 +58,6 @@ function AccountCard() {
       </div>
     </Card>
   );
-}
-
-/** Every IANA zone the browser knows (with the current one guaranteed), sorted by name. */
-function zoneList(current: string): string[] {
-  const all = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
-  return [...new Set([...all, current])].sort();
 }
 
 function GeneralSettings({ settings }: { settings: Settings }) {

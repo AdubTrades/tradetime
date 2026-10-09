@@ -20,4 +20,9 @@ drop policy if exists "tradetime_attachments_update_own" on storage.objects;
 create policy "tradetime_attachments_update_own" on storage.objects for update to authenticated
   using (bucket_id = 'attachments' and (storage.foldername(name))[1] = (select auth.uid()::text))
   with check (bucket_id = 'attachments' and (storage.foldername(name))[1] = (select auth.uid()::text));
--- No delete policy: files are kept (records are soft-deleted). Account deletion removes them with the secret key.
+
+-- Users may delete their own files: only "Delete my account" does this (records are otherwise soft-deleted and
+-- files kept). Also applied by migration 0004.
+drop policy if exists "tradetime_attachments_delete_own" on storage.objects;
+create policy "tradetime_attachments_delete_own" on storage.objects for delete to authenticated
+  using (bucket_id = 'attachments' and (storage.foldername(name))[1] = (select auth.uid()::text));

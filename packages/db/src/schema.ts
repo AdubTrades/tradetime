@@ -671,6 +671,23 @@ export const pushSubscription = app.table(
 );
 
 /** Every per-user table, for row-level security and per-user deletes/exports. */
+/** Feedback sent from the app (Send feedback). The admin reads it in the Supabase dashboard. */
+export const feedback = app.table(
+  'feedback',
+  {
+    userId: userId(),
+    id: text('id').notNull(),
+    createdAt: text('created_at').notNull().default(nowIso),
+    kind: text('kind').notNull().default('general'),
+    message: text('message').notNull(),
+    /** The page it was sent from, and the browser, to help reproduce problems. */
+    page: text('page'),
+    userAgent: text('user_agent'),
+    appVersion: text('app_version'),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.id] })],
+);
+
 export const userTables = [
   'user_profile',
   'setting',
@@ -704,4 +721,5 @@ export const userTables = [
   'calendar_event_exception',
   'account_alias',
   'push_subscription',
+  'feedback',
 ] as const;

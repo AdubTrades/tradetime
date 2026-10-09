@@ -223,7 +223,16 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
 - **Checks:** compare counts and totals between old and new (trades, P&L per day, sessions and hours, expenses per FY, examples and screenshots).
 - **Rehearse first:** run it against a copy, never the live folder, until the numbers match.
 
-### Phase 10 — Beta launch (1 day)
+### Phase 10 — Beta launch ✅ built 9 Oct 2026 (sending invites needs your steps in `docs/deploy.md` §10)
+
+**As built:**
+- **Welcome steps:** a new account gets four skippable steps once: time zone and rollover, first prop firm account, first Play, and notifications (with the iPhone Home Screen tip). Accounts brought across from the Mac app and demo copies skip them (`onboarded` setting).
+- **Send feedback:** in the sidebar and the phone's More menu. Choose problem, idea or other; the page and app version are attached. It's saved to the `feedback` table (readable in Supabase) and, with `FEEDBACK_WEBHOOK_URL`, posted to Discord or Slack with the sender's email. Limited to 10 an hour, and a short "Known issues" list (`lib/knownIssues.ts`) sits in the form.
+- **Privacy and terms page** at `/privacy`, open without signing in and linked from the sign-in page and Settings. It covers what's stored, where, who can see it (only you in the app, plus the admin through Supabase), download and delete, the beta caveats and "not financial or tax advice". The contact comes from `SUPPORT_EMAIL`.
+- **Delete my account** (Settings → Your data, type DELETE): deletes the files in storage with the user's own token (new own-folder delete policy, migration 0004), then every record, then the Supabase sign-in, in the same transaction. It's blocked in the demo, and the sign-in page then shows a goodbye note. Tested with a stand-in `auth.users`.
+- **Emails:** Calm-styled invite, magic-link and reset templates (`packages/db/supabase/email-templates/`), plus Resend SMTP setup steps.
+
+**Original plan:**
 - **Onboarding:** first-run setup for time zone and rollover, the first prop firm account, the first Play, and the notification permission prompt (with the iPhone "Add to Home Screen" tip).
 - **In-app feedback:** a "Send feedback" link (email or your Discord) and a short "known issues" note.
 - **Simple privacy and terms page:** what's stored, who can see it (only the user, plus you as admin for support), how to export or delete data, and a clear "journal, not financial or tax advice" disclaimer.

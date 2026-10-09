@@ -48,7 +48,7 @@ export const api = {
   post: <T>(url: string, body?: unknown) => request<T>('POST', url, body),
   patch: <T>(url: string, body: unknown) => request<T>('PATCH', url, body),
   put: <T>(url: string, body: unknown) => request<T>('PUT', url, body),
-  delete: <T>(url: string) => request<T>('DELETE', url),
+  delete: <T>(url: string, body?: unknown) => request<T>('DELETE', url, body),
 };
 
 // Shapes returned by the server. Kept here until a shared types package is needed.
@@ -70,6 +70,8 @@ export interface Settings {
   reportName: string | null;
   reportAbn: string | null;
   homeHidePnl: boolean;
+  /** The welcome steps have been finished or skipped. */
+  onboarded: boolean;
 }
 export interface Attachment {
   id: string;

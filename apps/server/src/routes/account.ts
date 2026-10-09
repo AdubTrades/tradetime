@@ -1,7 +1,7 @@
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { exportAccount, importAccount, planFiles } from '../accountData';
+import { deleteAccount, exportAccount, importAccount, planFiles } from '../accountData';
 import { checkFile, writeLocalFile } from '../attachments';
 import { storage } from '../config';
 import { AppError } from '../errors';
@@ -34,6 +34,11 @@ export const accountRoutes = new Hono()
     if (!(file instanceof File)) throw new AppError(400, 'No file provided');
     checkFile(file.type, file.size);
     return c.json({ sha256: writeLocalFile(Buffer.from(await file.arrayBuffer()), file.type) }, 201);
+  })
+  /** Delete the account, its files and its sign-in. The body must confirm it: {"confirm":"DELETE"}. */
+  .delete('/', async (c) => {
+    await body(c.req, z.object({ confirm: z.literal('DELETE', { message: 'Type DELETE to confirm' }) }));
+    return c.json(await deleteAccount());
   })
   /** Final step: replace everything in the account with the export's data (all or nothing). */
   .post('/import', async (c) => {

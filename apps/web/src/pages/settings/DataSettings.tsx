@@ -2,7 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Download, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { DateTime } from 'luxon';
-import { Button, Card } from '../../components/ui';
+import { Button, Card, Input } from '../../components/ui';
+import { api } from '../../lib/api';
+import { signOut } from '../../lib/auth';
 import { downloadMyData, importIntoAccount, readExport, type ImportPreview } from '../../lib/accountData';
 import { inDemo } from '../../lib/demoSession';
 
@@ -102,7 +104,75 @@ export function DataSettings() {
       )}
 
       {note && <p className={`mt-3 text-sm ${note.tone === 'error' ? 'text-loss' : 'text-muted'}`}>{note.text}</p>}
-      {demo && <p className="mt-3 text-xs text-muted">Importing is switched off in the demo.</p>}
+      {demo && <p className="mt-3 text-xs text-muted">Importing and deleting are switched off in the demo.</p>}
+      {!demo && <DeleteAccount />}
+      <p className="mt-4 text-xs text-muted">
+        What’s stored and who can see it:{' '}
+        <a href="/privacy" className="link-ember">
+          Privacy and terms
+        </a>
+      </p>
     </Card>
+  );
+}
+
+/** "Delete my account": records, files and sign-in, after typing DELETE. */
+function DeleteAccount() {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.delete('/account', { confirm: typed });
+      try {
+        sessionStorage.setItem('tt_deleted', '1');
+      } catch {
+        // Only used to show a goodbye note.
+      }
+      await signOut();
+      window.location.assign('/');
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  };
+
+  if (!open)
+    return (
+      <div className="mt-5 border-t border-border-subtle pt-4">
+        <button type="button" onClick={() => setOpen(true)} className="rounded-sm text-sm font-medium text-loss underline-offset-[3px] hover:underline">
+          Delete my account…
+        </button>
+      </div>
+    );
+  return (
+    <div role="alertdialog" aria-labelledby="delete-title" className="mt-5 rounded-md border border-loss/40 bg-loss-tint/40 p-4 text-sm">
+      <p id="delete-title" className="font-medium text-loss">
+        Delete your account and everything in it?
+      </p>
+      <p className="mt-1 text-secondary">
+        This removes every trade, session, expense, Play and setting, all your screenshots and receipts, and your sign-in. It can’t be
+        undone, so download your data first if you might want it.
+      </p>
+      <label className="mt-3 block">
+        <span className="mb-1 block text-[13px]">
+          Type <span className="font-mono font-medium">DELETE</span> to confirm
+        </span>
+        <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" className="max-w-[220px]" />
+      </label>
+      {error && <p className="mt-2 text-loss">{error}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button variant="danger" disabled={busy || typed !== 'DELETE'} onClick={() => void remove()}>
+          {busy ? 'Deleting…' : 'Delete everything'}
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
   );
 }

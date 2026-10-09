@@ -30,6 +30,8 @@ const settingsShape = z.object({
   reportAbn: z.string().trim().regex(/^(\d\s?){11}$/, 'An ABN is 11 digits').nullable(),
   /** Keep P&L figures on Home hidden until revealed, so results don't colour the next session. */
   homeHidePnl: z.boolean(),
+  /** The welcome steps have been finished or skipped (new accounts see them once). */
+  onboarded: z.boolean(),
 });
 
 export type Settings = z.infer<typeof settingsShape>;
@@ -49,6 +51,7 @@ export const defaultSettings: Settings = {
   reportName: null,
   reportAbn: null,
   homeHidePnl: true,
+  onboarded: false,
 };
 
 // No defaults here: a patch must only touch the keys it names.

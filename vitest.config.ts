@@ -19,6 +19,7 @@ export default defineConfig({
       VAPID_PUBLIC_KEY: 'BIK21WFTxBD2kTd65lv7dbJjewLr9giA_LcDN05MsexLsjThRc2ZggiDk2txjBgUpkRpRuAR9ygTupGUzOsHY9w',
       VAPID_PRIVATE_KEY: 'vQhDiUASNOsUOBnqr5sdAdyOTeI7xfv7PzZM6AJoSvg',
       DEMO_SECRET: 'test-demo-secret-not-for-production',
+      FEEDBACK_WEBHOOK_URL: 'https://hooks.example.test/feedback',
     },
   },
 });

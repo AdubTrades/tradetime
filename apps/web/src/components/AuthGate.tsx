@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { authEnabled, useAuth } from '../lib/auth';
 import { inDemo } from '../lib/demoSession';
 import { SetPasswordPage, SignInPage } from '../pages/auth/AuthScreens';
+import { PrivacyPage } from '../pages/PrivacyPage';
 
 /**
  * Shows the app only to a signed-in user (when sign-in is configured). Switching or signing out clears every
@@ -18,6 +19,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
     previous.current = userId;
   }, [userId, queryClient]);
 
+  // The privacy page is for anyone, signed in or not.
+  if (window.location.pathname === '/privacy') return <PrivacyPage />;
   // A demo visitor uses the demo's own token, signed in or not.
   if (!authEnabled || inDemo()) return <>{children}</>;
   if (!auth.ready) return null;

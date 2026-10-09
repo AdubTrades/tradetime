@@ -55,3 +55,19 @@ export async function signedUrl(cfg: StoreConfig, token: string | null, path: st
   if (!rel) return null;
   return rel.startsWith('http') ? rel : `${cfg.url}/storage/v1${rel.startsWith('/') ? '' : '/'}${rel}`;
 }
+
+/** Delete objects (up to 1,000 per call; batched here). Paths that don't exist are ignored. Returns how many went. */
+export async function deleteObjects(cfg: StoreConfig, token: string | null, paths: string[]): Promise<number> {
+  let deleted = 0;
+  for (let i = 0; i < paths.length; i += 1000) {
+    const res = await (cfg.fetcher ?? fetch)(`${cfg.url}/storage/v1/object/${encodeURIComponent(cfg.bucket)}`, {
+      method: 'DELETE',
+      headers: { ...headers(cfg, token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefixes: paths.slice(i, i + 1000) }),
+    });
+    if (!res.ok) throw new Error(`File storage couldn’t delete files (${res.status}): ${await res.text().catch(() => '')}`.trim());
+    const body = (await res.json().catch(() => [])) as unknown[];
+    deleted += Array.isArray(body) ? body.length : 0;
+  }
+  return deleted;
+}

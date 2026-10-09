@@ -79,6 +79,11 @@ export function currentScope(): UserScope {
 
 export const currentUserId = (): string => currentScope().userId;
 
+/** A deleted account is set up afresh if it's ever used again. */
+export function forgetSeeded(userId: string): void {
+  seeded.delete(userId);
+}
+
 /** Forget which users have been seeded (tests that wipe the database). */
 export function resetSeededCache(): void {
   seeded.clear();

@@ -10,6 +10,7 @@ import {
   PanelLeftOpen,
   Receipt,
   LogOut,
+  MessageSquare,
   Settings as SettingsIcon,
   Sun,
   Target,
@@ -24,6 +25,8 @@ import { useThemeSync } from '../lib/theme';
 import { CheckInPrompt } from '../pages/checkins/CheckInPrompt';
 import { DemoBanner } from './DemoBanner';
 import { MiniTimer } from './MiniTimer';
+import { Onboarding } from './Onboarding';
+import { FeedbackDialog } from './FeedbackDialog';
 import { ErrorBoundary } from './ErrorBoundary';
 import { cn } from './ui';
 
@@ -80,6 +83,7 @@ export function AppShell() {
   const theme = themeCycle[settings?.theme ?? 'system'];
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   // The calendar grid gets a wider column than the other screens.
   const wide = pathname.startsWith('/calendar');
 
@@ -111,6 +115,7 @@ export function AppShell() {
         </nav>
         <div className="mt-auto flex flex-col gap-0.5">
           <NavItem to="/settings" label="Settings" icon={SettingsIcon} collapsed={collapsed} textOnly />
+          <RailButton label="Send feedback" icon={MessageSquare} collapsed={collapsed} onClick={() => setFeedbackOpen(true)} />
           <RailButton label={theme.label} icon={theme.icon} collapsed={collapsed} onClick={() => updateSettings.mutate({ theme: theme.next })} />
           {authEnabled && <RailButton label="Sign out" icon={LogOut} collapsed={collapsed} onClick={() => void signOut()} />}
           <RailButton
@@ -135,7 +140,9 @@ export function AppShell() {
       </div>
       <MiniTimer />
       <CheckInPrompt />
-      <PhoneTabBar themeLabel={theme.label} onTheme={() => updateSettings.mutate({ theme: theme.next })} />
+      {settings && <Onboarding settings={settings} />}
+      <PhoneTabBar themeLabel={theme.label} onTheme={() => updateSettings.mutate({ theme: theme.next })} onFeedback={() => setFeedbackOpen(true)} />
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }
@@ -158,7 +165,7 @@ const phoneTabs = nav.slice(0, 4);
 const moreItems = [...nav.slice(4), { to: '/settings', label: 'Settings', icon: SettingsIcon }] as const;
 
 /** Phones: four main tabs plus More (Expenses, Playbook, Settings, theme, sign out), above the home indicator. */
-function PhoneTabBar({ themeLabel, onTheme }: { themeLabel: string; onTheme: () => void }) {
+function PhoneTabBar({ themeLabel, onTheme, onFeedback }: { themeLabel: string; onTheme: () => void; onFeedback: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const sheet = useRef<HTMLDivElement>(null);
@@ -191,6 +198,16 @@ function PhoneTabBar({ themeLabel, onTheme }: { themeLabel: string; onTheme: () 
             </Link>
           ))}
           <div className="my-1 border-t border-border-subtle" />
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onFeedback();
+            }}
+            className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left text-[15px] text-secondary hover:bg-hover"
+          >
+            <MessageSquare size={18} strokeWidth={1.6} aria-hidden /> Send feedback
+          </button>
           <button type="button" onClick={onTheme} className="flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left text-[15px] text-secondary hover:bg-hover">
             <Monitor size={18} strokeWidth={1.6} aria-hidden /> {themeLabel}
           </button>

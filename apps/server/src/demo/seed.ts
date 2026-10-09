@@ -40,7 +40,7 @@ export async function seedDemo(): Promise<void> {
   const now = DateTime.now().setZone(currentZone());
   const today = now.toISODate()!;
 
-  await updateSettings({ reportName: 'Alex Morgan', homeHidePnl: false, includeMediumEvents: true });
+  await updateSettings({ reportName: 'Alex Morgan', homeHidePnl: false, includeMediumEvents: true, onboarded: true });
   await updateContract('ct_mnq', { feePerSideCents: 37 });
   await updateContract('ct_mes', { feePerSideCents: 37 });
   await updateContract('ct_nq', { feePerSideCents: 129 });

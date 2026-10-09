@@ -106,6 +106,8 @@ export function readMacDatabase(dbPath: string): { data: AccountExport; dropped:
     }
     tables.setting = (tables.setting ?? []).filter((s) => !droppedSettings.has(String(s.key)));
     if (!tables.setting.some((s) => s.key === 'timeZone')) tables.setting.push({ key: 'timeZone', value: MAC_ZONE, updatedAt: new Date().toISOString() });
+    // An existing user doesn't need the welcome steps.
+    if (!tables.setting.some((s) => s.key === 'onboarded')) tables.setting.push({ key: 'onboarded', value: true, updatedAt: new Date().toISOString() });
     return {
       data: { app: 'tradetime', kind: 'account-export', formatVersion: EXPORT_FORMAT, schemaVersion: knownMigrationCount(), exportedAt: new Date().toISOString(), tables },
       dropped: [...dropped],

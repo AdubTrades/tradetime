@@ -19,7 +19,12 @@ function AuthCard({ title, intro, children }: { title: string; intro?: ReactNode
           {intro && <p className="mt-1.5 text-sm text-muted">{intro}</p>}
           <div className="mt-6">{children}</div>
         </section>
-        <p className="mt-5 text-center text-xs text-faint">A trading journal, time log and expenses for traders. Not financial or tax advice.</p>
+        <p className="mt-5 text-center text-xs text-faint">
+          A trading journal, time log and expenses for traders. Not financial or tax advice.{' '}
+          <a href="/privacy" className="underline underline-offset-2 hover:text-text">
+            Privacy and terms
+          </a>
+        </p>
       </div>
     </main>
   );
@@ -46,6 +51,15 @@ export function SignInPage() {
   const [sent, setSent] = useState<string | null>(null);
 
   const { data: health } = useHealth();
+  const [deleted] = useState(() => {
+    try {
+      const was = sessionStorage.getItem('tt_deleted') === '1';
+      sessionStorage.removeItem('tt_deleted');
+      return was;
+    } catch {
+      return false;
+    }
+  });
   const [demoBusy, setDemoBusy] = useState(false);
   const openDemo = async () => {
     setDemoBusy(true);
@@ -94,6 +108,7 @@ export function SignInPage() {
       title={titles[mode]}
       intro={mode === 'password' ? 'Access is by invitation during the beta.' : mode === 'magic' ? 'No password needed: we’ll email you a link that signs you in.' : 'We’ll email you a link to choose a new password.'}
     >
+      {deleted && <Notice tone="ok">Your account and everything in it have been deleted. Thanks for trying TradeTime.</Notice>}
       {linkError && <Notice tone="error">That link didn’t work: {linkError}. Request a new one below.</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
       {sent && <Notice tone="ok">{sent}</Notice>}

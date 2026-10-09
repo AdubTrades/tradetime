@@ -77,6 +77,15 @@ export const demo = {
   public: process.env.DEMO_PUBLIC === '1',
 };
 
+/**
+ * Beta support. FEEDBACK_WEBHOOK_URL (optional): a Discord or Slack incoming webhook; each piece of feedback is also
+ * posted there. SUPPORT_EMAIL (optional): shown on the privacy page and in the feedback form.
+ */
+export const feedbackConfig = {
+  webhookUrl: process.env.FEEDBACK_WEBHOOK_URL || null,
+  supportEmail: process.env.SUPPORT_EMAIL || null,
+};
+
 /** Economic events are fetched once for everyone with the server's FRED key (free from fred.stlouisfed.org). */
 export const fredApiKey = process.env.FRED_API_KEY || null;
 
