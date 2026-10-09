@@ -20,10 +20,13 @@ settings, storage SQL, and inviting yourself).
 
 ## 2. Vercel
 1. Sign up at vercel.com **with your GitHub account**, on the free **Hobby** plan.
-2. Go to **Add New → Project** and import the repository. Leave **Framework Preset: Other** and the root directory as is.
-   The build and install commands come from `vercel.json`.
+2. Go to **Add New → Project** and import the repository. Set **Application Preset** (sometimes called Framework Preset) to
+   **Other**. Vercel may pick **Services** because the repo has `apps/web` and `apps/server`; that shows an "Import
+   multi-service project" box with no Deploy button. Leave the root directory as `./`. The build and install commands
+   come from `vercel.json`.
 3. Before the first deploy, open **Environment Variables** and add the values below for the **Production** environment
-   only. Preview deployments then show a "not configured" message instead of using your live data.
+   only, in every row's **Environments** dropdown. Preview deployments then show a "not configured" message instead of
+   using your live data. Tip: paste a whole `KEY=value` block into the first **Key** box and Vercel splits it into rows.
 
 | Name | Value |
 |---|---|
