@@ -7,6 +7,8 @@ export default defineConfig({
     include: ['packages/*/src/**/*.test.ts', 'apps/server/src/**/*.test.ts'],
     // Each test file starts its own in-memory Postgres; give that room when the machine is busy.
     hookTimeout: 60_000,
+    // Some tests start their own in-memory Postgres inside the test, which can take several seconds under load.
+    testTimeout: 30_000,
     // Tests use in-memory Postgres; files they store go to a throwaway folder, never a real data folder.
     // A test-only JWT secret turns sign-in on, so API tests can sign their own tokens (see api.test.ts).
     // A test-only DEMO_SECRET switches the demo on.

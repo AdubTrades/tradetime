@@ -8,7 +8,8 @@
     "typecheck": "tsc -p .",
     "seed:demo": "TC_DATA_DIR=../../data-dev tsx --env-file-if-exists=.env.local src/scripts/seed-demo.ts",
     "vapid-keys": "tsx src/scripts/vapid-keys.ts",
-    "db:migrate": "tsx --env-file-if-exists=.env.local src/scripts/migrate.ts"
+    "db:migrate": "tsx --env-file-if-exists=.env.local src/scripts/migrate.ts",
+    "convert:mac": "TC_DATA_DIR=../../data-dev tsx src/scripts/convert-mac-data.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -18,6 +19,7 @@
     "croner": "^10.0.1",
     "csv-parse": "^7.0.3",
     "drizzle-orm": "0.45.3",
+    "fflate": "^0.8.3",
     "hono": "^4.13.11",
     "jose": "^6.2.12",
     "luxon": "^3.7.2",

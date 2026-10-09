@@ -86,6 +86,27 @@ Open the Vercel address and sign in.
 
 Then go to **Settings → Notifications → Turn on notifications** and send yourself a test.
 
+## 9. Bring your Mac data across
+Do this once you're signed in on the live site. Until you've checked the result, keep using the Mac app as normal.
+1. In the **Mac app**, go to **Settings → Backups → Back up now**. The zip lands in your backup folder.
+2. Convert it (or ask me to):
+   ```bash
+   pnpm --filter @tc/server convert:mac "/path/to/tradetime-backup-….zip"
+   ```
+   This first rehearses the import in a throwaway database and prints the Mac figures beside the cloud figures:
+   trades and days, net P&L, sessions and hours, expenses per financial year, payouts and files. It only writes the
+   export (to `~/Downloads/tradetime-from-mac-….zip`) if every record comes back unchanged.
+3. On the **live site**, go to **Settings → Your data → Import an export…**, choose that file and confirm. This replaces
+   the empty account with your data, screenshots included.
+4. Spot-check a few screens against the Mac app: the journal, last month's calendar, the time log FY total and the
+   expenses FY summary.
+5. From then on, use the cloud version only. Anything logged in the Mac app afterwards won't come across unless you
+   repeat these steps, which would replace the cloud data again. The Mac app can keep running, but quit it from the
+   menu bar if you don't want reminders twice.
+
+Each account can store 100 MB of files during the beta. If your screenshots come to more, the converter warns you;
+raise `TC_STORAGE_CAP_MB` on Vercel before importing.
+
 ## Day to day
 - **Updates:** I push to `cloud` and Vercel deploys in about a minute. Production deploys apply any new database
   migrations before the new version goes live.

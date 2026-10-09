@@ -211,7 +211,14 @@ Today: 31 tables in SQLite, about 185 database calls written in SQLite's "instan
   - the nightly backup
   - a light keep-alive request every few days, so the free Supabase project isn't paused for inactivity (check this still works under Supabase's current rules)
 
-### Phase 9 — Bring your data across (half a day)
+### Phase 9 — Bring your data across ✅ built 8 Oct 2026 (the real move happens after you deploy: `docs/deploy.md` §9)
+
+**As built:**
+- **Converter:** `pnpm --filter @tc/server convert:mac <backup.zip>` reads a Mac app backup (SQLite via Node's built-in `node:sqlite`, read-only) and writes an account export that Settings → Your data → Import takes, screenshots included. The two schemas have the same columns, so every table converts generically: JSON text is parsed, 0/1 becomes booleans, backup-only settings are dropped, and the Perth time zone is made explicit. The live `~/TradingCompanion` folder is refused; it only reads backups.
+- **Checks:** before writing anything, it imports into a throwaway in-memory database exactly as the app does. It checks every record comes back unchanged and that the app's own totals match the Mac data: trades and days, net P&L, sessions and hours, expenses per FY, payouts and files. If anything differs it stops without writing the file.
+- **Tested** with a Mac-shaped database built from the demo trader (every table, JSON, booleans and files). I also rehearsed on a copy of the 1 Oct backup in `backups-local`, but it's the very first backup and nearly empty, so the real rehearsal needs a fresh backup.
+
+**Original plan:**
 - **Import script:** reads your local `~/TradingCompanion` SQLite database and attachments, writes them into your cloud account, and uploads files to Storage.
 - **Checks:** compare counts and totals between old and new (trades, P&L per day, sessions and hours, expenses per FY, examples and screenshots).
 - **Rehearse first:** run it against a copy, never the live folder, until the numbers match.
