@@ -6,7 +6,8 @@
 -- the address or secret): existing Vault entries are updated and the job is replaced.
 
 create extension if not exists pg_cron;
-create extension if not exists pg_net;
+-- In the "extensions" schema, not public (Supabase's security advisor flags extensions in public).
+create extension if not exists pg_net with schema extensions;
 
 do $$
 declare
