@@ -61,7 +61,7 @@ jobs:
             --symmetric --cipher-algo AES256 --output "tradetime-db-$STAMP.tar.gz.gpg" "tradetime-db-$STAMP.tar.gz"
           rm -r "tradetime-db-$STAMP.tar.gz" "tradetime-db-$STAMP"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: tradetime-db-${{ env.STAMP }}
           path: tradetime-db-${{ env.STAMP }}.tar.gz.gpg
