@@ -17,6 +17,7 @@ import { auditEvent, auditUpdate } from './audit';
 import { autoReadingFor } from './checkins';
 import { db } from './context';
 import { getContract } from './contracts';
+import { usdFactor } from './fx';
 import { AppError } from './errors';
 import { assertListItem } from './lists';
 
@@ -80,6 +81,9 @@ async function build(input: TradeInput, tradeId: string) {
     if (err instanceof FillError) throw new AppError(422, err.message);
     throw err;
   }
+  // Forex P&L comes out in the quote currency: convert to USD per point once, and use that for every figure below
+  // (P&L, risk, the per-account snapshot), so stats and reports stay in USD.
+  const pointValue = c.pointValueCents * (await usdFactor(c, base.avgExit, input.tradingDay));
   const firstEntry = [...input.fills].sort((a, b) => a.at.localeCompare(b.at))[0]!.price;
 
   // Criteria snapshot and grade.
@@ -102,18 +106,18 @@ async function build(input: TradeInput, tradeId: string) {
     grading = { outsidePlan: g.outsidePlan, grade: g.grade };
   }
 
-  const plan = riskPlan(firstEntry, 1, c.pointValueCents, { stopPrice: input.stopPrice, targetPrice: input.targetPrice, riskPoints: input.riskPoints });
+  const plan = riskPlan(firstEntry, 1, pointValue, { stopPrice: input.stopPrice, targetPrice: input.targetPrice, riskPoints: input.riskPoints });
   const accounts = input.accounts.map((a) => {
     const fills: InputFill[] = a.fills ?? replicateFills(input.fills, a.multiplier);
     let r;
     try {
-      r = pnlFromFills(fills, c.pointValueCents);
+      r = pnlFromFills(fills, pointValue);
     } catch (err) {
       if (err instanceof FillError) throw new AppError(422, err.message);
       throw err;
     }
     const feesCents = a.feesCents ?? r.totalQty * c.feePerSideCents;
-    const risk = riskPlan(firstEntry, r.maxQty, c.pointValueCents, { stopPrice: input.stopPrice, riskPoints: input.riskPoints });
+    const risk = riskPlan(firstEntry, r.maxQty, pointValue, { stopPrice: input.stopPrice, riskPoints: input.riskPoints });
     return {
       row: {
         id: newId(),
@@ -121,7 +125,7 @@ async function build(input: TradeInput, tradeId: string) {
         accountId: a.accountId,
         multiplier: a.multiplier,
         feesCents,
-        pointValueCents: c.pointValueCents,
+        pointValueCents: pointValue,
         tickSize: c.tickSize,
         maxQty: r.maxQty,
         avgEntry: r.avgEntry,

@@ -1,5 +1,5 @@
 /**
- * Popular CME Group futures (CME, CBOT, NYMEX, COMEX), by root symbol only: TradeTime tracks NQ, ES, GC… rather
+ * Popular CME Group futures (CME, CBOT, NYMEX, COMEX), by root symbol only, plus FOREX.com spot forex pairs: TradeTime tracks NQ, ES, GC… rather
  * than individual contract months. Picking one in the app copies it into the user's own contract list (where fees can
  * be set), so these specs are only the starting point.
  *
@@ -7,18 +7,20 @@
  * futures.test.ts can check that tickSize × point value = tick value for every contract. Prices are in the units CME
  * quotes: grains and livestock in cents, Treasuries in decimal points (110'16 = 110.5), FX futures in USD per unit.
  */
-export type FuturesGroup = 'Equity index' | 'Energy' | 'Metals' | 'Grains' | 'Livestock' | 'Interest rates' | 'FX' | 'Crypto';
+export type FuturesGroup = 'Equity index' | 'Energy' | 'Metals' | 'Grains' | 'Livestock' | 'Interest rates' | 'FX' | 'Crypto' | 'Forex';
 
 export interface FuturesSpec {
   symbol: string;
   name: string;
-  exchange: 'CME' | 'CBOT' | 'NYMEX' | 'COMEX';
+  exchange: 'CME' | 'CBOT' | 'NYMEX' | 'COMEX' | 'FOREX.com';
   group: FuturesGroup;
   tickSize: number;
   /** Dollars (in cents) for a 1.0 move in the quoted price. */
   pointValueCents: number;
   /** Dollars (in cents) for one tick, from the contract specs; a cross-check on the two numbers above. */
   tickValueCents: number;
+  /** Currency the P&L comes out in before conversion: USD for futures, the quote (second) currency for forex. */
+  currency: string;
 }
 
 const f = (symbol: string, name: string, exchange: FuturesSpec['exchange'], group: FuturesGroup, tickSize: number, pointValueDollars: number, tickValueDollars: number): FuturesSpec => ({
@@ -29,7 +31,18 @@ const f = (symbol: string, name: string, exchange: FuturesSpec['exchange'], grou
   tickSize,
   pointValueCents: Math.round(pointValueDollars * 100),
   tickValueCents: tickValueDollars * 100,
+  currency: 'USD',
 });
+
+/**
+ * Spot forex as FOREX.com offers it, sized in units (10,000 = a mini lot). P&L is in the quote currency: 1 per unit
+ * per 1.0 move, converted to USD when the trade is saved (see `usdPerQuoteUnit`). Prices to a fifth of a pip
+ * (0.00001; 0.001 for yen pairs).
+ */
+const fx = (base: string, quote: string, name: string): FuturesSpec => {
+  const tickSize = quote === 'JPY' ? 0.001 : 0.00001;
+  return { symbol: `${base}${quote}`, name: `${base}/${quote} (${name})`, exchange: 'FOREX.com', group: 'Forex', tickSize, pointValueCents: 100, tickValueCents: tickSize * 100, currency: quote };
+};
 
 export const FUTURES_CATALOGUE: FuturesSpec[] = [
   // Equity index
@@ -106,22 +119,74 @@ export const FUTURES_CATALOGUE: FuturesSpec[] = [
   f('MBT', 'Micro Bitcoin', 'CME', 'Crypto', 5, 0.1, 0.5),
   f('ETH', 'Ether', 'CME', 'Crypto', 0.25, 50, 12.5),
   f('MET', 'Micro Ether', 'CME', 'Crypto', 0.5, 0.1, 0.05),
+
+  // Spot forex (FOREX.com): majors, then popular crosses
+  fx('EUR', 'USD', 'Euro / US Dollar'),
+  fx('GBP', 'USD', 'British Pound / US Dollar'),
+  fx('AUD', 'USD', 'Australian Dollar / US Dollar'),
+  fx('NZD', 'USD', 'New Zealand Dollar / US Dollar'),
+  fx('USD', 'JPY', 'US Dollar / Japanese Yen'),
+  fx('USD', 'CAD', 'US Dollar / Canadian Dollar'),
+  fx('USD', 'CHF', 'US Dollar / Swiss Franc'),
+  fx('USD', 'MXN', 'US Dollar / Mexican Peso'),
+  fx('USD', 'SGD', 'US Dollar / Singapore Dollar'),
+  fx('EUR', 'GBP', 'Euro / British Pound'),
+  fx('EUR', 'JPY', 'Euro / Japanese Yen'),
+  fx('EUR', 'AUD', 'Euro / Australian Dollar'),
+  fx('EUR', 'CAD', 'Euro / Canadian Dollar'),
+  fx('EUR', 'CHF', 'Euro / Swiss Franc'),
+  fx('EUR', 'NZD', 'Euro / New Zealand Dollar'),
+  fx('GBP', 'JPY', 'British Pound / Japanese Yen'),
+  fx('GBP', 'AUD', 'British Pound / Australian Dollar'),
+  fx('GBP', 'CAD', 'British Pound / Canadian Dollar'),
+  fx('GBP', 'CHF', 'British Pound / Swiss Franc'),
+  fx('GBP', 'NZD', 'British Pound / New Zealand Dollar'),
+  fx('AUD', 'JPY', 'Australian Dollar / Japanese Yen'),
+  fx('AUD', 'CAD', 'Australian Dollar / Canadian Dollar'),
+  fx('AUD', 'CHF', 'Australian Dollar / Swiss Franc'),
+  fx('AUD', 'NZD', 'Australian Dollar / New Zealand Dollar'),
+  fx('NZD', 'JPY', 'New Zealand Dollar / Japanese Yen'),
+  fx('NZD', 'CAD', 'New Zealand Dollar / Canadian Dollar'),
+  fx('NZD', 'CHF', 'New Zealand Dollar / Swiss Franc'),
+  fx('CAD', 'JPY', 'Canadian Dollar / Japanese Yen'),
+  fx('CAD', 'CHF', 'Canadian Dollar / Swiss Franc'),
+  fx('CHF', 'JPY', 'Swiss Franc / Japanese Yen'),
 ];
 
-export const FUTURES_GROUPS: FuturesGroup[] = ['Equity index', 'Energy', 'Metals', 'Grains', 'Livestock', 'Interest rates', 'FX', 'Crypto'];
+export const FUTURES_GROUPS: FuturesGroup[] = ['Equity index', 'Energy', 'Metals', 'Grains', 'Livestock', 'Interest rates', 'FX', 'Crypto', 'Forex'];
+
+/** "EUR/USD", "eur_usd" and "EURUSD" are the same instrument. */
+export const normaliseSymbol = (symbol: string): string => symbol.trim().toUpperCase().replace(/[/_]/g, '');
 
 const bySymbol = new Map(FUTURES_CATALOGUE.map((s) => [s.symbol, s]));
-export const findFutures = (symbol: string): FuturesSpec | undefined => bySymbol.get(symbol.trim().toUpperCase());
+export const findFutures = (symbol: string): FuturesSpec | undefined => bySymbol.get(normaliseSymbol(symbol));
+
+/**
+ * USD per unit of a contract's P&L currency, for converting a trade's P&L to USD. USD contracts: 1. Pairs with USD
+ * first (USD/JPY): 1 ÷ the average exit price, which is exact for a single exit. Other crosses (EUR/GBP): the day's
+ * reference rate for the quote currency, which the caller looks up (`crossRate`). Null if that rate is missing.
+ */
+export function usdPerQuoteUnit(contract: { symbol: string; currency?: string | null }, avgExit: number, crossRate?: number | null): number | null {
+  const currency = contract.currency || 'USD';
+  if (currency === 'USD') return 1;
+  if (normaliseSymbol(contract.symbol).startsWith('USD')) return 1 / avgExit;
+  return crossRate ?? null;
+}
+
+/** Whether converting this contract's P&L needs a looked-up rate (a cross without USD). */
+export const needsCrossRate = (contract: { symbol: string; currency?: string | null }): boolean =>
+  !!contract.currency && contract.currency !== 'USD' && !normaliseSymbol(contract.symbol).startsWith('USD');
 
 /** Catalogue entries matching a search ("gold", "gc", "nasdaq"), symbol matches first. */
 export function searchFutures(query: string): FuturesSpec[] {
-  const q = query.trim().toLowerCase();
+  const q = query.trim().toLowerCase().replace(/[/_]/g, '');
   if (!q) return FUTURES_CATALOGUE;
   const score = (s: FuturesSpec) => {
     const sym = s.symbol.toLowerCase();
     if (sym === q) return 0;
     if (sym.startsWith(q)) return 1;
     if (s.name.toLowerCase().split(/[\s(/-]+/).some((w) => w.startsWith(q))) return 2;
+    if (s.name.toLowerCase().replace(/\//g, '').includes(q)) return 3;
     if (s.name.toLowerCase().includes(q) || s.group.toLowerCase().includes(q)) return 3;
     return 9;
   };

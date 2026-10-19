@@ -1,0 +1,1 @@
+ALTER TABLE "tradetime"."trade_account" ALTER COLUMN "point_value_cents" SET DATA TYPE double precision;

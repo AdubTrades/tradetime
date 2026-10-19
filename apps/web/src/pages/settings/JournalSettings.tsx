@@ -33,7 +33,7 @@ function ContractsEditor() {
   return (
     <div>
       <div className="mb-2 text-sm font-medium">Contracts</div>
-      <p className="mb-2 text-xs text-muted">Search the list of popular CME Group futures to add one (they're also added for you when you pick one in a trade or import it), or add your own. P&L is calculated from point value. Fee per side prefills trade fees (commission + exchange fees per contract, each way).</p>
+      <p className="mb-2 text-xs text-muted">Search the list of popular CME Group futures and FOREX.com pairs to add one (they're also added for you when you pick one in a trade or import it), or add your own. P&L is calculated from point value. Fee per side prefills trade fees (commission + exchange fees per contract, each way).</p>
       <table className="w-full text-sm">
         <thead className="text-left text-xs text-muted">
           <tr>
@@ -52,8 +52,21 @@ function ContractsEditor() {
               <td className="py-1.5 font-medium">{c.symbol}</td>
               <td className="hidden py-1.5 text-muted sm:table-cell">{c.name}</td>
               <td className="tabular hidden py-1.5 text-right sm:table-cell">{c.tickSize}</td>
-              <td className="tabular py-1.5 text-right">{formatMoney(c.pointValueCents, 'USD')}</td>
-              <td className="tabular py-1.5 text-right">{formatMoney(Math.round(c.pointValueCents * c.tickSize), 'USD')}</td>
+              {c.currency && c.currency !== 'USD' ? (
+                <td colSpan={2} className="py-1.5 text-right text-xs text-muted">
+                  {c.currency} 1 per unit, shown in USD
+                </td>
+              ) : c.pointValueCents * c.tickSize < 1 ? (
+                <>
+                  <td className="tabular py-1.5 text-right">{formatMoney(c.pointValueCents, 'USD')}</td>
+                  <td className="py-1.5 text-right text-xs text-muted">per unit</td>
+                </>
+              ) : (
+                <>
+                  <td className="tabular py-1.5 text-right">{formatMoney(c.pointValueCents, 'USD')}</td>
+                  <td className="tabular py-1.5 text-right">{formatMoney(Math.round(c.pointValueCents * c.tickSize), 'USD')}</td>
+                </>
+              )}
               <td className="tabular py-1.5 text-right">{formatMoney(c.feePerSideCents, 'USD')}</td>
               <td className="py-1.5 text-right">
                 <Button variant="ghost" className="px-2" aria-label={`Edit ${c.symbol}`} onClick={() => setEditing(c)}>
@@ -65,7 +78,7 @@ function ContractsEditor() {
         </tbody>
       </table>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <ContractPicker value="" onChange={() => undefined} aria-label="Add from the futures list" placeholder="Add from CME Group futures…" className="max-w-[300px]" />
+        <ContractPicker value="" onChange={() => undefined} aria-label="Add from the futures list" placeholder="Add futures or forex…" className="max-w-[300px]" />
         <Button variant="ghost" onClick={() => setEditing('new')}>
           <Plus size={16} aria-hidden /> Add your own
         </Button>

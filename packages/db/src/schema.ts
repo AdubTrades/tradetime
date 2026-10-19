@@ -450,7 +450,8 @@ export const tradeAccount = app.table(
     multiplier: integer('multiplier').notNull().default(1),
     feesCents: integer('fees_cents').notNull().default(0),
     /** Contract spec at the time of the trade. */
-    pointValueCents: integer('point_value_cents').notNull(),
+    /** USD per 1.0 price move per contract or unit, after converting a non-USD quote (forex) at the time of the trade. */
+    pointValueCents: doublePrecision('point_value_cents').notNull(),
     tickSize: doublePrecision('tick_size').notNull(),
     // Cached results, recalculated from fills on every save.
     maxQty: integer('max_qty').notNull(),

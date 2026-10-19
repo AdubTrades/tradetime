@@ -200,6 +200,8 @@ export interface Contract {
   tickSize: number;
   pointValueCents: number;
   feePerSideCents: number;
+  /** P&L currency before conversion to USD: USD, or a forex pair's quote currency. */
+  currency: string;
   archived: boolean;
 }
 export interface AccountGroup {

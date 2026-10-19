@@ -1,7 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { formatLocal, gradeTrade, isOnTick, latestReadingBefore, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule, zoneLabel } from '@tc/domain';
+import { findFutures, formatLocal, gradeTrade, isOnTick, needsCrossRate, usdPerQuoteUnit, latestReadingBefore, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule, zoneLabel } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
 import { Dialog } from '../../components/Dialog';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
@@ -207,16 +207,29 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
     return rows as Fill[];
   }, [form, rollover]);
 
+  // Forex crosses (EUR/GBP…) need the day's rate to show P&L in USD, as the server converts it when saving.
+  const crossRate = useQuery({
+    queryKey: ['fx-rate', contract?.currency, form.tradingDay],
+    queryFn: () => api.get<{ rate: number }>(`/contracts/fx-rate?currency=${contract!.currency}&date=${form.tradingDay}`).then((r) => r.rate),
+    enabled: !!contract && needsCrossRate(contract) && /^\d{4}-\d{2}-\d{2}$/.test(form.tradingDay),
+    staleTime: Infinity,
+  });
+  const forex = findFutures(contract?.symbol ?? '')?.group === 'Forex';
+
   const preview = useMemo(() => {
     if (!fills || !contract) return null;
     try {
       const firstEntry = [...fills].sort((a, b) => a.at.localeCompare(b.at))[0]!.price;
-      const base = pnlFromFills(fills, contract.pointValueCents);
-      const plan = riskPlan(firstEntry, 1, contract.pointValueCents, { stopPrice: num(form.stop), targetPrice: num(form.target), riskPoints: num(form.riskPoints) });
+      const quoted = pnlFromFills(fills, contract.pointValueCents);
+      const toUsd = usdPerQuoteUnit(contract, quoted.avgExit, crossRate.data);
+      if (toUsd === null) return { error: crossRate.isError ? `Couldn’t get the ${contract.currency} to USD rate. Check your connection.` : `Getting the ${contract.currency} to USD rate…` };
+      const pointValue = contract.pointValueCents * toUsd;
+      const base = pnlFromFills(fills, pointValue);
+      const plan = riskPlan(firstEntry, 1, pointValue, { stopPrice: num(form.stop), targetPrice: num(form.target), riskPoints: num(form.riskPoints) });
       const rows = form.accounts.map((a) => {
         const gross = base.grossCents * a.multiplier;
         const fees = a.feesCents ?? base.totalQty * a.multiplier * contract.feePerSideCents;
-        const risk = plan.riskPoints ? Math.round(plan.riskPoints * contract.pointValueCents * base.maxQty * a.multiplier) : null;
+        const risk = plan.riskPoints ? Math.round(plan.riskPoints * pointValue * base.maxQty * a.multiplier) : null;
         return { ...a, gross, fees, net: gross - fees, risk };
       });
       const net = rows.reduce((s, r) => s + r.net, 0);
@@ -225,7 +238,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
     } catch (err) {
       return { error: (err as Error).message };
     }
-  }, [fills, contract, form.stop, form.target, form.riskPoints, form.accounts]);
+  }, [fills, contract, crossRate.data, crossRate.isError, form.stop, form.target, form.riskPoints, form.accounts]);
 
   const grade = play ? gradeTrade(criteria.map((c) => ({ mustHave: c.mustHave, checked: !!form.checks[c.id] })), play.gradeRules as GradeRule[]) : null;
   const offTick = contract
@@ -483,7 +496,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
               <Field label="Entry price">
                 <Input inputMode="decimal" value={form.entryPrice} onChange={(e) => set('entryPrice', e.target.value)} />
               </Field>
-              <Field label="Contracts">
+              <Field label={forex ? 'Units' : 'Contracts'} hint={forex ? '10,000 = a mini lot. P&L is shown in USD.' : undefined}>
                 <Input type="number" min={1} value={form.size} onChange={(e) => set('size', e.target.value)} />
               </Field>
               <Field label="Exit time">

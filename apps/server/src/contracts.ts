@@ -1,6 +1,6 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { schema } from '@tc/db';
-import { findFutures, newId } from '@tc/domain';
+import { findFutures, newId, normaliseSymbol } from '@tc/domain';
 import { db } from './context';
 import { AppError } from './errors';
 
@@ -32,21 +32,24 @@ export async function updateContract(id: string, patch: Partial<ContractInput>) 
 }
 
 /** The id a catalogue contract gets in a user's list: the same scheme as the seeded defaults (ct_es, ct_mnq…). */
-export const catalogueContractId = (symbol: string) => `ct_${symbol.trim().toLowerCase()}`;
+export const catalogueContractId = (symbol: string) => `ct_${normaliseSymbol(symbol).toLowerCase()}`;
 
 /**
  * The user's contract for a symbol, adding it from the futures catalogue (packages/domain/src/futures.ts) if they don't
  * have it yet. A contract they'd archived or deleted comes back. Returns null for a symbol that isn't in the catalogue.
  */
 export async function ensureContract(symbol: string) {
-  const sym = symbol.trim().toUpperCase();
-  const mine = (await db.select().from(contract).where(eq(contract.symbol, sym))).sort((a, b) => Number(!!a.deletedAt) - Number(!!b.deletedAt));
+  const sym = normaliseSymbol(symbol);
+  // "EUR/USD" and "EURUSD" are the same instrument.
+  const mine = (await db.select().from(contract))
+    .filter((c) => normaliseSymbol(c.symbol) === sym)
+    .sort((a, b) => Number(!!a.deletedAt) - Number(!!b.deletedAt));
   const live = mine.find((c) => !c.deletedAt);
   if (live) return live.archived ? updateContract(live.id, { archived: false }) : live;
   const spec = findFutures(sym);
   if (!spec) return null;
   const now = new Date().toISOString();
-  const values = { symbol: spec.symbol, name: spec.name, tickSize: spec.tickSize, pointValueCents: spec.pointValueCents, archived: false };
+  const values = { symbol: spec.symbol, name: spec.name, tickSize: spec.tickSize, pointValueCents: spec.pointValueCents, currency: spec.currency, archived: false };
   const [row] = await db
     .insert(contract)
     .values({ ...values, id: catalogueContractId(sym), sortOrder: (await listContracts()).length })

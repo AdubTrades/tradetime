@@ -3,6 +3,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { schema } from '@tc/db';
 import {
   findFutures,
+  normaliseSymbol,
   detectDateOrder,
   detectFormat,
   groupRoundTrips,
@@ -21,6 +22,7 @@ import { listAccounts } from './accounts';
 import { db } from './context';
 import { catalogueContractId, ensureContract, listContracts } from './contracts';
 import { AppError } from './errors';
+import { usdFactor } from './fx';
 import { getSettings } from './settings';
 import { createTrade, getTrade, updateTrade } from './trades';
 
@@ -129,29 +131,41 @@ async function analyse(opts: ImportOptions, { addContracts = false }: { addContr
   if (addContracts) for (const r of roots) await ensureContract(r);
   const contracts = await listContracts();
   const addsContracts: string[] = [];
+  const contractFor = (root: string) => contracts.find((x) => normaliseSymbol(x.symbol) === normaliseSymbol(root)) ?? null;
   for (const r of roots) {
-    if (contracts.some((c) => c.symbol === r)) continue;
+    if (contractFor(r)) continue;
     const spec = findFutures(r);
     if (spec) {
-      addsContracts.push(r);
-      contracts.push({ id: catalogueContractId(r), symbol: spec.symbol, feePerSideCents: 0, pointValueCents: spec.pointValueCents } as (typeof contracts)[number]);
+      addsContracts.push(spec.symbol);
+      contracts.push({ id: catalogueContractId(r), symbol: spec.symbol, feePerSideCents: 0, pointValueCents: spec.pointValueCents, currency: spec.currency } as (typeof contracts)[number]);
     }
   }
   const { rolloverTime } = getSettings();
 
   const trades: PreviewTrade[] = [];
   for (const [i, t] of merged.entries()) {
-    const c = contracts.find((x) => x.symbol === t.root) ?? null;
+    const c = contractFor(t.root);
     const issues: string[] = [];
     if (!c) issues.push(`${t.root} isn't in TradeTime’s futures list. Add it in Settings → Journal → Contracts`);
+    // Forex P&L is shown in USD, as it will be saved (see trades.ts).
+    let pointValue: number | null = null;
+    if (c) {
+      try {
+        const exits = t.accounts[0]?.fills ?? [];
+        const avgExit = pnlFromFills(exits, c.pointValueCents).avgExit;
+        pointValue = c.pointValueCents * (await usdFactor(c, avgExit, tradingDay(t.openedAt, rolloverTime)));
+      } catch (err) {
+        issues.push((err as Error).message);
+      }
+    }
     const skipped = t.accounts.filter((a) => opts.accountMap?.[a.account] === 'skip');
     const accounts = t.accounts
       .filter((a) => !skipped.includes(a))
       .map((a) => {
         const id = accountFor(a.account);
         let net: number | null = null;
-        if (c) {
-          const r = pnlFromFills(a.fills, c.pointValueCents);
+        if (c && pointValue !== null) {
+          const r = pnlFromFills(a.fills, pointValue);
           const fees = a.commissionCents || r.totalQty * c.feePerSideCents;
           net = r.grossCents - fees;
         }

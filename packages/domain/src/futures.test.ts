@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findFutures, FUTURES_CATALOGUE, FUTURES_GROUPS, searchFutures } from './futures';
+import { findFutures, FUTURES_CATALOGUE, FUTURES_GROUPS, needsCrossRate, searchFutures, usdPerQuoteUnit } from './futures';
 
 describe('futures catalogue', () => {
   it('has one entry per symbol, in a known group', () => {
@@ -25,5 +25,24 @@ describe('futures catalogue', () => {
     expect(searchFutures('nasdaq').map((s) => s.symbol)).toEqual(['NQ', 'MNQ']);
     expect(searchFutures('crypto').map((s) => s.symbol)).toEqual(['BTC', 'MBT', 'ETH', 'MET']);
     expect(searchFutures('')).toHaveLength(FUTURES_CATALOGUE.length);
+  });
+
+  it('has FOREX.com pairs, found however the symbol is written', () => {
+    expect(findFutures('EUR/USD')).toMatchObject({ symbol: 'EURUSD', exchange: 'FOREX.com', group: 'Forex', currency: 'USD', tickSize: 0.00001, pointValueCents: 100 });
+    expect(findFutures('usd_jpy')).toMatchObject({ symbol: 'USDJPY', currency: 'JPY', tickSize: 0.001 });
+    expect(searchFutures('eur/usd')[0]!.symbol).toBe('EURUSD');
+    expect(searchFutures('yen').length).toBeGreaterThan(5);
+    expect(FUTURES_CATALOGUE.filter((s) => s.group === 'Forex').every((s) => s.symbol.length === 6)).toBe(true);
+  });
+
+  it('converts P&L to USD: USD pairs as is, USD-first pairs by the exit price, crosses by the day’s rate', () => {
+    expect(usdPerQuoteUnit({ symbol: 'ES', currency: 'USD' }, 5000)).toBe(1);
+    expect(usdPerQuoteUnit({ symbol: 'EURUSD', currency: 'USD' }, 1.08)).toBe(1);
+    expect(usdPerQuoteUnit({ symbol: 'USDJPY', currency: 'JPY' }, 150)).toBeCloseTo(1 / 150, 12);
+    expect(usdPerQuoteUnit({ symbol: 'EURGBP', currency: 'GBP' }, 0.86, 1.3335)).toBe(1.3335);
+    expect(usdPerQuoteUnit({ symbol: 'EURGBP', currency: 'GBP' }, 0.86)).toBeNull();
+    expect(needsCrossRate({ symbol: 'EURGBP', currency: 'GBP' })).toBe(true);
+    expect(needsCrossRate({ symbol: 'USDJPY', currency: 'JPY' })).toBe(false);
+    expect(needsCrossRate({ symbol: 'NQ', currency: 'USD' })).toBe(false);
   });
 });

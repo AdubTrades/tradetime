@@ -43,6 +43,13 @@
       "when": 1792419766190,
       "tag": "0005_rls_policy_initplan",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792422546623,
+      "tag": "0006_trade_account_point_value_decimal",
+      "breakpoints": true
     }
   ]
 }

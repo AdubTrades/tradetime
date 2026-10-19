@@ -10,8 +10,8 @@ import { cn } from './ui';
 type Item = { kind: 'mine'; contract: Contract } | { kind: 'catalogue'; spec: FuturesSpec };
 
 /**
- * Type-to-search contract picker. Your own contracts come first; below them, matching CME Group futures from the
- * built-in list (packages/domain/src/futures.ts). Choosing one of those adds it to your contracts, then selects it.
+ * Type-to-search contract picker. Your own contracts come first; below them, matching CME Group futures and FOREX.com
+ * pairs from the built-in list (packages/domain/src/futures.ts). Choosing one of those adds it to your contracts, then selects it.
  */
 export function ContractPicker({
   value,
@@ -61,7 +61,7 @@ export function ContractPicker({
     const r = t.getBoundingClientRect();
     const below = window.innerHeight - r.bottom;
     const up = below < 300 && r.top > below;
-    const width = Math.max(r.width, 300);
+    const width = Math.max(r.width, 360);
     setPanelStyle({
       position: 'fixed',
       left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
@@ -189,7 +189,7 @@ export function ContractPicker({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="Search: NQ, gold, crude, 10-year…"
+                placeholder="Search: NQ, gold, crude, EUR/USD…"
                 aria-label="Search contracts"
                 aria-controls={listId}
                 aria-activedescendant={items[active] ? `${listId}-${active}` : undefined}
@@ -200,10 +200,10 @@ export function ContractPicker({
               />
             </div>
             <div id={listId} role="listbox" aria-label={label} className="overflow-y-auto p-1">
-              {items.length === 0 && <p className="px-2.5 py-3 text-sm text-muted">No futures match “{query}”. You can add your own in Settings → Journal → Contracts.</p>}
+              {items.length === 0 && <p className="px-2.5 py-3 text-sm text-muted">Nothing matches “{query}”. You can add your own in Settings → Journal → Contracts.</p>}
               {items.map((item, i) => {
                 const heading =
-                  i === 0 && item.kind === 'mine' ? 'Your contracts' : i === firstCatalogue ? 'Add from CME Group futures' : null;
+                  i === 0 && item.kind === 'mine' ? 'Your contracts' : i === firstCatalogue ? 'Add from futures and forex' : null;
                 const symbol = item.kind === 'mine' ? item.contract.symbol : item.spec.symbol;
                 const name = item.kind === 'mine' ? item.contract.name : item.spec.name;
                 const selected = item.kind === 'mine' && item.contract.id === value;
@@ -221,7 +221,7 @@ export function ContractPicker({
                       onClick={() => void choose(item)}
                       className={cn('flex h-10 w-full items-center gap-3 rounded-sm px-2.5 text-left text-sm pointer-coarse:h-11', i === active && 'bg-hover')}
                     >
-                      <span className="w-12 shrink-0 font-medium">{symbol}</span>
+                      <span className="w-16 shrink-0 font-medium">{symbol}</span>
                       <span className="min-w-0 flex-1 truncate text-secondary">{name}</span>
                       {item.kind === 'catalogue' ? (
                         adding === symbol ? (
