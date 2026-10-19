@@ -180,6 +180,8 @@ export function ContractPicker({
             style={panelStyle}
             className="z-[100] flex flex-col overflow-hidden rounded-lg border border-border bg-card text-text shadow-menu"
           >
+            {/* The search box is focused whenever the panel is open, so it shows no focus ring of its own
+                (inline, because the global :focus-visible rule in styles.css outranks utility classes). */}
             <div className="flex items-center gap-2 border-b border-border-subtle px-3">
               <Search size={15} className="shrink-0 text-muted" aria-hidden />
               <input
@@ -192,6 +194,7 @@ export function ContractPicker({
                 aria-controls={listId}
                 aria-activedescendant={items[active] ? `${listId}-${active}` : undefined}
                 className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-faint"
+                style={{ boxShadow: 'none' }}
                 autoComplete="off"
                 spellCheck={false}
               />
