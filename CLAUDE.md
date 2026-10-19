@@ -2,6 +2,8 @@
 
 - The build plan and confirmed product decisions are in `docs/plan.md`. Follow its phase order.
 - **Branches:** `main` is the local single-user Mac app (SQLite, launchd). `cloud` is the Supabase + Vercel multi-user version being built from `docs/cloud-beta-plan.md`. The notes below marked *(cloud)* apply to the `cloud` branch; the installed app keeps running from `main` until the cloud version replaces it.
+  - **The installed Mac app runs from its own git worktree, `~/Projects/tradetime-mac` (branch `main`)**, set in `~/Library/LaunchAgents/com.tradingcompanion.server.plist`. This folder (`~/Projects/trading-companion`, on `cloud`) is for development only, so building here never changes the installed app's screens or server. Changes to the Mac app: commit on `main`, then in `~/Projects/tradetime-mac` run `pnpm install && pnpm build` and `launchctl kickstart -k gui/$(id -u)/com.tradingcompanion.server`.
+  - Live cloud app: https://tradetime-zeta.vercel.app (Vercel production branch `cloud`; pushes deploy automatically).
 - *(cloud)* Database is Postgres via Drizzle (`packages/db`): Supabase when `DATABASE_URL` is set, otherwise PGlite (in-process Postgres) in `TC_DATA_DIR/pgdata`. Tables live in the `tradetime` schema.
   - Multi-user: every per-user table has `user_id` and a composite key `(user_id, id)`; foreign keys include `user_id`. Seeded defaults keep fixed ids per user (`st_trading`, `cet_admin`, `ct_mnq`…), created on first use by `ensureUserSeeded` (`packages/db/src/defaults.ts`).
   - Row-level security does the per-user filtering (migration `0001_rls.sql`): each request runs in `withUser(userId, fn)` (one transaction, `SET LOCAL ROLE tradetime_app`, `app.user_id` set), and `user_id` fills itself on insert. **Service code doesn't filter by user**; it uses the request-scoped `db` proxy from `context.ts`. Never query user tables through `rootDb()`.
@@ -30,7 +32,7 @@
 - *(main only)* archiver v8 has no published types; `apps/server/src/types/archiver.d.ts` covers the subset in use.
 - Migrations may be hand-extended after `drizzle-kit generate` for things Drizzle can't express (on `main`: seed rows and partial indexes such as `session_one_running_idx` in `0001_sessions.sql`; on `cloud`: the RLS policies in `0001_rls.sql`, written with `drizzle-kit generate --custom`). Never edit a migration that has already shipped. Add a new one instead.
 - Server errors: throw `AppError(status, message, detail?)` from `apps/server/src/errors.ts`. Overlap conflicts return 409 with `detail.overlaps`, and the UI then offers "Save anyway" (`force: true`).
-- To update the installed app after a phase: `pnpm build`, then `launchctl kickstart -k gui/$(id -u)/com.tradingcompanion.server`. Migrations apply on restart.
+- *(main)* To update the installed app: in `~/Projects/tradetime-mac`, `git pull`/check out the new `main` commit, `pnpm install && pnpm build`, then `launchctl kickstart -k gui/$(id -u)/com.tradingcompanion.server`. Migrations apply on restart.
 - Stay on `@tanstack/react-table` v8 (v9 has a different API).
 - Dialog forms reset in a `useEffect` keyed on `[open, record]` only. Don't add query data (lists, types) to the deps, or a refetch wipes what the user is typing.
 - *(main only)* Restore: `apps/server/src/restore.ts` validates and stages a backup into `restore-pending/`, writes a `pre-restore` safety zip, then exits. launchd restarts the app, and `restoreApply.ts` swaps the data in before the database opens. In dev (tsx watch) you restart by hand.
