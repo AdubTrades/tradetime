@@ -36,6 +36,13 @@
       "when": 1791524220178,
       "tag": "0004_feedback_and_account_deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792419766190,
+      "tag": "0005_rls_policy_initplan",
+      "breakpoints": true
     }
   ]
 }
