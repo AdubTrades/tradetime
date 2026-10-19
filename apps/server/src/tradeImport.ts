@@ -2,6 +2,7 @@ import { parse } from 'csv-parse/sync';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { schema } from '@tc/db';
 import {
+  findFutures,
   detectDateOrder,
   detectFormat,
   groupRoundTrips,
@@ -18,7 +19,7 @@ import {
 } from '@tc/domain';
 import { listAccounts } from './accounts';
 import { db } from './context';
-import { listContracts } from './contracts';
+import { catalogueContractId, ensureContract, listContracts } from './contracts';
 import { AppError } from './errors';
 import { getSettings } from './settings';
 import { createTrade, getTrade, updateTrade } from './trades';
@@ -87,7 +88,7 @@ export interface PreviewTrade {
   issues: string[];
 }
 
-async function analyse(opts: ImportOptions) {
+async function analyse(opts: ImportOptions, { addContracts = false }: { addContracts?: boolean } = {}) {
   const { headers, rows } = readCsv(opts.csv);
   const format = opts.format ?? detectFormat(headers);
   const mapping = format === 'generic' ? (opts.mapping ?? suggestImportMapping(headers)) : {};
@@ -97,7 +98,7 @@ async function analyse(opts: ImportOptions) {
   const zone = opts.zone ?? currentZone();
   if (format === 'generic') {
     const missing = (['time', 'side', 'qty', 'price', 'symbol'] as const).filter((f) => !mapping[f]);
-    if (missing.length) return { headers, format, mapping, zone, dateOrder, detectedOrder, missing, accountsInFile: [], trades: [] as PreviewTrade[], counts: { rows: rows.length, executions: 0, duplicates: 0, open: 0, issues: 0 }, rowIssues: [], merged: [] as ImportTrade[] };
+    if (missing.length) return { headers, format, mapping, zone, dateOrder, detectedOrder, missing, addsContracts: [] as string[], accountsInFile: [], trades: [] as PreviewTrade[], counts: { rows: rows.length, executions: 0, duplicates: 0, open: 0, issues: 0 }, rowIssues: [], merged: [] as ImportTrade[] };
   }
 
   const { executions, issues: rowIssues } = rowsToExecutions(rows, format, mapping, { zone, dateOrder, defaultAccount: opts.defaultAccount });
@@ -122,14 +123,27 @@ async function analyse(opts: ImportOptions) {
     const id = accountsInFile.find((a) => a.name === name)?.accountId;
     return id && id !== 'skip' ? id : null;
   };
+  // Contracts in the file that the user hasn't set up but the futures catalogue knows are added on import (and
+  // previewed with the catalogue's specs).
+  const roots = [...new Set(merged.map((t) => t.root))];
+  if (addContracts) for (const r of roots) await ensureContract(r);
   const contracts = await listContracts();
+  const addsContracts: string[] = [];
+  for (const r of roots) {
+    if (contracts.some((c) => c.symbol === r)) continue;
+    const spec = findFutures(r);
+    if (spec) {
+      addsContracts.push(r);
+      contracts.push({ id: catalogueContractId(r), symbol: spec.symbol, feePerSideCents: 0, pointValueCents: spec.pointValueCents } as (typeof contracts)[number]);
+    }
+  }
   const { rolloverTime } = getSettings();
 
   const trades: PreviewTrade[] = [];
   for (const [i, t] of merged.entries()) {
     const c = contracts.find((x) => x.symbol === t.root) ?? null;
     const issues: string[] = [];
-    if (!c) issues.push(`${t.root} isn't a contract in TradeTime — add it in Settings → Contracts`);
+    if (!c) issues.push(`${t.root} isn't in TradeTime’s futures list. Add it in Settings → Journal → Contracts`);
     const skipped = t.accounts.filter((a) => opts.accountMap?.[a.account] === 'skip');
     const accounts = t.accounts
       .filter((a) => !skipped.includes(a))
@@ -171,6 +185,7 @@ async function analyse(opts: ImportOptions) {
     dateOrder,
     detectedOrder,
     missing: [] as string[],
+    addsContracts,
     accountsInFile,
     trades,
     merged,
@@ -188,7 +203,7 @@ export async function previewImport(opts: ImportOptions) {
 
 /** Import all trades without errors. New trades are flagged "needs review"; fills matching a live-logged trade attach to it. */
 export async function commitImport(opts: ImportOptions) {
-  const a = await analyse(opts);
+  const a = await analyse(opts, { addContracts: true });
   if (a.missing.length) throw new AppError(422, `Choose columns for: ${a.missing.join(', ')}`);
   // Remember account mappings for next time.
   for (const acc of a.accountsInFile) {

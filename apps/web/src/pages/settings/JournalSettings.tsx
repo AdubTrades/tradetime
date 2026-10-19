@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { formatMoney } from '@tc/domain';
 import { Dialog } from '../../components/Dialog';
 import { MoneyInput } from '../../components/MoneyInput';
+import { ContractPicker } from '../../components/ContractPicker';
 import { Button, Card, Field, Input, Select } from '../../components/ui';
 import { api, type AccountGroup, type Contract } from '../../lib/api';
 import { useAccounts } from '../../lib/expenses';
@@ -32,7 +33,7 @@ function ContractsEditor() {
   return (
     <div>
       <div className="mb-2 text-sm font-medium">Contracts</div>
-      <p className="mb-2 text-xs text-muted">P&L is calculated from point value. Fee per side prefills trade fees (commission + exchange fees per contract, each way).</p>
+      <p className="mb-2 text-xs text-muted">Search the list of popular CME Group futures to add one (they're also added for you when you pick one in a trade or import it), or add your own. P&L is calculated from point value. Fee per side prefills trade fees (commission + exchange fees per contract, each way).</p>
       <table className="w-full text-sm">
         <thead className="text-left text-xs text-muted">
           <tr>
@@ -63,9 +64,12 @@ function ContractsEditor() {
           ))}
         </tbody>
       </table>
-      <Button className="mt-2" onClick={() => setEditing('new')}>
-        <Plus size={16} aria-hidden /> Add contract
-      </Button>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <ContractPicker value="" onChange={() => undefined} aria-label="Add from the futures list" placeholder="Add from CME Group futures…" className="max-w-[300px]" />
+        <Button variant="ghost" onClick={() => setEditing('new')}>
+          <Plus size={16} aria-hidden /> Add your own
+        </Button>
+      </div>
       <ContractDialog contract={editing === 'new' ? null : editing} open={editing !== null} onClose={() => setEditing(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['contracts'] })} />
     </div>
   );

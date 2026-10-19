@@ -17,6 +17,15 @@
         "cd apps/web && VITE_SUPABASE_URL=http://127.0.0.1:54399 VITE_SUPABASE_PUBLISHABLE_KEY=placeholder-key exec /Users/adubtrades/.local/bin/pnpm exec vite --port 5174 --strictPort"
       ],
       "port": 5174
+    },
+    {
+      "name": "dev-local",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "VITE_SUPABASE_URL= VITE_SUPABASE_PUBLISHABLE_KEY= SUPABASE_URL= SUPABASE_PUBLISHABLE_KEY= exec /Users/adubtrades/.local/bin/pnpm dev"
+      ],
+      "port": 5173
     }
   ]
 }

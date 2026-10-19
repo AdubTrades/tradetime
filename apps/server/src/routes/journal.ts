@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { GRADES } from '@tc/domain';
 import { getAttachment } from '../attachments';
-import { createContract, deleteAccountGroup, listAccountGroups, listContracts, saveAccountGroup, updateContract } from '../contracts';
+import { createContract, deleteAccountGroup, ensureContract, listAccountGroups, listContracts, saveAccountGroup, updateContract } from '../contracts';
 import { AppError } from '../errors';
 import { body, cents, instant, isoDate } from '../http';
 import { addCriterion, addExample, createPlay, deleteExample, getPlay, listPlays, updateCriterion, updateExample, updatePlay } from '../plays';
@@ -34,6 +34,13 @@ const contractSchema = z.object({
 export const contractRoutes = new Hono()
   .get('/', async (c) => c.json(await listContracts()))
   .post('/', async (c) => c.json(await createContract(await body(c.req, contractSchema)), 201))
+  /** Add a contract from the futures catalogue (or return the user's own one for that symbol). */
+  .post('/catalogue', async (c) => {
+    const { symbol } = await body(c.req, z.object({ symbol: z.string().trim().min(1).max(12) }));
+    const row = await ensureContract(symbol);
+    if (!row) throw new AppError(404, `${symbol.toUpperCase()} isn't in the futures list`);
+    return c.json(row, 201);
+  })
   .patch('/:id', async (c) => c.json(await updateContract(c.req.param('id'), await body(c.req, contractSchema.partial().strict()))));
 
 const groupSchema = z.object({

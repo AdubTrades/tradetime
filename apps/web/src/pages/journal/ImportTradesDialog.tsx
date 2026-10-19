@@ -33,6 +33,8 @@ interface Preview {
     issues: string[];
   }[];
   counts: { rows: number; executions: number; duplicates: number; open: number; issues: number };
+  /** Contracts in the file that will be added from the futures list on import. */
+  addsContracts?: string[];
   rowIssues: { line: number; message: string }[];
 }
 
@@ -327,6 +329,12 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
                   </table>
                   {p.trades.length === 0 && <p className="p-4 text-center text-muted">{p.counts.duplicates ? 'Everything in this file has already been imported.' : 'No complete trades found.'}</p>}
                 </div>
+                {!!p.addsContracts?.length && (
+                  <p className="mt-2 text-xs text-muted">
+                    {p.addsContracts.join(', ')} will be added to your contracts from the CME Group futures list. Set fees for {p.addsContracts.length === 1 ? 'it' : 'them'} in
+                    Settings → Journal → Contracts.
+                  </p>
+                )}
                 {p.counts.open > 0 && <p className="mt-2 text-xs text-muted">{p.counts.open} fills belong to a trade that's still open at the end of the file; they'll import with your next export.</p>}
                 {p.rowIssues.length > 0 && (
                   <details className="mt-2 text-xs text-muted">

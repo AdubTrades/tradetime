@@ -11,6 +11,7 @@ import { api, type Attachment, type AttachmentLink, type StateReading, type Trad
 import { useDayReadings } from '../../lib/checkins';
 import { ReadingChips } from '../../components/ReadingSummary';
 import { useAccounts, useList } from '../../lib/expenses';
+import { ContractPicker } from '../../components/ContractPicker';
 import { useAccountGroups, useContracts, useJournalMutation, usePlays } from '../../lib/journal';
 import { instantToLocalTime, tradingDayTimeToInstant } from '../../lib/localTime';
 import { useSettings } from '../../lib/settings';
@@ -351,15 +352,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
             <Input type="date" value={form.tradingDay} disabled={imported} onChange={(e) => set('tradingDay', e.target.value)} />
           </Field>
           <Field label="Contract">
-            <Select value={form.contractId} disabled={imported} onChange={(e) => set('contractId', e.target.value)}>
-              {contracts
-                .filter((c) => !c.archived || c.id === form.contractId)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.symbol}
-                  </option>
-                ))}
-            </Select>
+            <ContractPicker value={form.contractId} disabled={imported} onChange={(id) => set('contractId', id)} />
           </Field>
           {imported ? (
             <div className="space-y-1">

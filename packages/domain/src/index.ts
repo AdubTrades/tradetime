@@ -10,3 +10,4 @@ export * from './checkins';
 export * from './calendar';
 export * from './tradeImport';
 export * from './errorReport';
+export * from './futures';

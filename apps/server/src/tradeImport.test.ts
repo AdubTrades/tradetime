@@ -115,9 +115,43 @@ describe('NinjaTrader import', () => {
 
   it('skips accounts set to skip and flags unknown contracts', () =>
     asUser(async () => {
-      const csv = [nt, 'RTY 12-26,Buy,1,2300.0,30/09/2026 21:40:00,x1,Entry,1 L,o,E,$1,1,LFE-0001,Lucid', 'RTY 12-26,Sell,1,2301.0,30/09/2026 21:45:00,x2,Exit,-,o,E,$1,1,LFE-0001,Lucid'].join('\n');
+      // XYZ is in neither the user's contracts nor the futures catalogue.
+      const csv = [nt, 'XYZ 12-26,Buy,1,2300.0,30/09/2026 21:40:00,x1,Entry,1 L,o,E,$1,1,LFE-0001,Lucid', 'XYZ 12-26,Sell,1,2301.0,30/09/2026 21:45:00,x2,Exit,-,o,E,$1,1,LFE-0001,Lucid'].join('\n');
       const p = await imp.previewImport({ csv, accountMap: { 'LFE-0001': a1, 'LFE-0002': 'skip' } });
       expect(p.trades[0]!.accounts.map((a) => a.name)).toEqual(['LFE-0001']);
-      expect(p.trades.find((t) => t.symbol === 'RTY')!.issues[0]).toMatch(/isn't a contract/);
+      expect(p.trades.find((t) => t.symbol === 'XYZ')!.issues[0]).toMatch(/isn't in TradeTime’s futures list/);
     }));
+});
+
+describe('contracts from the futures catalogue', () => {
+  it('adds a catalogue contract once, brings back an archived one, and prefers the user’s own', () =>
+    asUser(async () => {
+      const gc = (await contracts.ensureContract('gc'))!;
+      expect(gc).toMatchObject({ id: 'ct_gc', symbol: 'GC', name: 'Gold', tickSize: 0.1, pointValueCents: 10000, archived: false });
+      expect((await contracts.ensureContract('GC'))!.id).toBe('ct_gc');
+      await contracts.updateContract('ct_gc', { archived: true });
+      expect((await contracts.ensureContract('GC'))!.archived).toBe(false);
+      // A contract the user made themselves wins over the catalogue.
+      const custom = await contracts.createContract({ symbol: 'CL', name: 'My crude', tickSize: 0.01, pointValueCents: 100000 });
+      expect((await contracts.ensureContract('CL'))!.id).toBe(custom.id);
+      expect(await contracts.ensureContract('NOPE')).toBeNull();
+      expect((await contracts.listContracts()).filter((c) => c.symbol === 'GC')).toHaveLength(1);
+    }));
+
+  it('imports trades in a contract the user hasn’t set up, adding it from the catalogue', async () => {
+    const gold = [HEADER, 'GC 12-26,Buy,1,"2,650.0",29/09/2026 21:31:05,g1,Entry,1 L,o1,Entry,$1.00,1,LFE-0001,Lucid', 'GC 12-26,Sell,1,"2,652.5",29/09/2026 21:40:00,g2,Exit,-,o2,Exit,$1.00,1,LFE-0001,Lucid'].join('\n');
+    const accountMap = { 'LFE-0001': a1 };
+    await asUser(async () => {
+      const p = await imp.previewImport({ csv: gold, accountMap });
+      expect(p.addsContracts).toEqual(['GC']);
+      expect(p.trades).toMatchObject([{ symbol: 'GC', status: 'new', netCents: 25000 - 200 }]);
+      // Previewing doesn't add anything.
+      expect((await contracts.listContracts()).some((c) => c.symbol === 'GC')).toBe(false);
+    });
+    await asUser(async () => {
+      const res = await imp.commitImport({ csv: gold, accountMap });
+      expect(res.created).toBe(1);
+      expect((await contracts.listContracts()).find((c) => c.symbol === 'GC')?.id).toBe('ct_gc');
+    });
+  });
 });
