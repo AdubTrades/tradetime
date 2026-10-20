@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router';
-import { ChevronRight, Clock, Percent, Receipt, Wallet, type LucideIcon } from 'lucide-react';
+import { ChevronRight, Clock, Percent, Plus, Receipt, Wallet, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { durationMinutes, financialYear, formatDuration, formatMoney, weekStart } from '@tc/domain';
-import { CardHeader, cn, ViewLink } from '../../components/ui';
+import { Button, CardHeader, cn, ViewLink } from '../../components/ui';
 import { useExpenses, useFySummary } from '../../lib/expenses';
 import { useSessions } from '../../lib/sessions';
 
@@ -20,7 +20,7 @@ function Row({ to, icon: Icon, label, sub, value, valueClass }: { to: string; ic
   );
 }
 
-export function BusinessCard({ fyStartYear, today }: { fyStartYear: number; today: string }) {
+export function BusinessCard({ fyStartYear, today, onAdd }: { fyStartYear: number; today: string; onAdd: () => void }) {
   const fy = financialYear(fyStartYear);
   const { data: summary } = useFySummary(fyStartYear);
   const { data: expenses = [] } = useExpenses(fyStartYear);
@@ -33,7 +33,14 @@ export function BusinessCard({ fyStartYear, today }: { fyStartYear: number; toda
 
   return (
     <section aria-labelledby="bz-h" className="card flex min-w-0 flex-[1_1_280px] flex-col gap-4 p-6">
-      <CardHeader id="bz-h" title="Business" description={`FY ${fy.label}, in AUD`} action={<ViewLink to="/expenses">Expenses</ViewLink>} />
+      <CardHeader id="bz-h" title="Business" description={`FY ${fy.label}, in AUD`} action={
+          <>
+            <Button size="sm" onClick={onAdd} aria-label="Add an expense">
+              <Plus size={14} aria-hidden /> Add
+            </Button>
+            <ViewLink to="/expenses">Expenses</ViewLink>
+          </>
+        } />
       <div className="-mt-5 flex flex-col gap-2">
         <Row to="/expenses" icon={Receipt} label="Expenses" sub={`${t?.count ?? 0} expense${t?.count === 1 ? '' : 's'}, inc GST`} value={formatMoney(t?.incGstCents ?? 0)} />
         <Row

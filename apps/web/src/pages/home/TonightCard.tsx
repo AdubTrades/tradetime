@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { Plus } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
 import { currentZone, durationMinutes, formatDuration, formatLocal, stats } from '@tc/domain';
@@ -45,12 +46,12 @@ function useUsualSessionMinutes(types: SessionType[], today: string): number | n
 }
 
 /** The day's agenda (or the last session's result) beside Performance. The session timer lives in the page header. */
-export function TonightCard({ now, today, types, trades, revealed }: { now: Date; today: string; types: SessionType[]; trades: TradeRow[]; revealed: boolean }) {
+export function TonightCard({ now, today, types, trades, revealed, onAdd }: { now: Date; today: string; types: SessionType[]; trades: TradeRow[]; revealed: boolean; onAdd: () => void }) {
   const [mode, setMode] = useState<'tonight' | 'last'>('tonight');
   return (
     <section aria-label="Tonight" className="flex min-w-0 flex-[1_1_340px] flex-col rounded-xl bg-dark text-dark-text">
       <div className="flex min-w-0 flex-1 flex-col gap-[18px] px-6 py-[22px]">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <SegmentedTabs
             dark
             label="Dashboard mode"
@@ -61,9 +62,19 @@ export function TonightCard({ now, today, types, trades, revealed }: { now: Date
               { value: 'last', label: 'Last session' },
             ]}
           />
-          <Link to="/calendar" className="rounded-sm py-3 text-[13px] text-[#d6d5d1] hover:text-dark-text">
-            Calendar →
-          </Link>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onAdd}
+              aria-label="Add a calendar event"
+              className="inline-flex h-9 items-center gap-1 rounded-sm border border-dark-border px-2.5 text-[13px] text-dark-text hover:bg-dark-divider pointer-coarse:h-11"
+            >
+              <Plus size={14} aria-hidden /> Add
+            </button>
+            <Link to="/calendar" className="rounded-sm px-2 py-3 text-[13px] text-[#d6d5d1] hover:text-dark-text">
+              Calendar →
+            </Link>
+          </div>
         </div>
         {mode === 'tonight' ? <Agenda now={now} today={today} types={types} /> : <LastSession trades={trades} revealed={revealed} today={today} />}
       </div>

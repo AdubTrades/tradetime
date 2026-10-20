@@ -75,13 +75,13 @@ export function SessionTimer({
   if (layout === 'compact') {
     const clockText = running ? elapsedClock(running.start, now) : '00:00:00';
     return (
-      <div ref={rootRef} className="flex items-center gap-2">
+      <div ref={rootRef} className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
         {running ? (
           <>
             <Link
               to="/time-log"
               title={`${runningType?.name ?? 'Session'} since ${formatLocal(running.start, 'HH:mm')}${longRunning ? `: running for ${formatDuration(minutes)}. Stop it at the right time on the Time log.` : ''}`}
-              className="flex h-11 items-center gap-2 rounded-md border border-border bg-card px-3 shadow-card hover:bg-hover"
+              className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 shadow-card hover:bg-hover sm:flex-none"
             >
               <span className={cn('h-[7px] w-[7px] rounded-full', longRunning ? 'bg-warning' : 'bg-profit')} aria-hidden />
               <span className="hidden max-w-[8rem] truncate text-[13px] text-muted sm:inline">{runningType?.name ?? 'Session'}</span>
@@ -104,7 +104,7 @@ export function SessionTimer({
               type="button"
               disabled={stop.isPending}
               onClick={() => stop.mutate(undefined)}
-              className="flex h-11 items-center gap-2 rounded-md bg-text px-4 text-sm font-semibold text-card hover:opacity-90 disabled:opacity-50"
+              className="flex h-11 shrink-0 items-center gap-2 rounded-md bg-text px-4 text-sm font-semibold text-card hover:opacity-90 disabled:opacity-50"
             >
               <Square size={13} fill="currentColor" aria-hidden /> Stop
             </button>
@@ -113,7 +113,7 @@ export function SessionTimer({
           <>
             <Select
               aria-label="Activity"
-              className="w-[150px]"
+              className="min-w-0 flex-1 sm:w-[150px] sm:flex-none"
               value={selected?.id}
               onChange={(e) => {
                 setTypeId(e.target.value);
@@ -135,7 +135,7 @@ export function SessionTimer({
               disabled={!selected || start.isPending}
               onClick={() => selected && begin(selected)}
               title={start.error?.message}
-              className="flex h-11 items-center gap-2 rounded-md bg-ember px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              className="flex h-11 shrink-0 items-center gap-2 rounded-md bg-ember px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
             >
               <Play size={14} fill="currentColor" aria-hidden /> Start
             </button>

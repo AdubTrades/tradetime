@@ -4,7 +4,6 @@ import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useState } from 'react';
 import { currentZone, financialYear, financialYearOf, tradingDay } from '@tc/domain';
-import { MenuButton } from '../../components/Menu';
 import { SessionTimer } from '../../components/SessionTimer';
 import { Button } from '../../components/ui';
 import { api } from '../../lib/api';
@@ -62,19 +61,11 @@ function HomeDashboard() {
             {firstName ? `, ${firstName}` : ''}
           </h1>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
-          <div className="flex items-center gap-2">
-          <MenuButton
-            label="Add"
-            items={[
-              { label: 'Event', onSelect: () => setDialog('event') },
-              { label: 'Expense', onSelect: () => setDialog('expense') },
-            ]}
-          />
-          <Button variant="primary" className="h-11 px-[18px]" onClick={() => setDialog('trade')}>
+        {/* One row on a phone: Log trades and the timer controls share the same height and edges. */}
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end sm:gap-3">
+          <Button variant="primary" className="h-11 shrink-0 px-[18px]" onClick={() => setDialog('trade')}>
             Log trades
           </Button>
-          </div>
           <SessionTimer types={types} longSessionHours={settings.longSessionHours} layout="compact" />
         </div>
       </header>
@@ -83,7 +74,7 @@ function HomeDashboard() {
 
       <div className="flex flex-wrap gap-6">
         <PerformanceCard trades={trades} today={today} fyLabel={fy.label} revealed={revealed} onReveal={setRevealed} canHide={settings.homeHidePnl} />
-        <TonightCard now={now} today={today} types={types} trades={trades} revealed={revealed} />
+        <TonightCard now={now} today={today} types={types} trades={trades} revealed={revealed} onAdd={() => setDialog('event')} />
       </div>
 
       <div className="flex flex-wrap gap-6">
@@ -92,7 +83,7 @@ function HomeDashboard() {
       </div>
 
       <div className="flex flex-wrap gap-6">
-        <BusinessCard fyStartYear={fy.startYear} today={today} />
+        <BusinessCard fyStartYear={fy.startYear} today={today} onAdd={() => setDialog('expense')} />
         <TodoCard today={today} />
       </div>
 
