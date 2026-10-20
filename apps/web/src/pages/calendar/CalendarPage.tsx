@@ -1,9 +1,9 @@
-import { ChevronLeft, ChevronRight, NotebookPen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, NotebookPen, SlidersHorizontal } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatLocal, monthWeeks, tradingDay } from '@tc/domain';
 import { Pnl } from '../../components/GradeBadge';
-import { Button, cn, PageHeader, SummaryStrip } from '../../components/ui';
+import { Button, buttonClass, cn, PageHeader, SummaryStrip } from '../../components/ui';
 import type { DayFigures, MarketEvent, OccurrenceView } from '../../lib/api';
 import { hoursLabel, LAYERS, useCalendarRange, useEventTypes, useLayers, type LayerId } from '../../lib/calendar';
 import { usePnlCurrency } from '../../lib/pnlCurrency';
@@ -24,6 +24,52 @@ const LAYER_DOT: Record<LayerId, string> = {
   journal: 'var(--text-secondary)',
   mine: 'currentColor',
 };
+
+/** Phones: the layer switches behind one button, so they don't take two rows of pills above the month. */
+function LayersMenu({ layers, onToggle, className }: { layers: Set<LayerId>; onToggle: (id: LayerId) => void; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', onDown, true);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  const hidden = LAYERS.length - LAYERS.filter((l) => layers.has(l.id)).length;
+  return (
+    <div ref={ref} className={cn('relative', className)}>
+      <button
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={cn(buttonClass('secondary'), 'h-10 gap-2 text-[13px]', hidden > 0 && 'border-border-strong bg-hover')}
+      >
+        <SlidersHorizontal size={15} aria-hidden /> Layers
+        {hidden > 0 && <span className="rounded-full bg-text px-1.5 text-[11px] leading-5 text-card">{hidden} off</span>}
+      </button>
+      {open && (
+        <div role="group" aria-label="Show on calendar" className="absolute right-0 z-50 mt-1.5 w-60 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-1 shadow-menu">
+          {LAYERS.map((l) => {
+            const on = layers.has(l.id);
+            return (
+              <label key={l.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-2.5 text-sm hover:bg-hover">
+                <input type="checkbox" checked={on} onChange={() => onToggle(l.id)} className="h-4 w-4" />
+                <span className="h-[7px] w-[7px] rounded-full" style={{ background: LAYER_DOT[l.id] }} aria-hidden />
+                {l.label}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const NO_TRADE_HATCH = 'bg-[repeating-linear-gradient(135deg,transparent_0,transparent_6px,var(--border)_6px,var(--border)_7px)]';
 
@@ -97,7 +143,7 @@ export function CalendarPage() {
                 Today
               </Button>
             </div>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Show on calendar">
+            <div className="hidden flex-wrap gap-1.5 sm:flex" role="group" aria-label="Show on calendar">
               {LAYERS.map((l) => {
                 const on = layers.has(l.id);
                 return (
@@ -117,6 +163,7 @@ export function CalendarPage() {
                 );
               })}
             </div>
+            <LayersMenu layers={layers} onToggle={toggleLayer} className="ml-auto sm:hidden" />
           </div>
 
           <SummaryStrip
