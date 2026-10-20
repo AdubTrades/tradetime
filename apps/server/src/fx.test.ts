@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as accounts from './accounts';
 import * as contracts from './contracts';
-import { setRangeFetcher, setRateFetcher, usdRate, usdRates } from './fx';
+import { setRangeFetcher, setRateFetcher, usdRate, usdRates, usdRatesSinceFirstTrade } from './fx';
 import { getAppState } from './settings';
 import { asUser, useTestDb } from './testing';
 import * as trades from './trades';
@@ -170,5 +170,59 @@ describe('usdRates (a range of days, for showing totals in AUD)', () => {
       await expect(usdRates('AUD', '2026-09-28', '2026-09-25')).rejects.toThrow(/Invalid/);
       await expect(usdRates('A', '2026-09-25', '2026-09-28')).rejects.toThrow(/Invalid/);
       await expect(usdRates('AUD', '2025-01-01', '2026-09-28')).rejects.toThrow(/at most/);
+    }));
+});
+
+describe('usdRatesSinceFirstTrade (everything the app needs to show P&L in AUD)', () => {
+  const calls: { from: string; to: string }[] = [];
+  beforeEach(() => {
+    calls.length = 0;
+    // Every weekday has a rate, as the ECB feed does.
+    setRangeFetcher(async (_currency, from, to) => {
+      calls.push({ from, to });
+      const out: Record<string, number> = {};
+      for (let d = new Date(`${from}T00:00:00Z`); d <= new Date(`${to}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
+        if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) out[d.toISOString().slice(0, 10)] = 0.65;
+      }
+      return out;
+    });
+  });
+  const mnqTrade = (day: string) => ({
+    tradingDay: day,
+    contractId: 'ct_mnq',
+    fills: [
+      { at: `${day}T13:31:00Z`, side: 'buy' as const, qty: 1, price: 20000 },
+      { at: `${day}T13:38:00Z`, side: 'sell' as const, qty: 1, price: 20010 },
+    ],
+    accounts: [{ accountId: acct, multiplier: 1, feesCents: 0 }],
+  });
+
+  it('is empty when there are no trades, and asks nothing', () =>
+    asUser(async () => {
+      expect(await usdRatesSinceFirstTrade('AUD')).toEqual({});
+      expect(calls).toEqual([]);
+    }));
+
+  it('covers every day from the first trade to today, including weekends', () =>
+    asUser(async () => {
+      const first = new Date(Date.now() - 20 * 86_400_000).toISOString().slice(0, 10);
+      await trades.createTrade(mnqTrade(first));
+      const rates = await usdRatesSinceFirstTrade('AUD');
+      const today = new Date().toISOString().slice(0, 10);
+      expect(Object.keys(rates).sort()[0]).toBe(first);
+      expect(Object.keys(rates).sort().at(-1)).toBe(today);
+      expect(Object.keys(rates)).toHaveLength(21);
+      expect(Object.values(rates).every((r) => r === 0.65)).toBe(true);
+      expect(calls).toHaveLength(1);
+    }));
+
+  it('a history longer than a year is fetched in year-sized pieces', () =>
+    asUser(async () => {
+      const first = new Date(Date.now() - 500 * 86_400_000).toISOString().slice(0, 10);
+      await trades.createTrade(mnqTrade(first));
+      const rates = await usdRatesSinceFirstTrade('AUD');
+      expect(Object.keys(rates)).toHaveLength(501);
+      expect(calls.length).toBeGreaterThanOrEqual(2);
+      for (const c of calls) expect((Date.parse(c.to) - Date.parse(c.from)) / 86_400_000).toBeLessThan(380);
     }));
 });

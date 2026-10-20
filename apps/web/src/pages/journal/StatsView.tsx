@@ -5,11 +5,11 @@ import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import type { TradeRow } from '../../lib/api';
 import { useAccounts, useList } from '../../lib/expenses';
 import { useContracts, usePlays } from '../../lib/journal';
+import { moneyText, usePnlCurrency } from '../../lib/pnlCurrency';
 
 // ECharts is large; load it only when stats are shown.
 const LineChart = lazy(() => import('../../components/LineChart').then((m) => ({ default: m.LineChart })));
 
-const usd = (c: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 0 }).format(c / 100);
 const pct = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
 const fixed = (x: number | null, dp = 2) => (x === null ? '—' : x.toFixed(dp));
 
@@ -32,7 +32,10 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
   const all = stats.summarise(trades);
   const graded = stats.summarise(inPlan);
   const curve = useMemo(() => stats.equityCurve(trades.map((t) => ({ ...t, at: t.openedAt }))), [trades]);
-  const yFormat = useCallback((v: number) => usd(v), []);
+  // Trades arrive already in the shown currency (see useTrades); this just formats them.
+  const { currency } = usePnlCurrency();
+  const usd = useCallback((c: number) => moneyText(c, currency, currency, { digits: 0 }), [currency]);
+  const yFormat = usd;
 
   if (trades.length === 0) return <p className="rounded-lg border border-dashed border-border-strong/60 bg-card p-10 text-center text-sm text-muted">No trades match.</p>;
 

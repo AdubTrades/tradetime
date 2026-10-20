@@ -122,6 +122,12 @@ function GeneralSettings({ settings }: { settings: Settings }) {
             <span className="block text-muted">Results stay hidden each trading day until you press Reveal, so a red or green week doesn't colour your next session.</span>
           </span>
         </label>
+        <Field label="Show P&L in" hint="Trades are stored in USD. AUD converts each day's P&L at that day's ECB rate.">
+          <Select value={settings.pnlCurrency} onChange={(e) => update.mutate({ pnlCurrency: e.target.value as Settings['pnlCurrency'] })}>
+            <option value="USD">US dollars (USD)</option>
+            <option value="AUD">Australian dollars (AUD)</option>
+          </Select>
+        </Field>
         <Field label="Theme">
           <Select value={settings.theme} onChange={(e) => update.mutate({ theme: e.target.value as Settings['theme'] })}>
             <option value="system">Match system</option>

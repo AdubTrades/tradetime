@@ -11,6 +11,7 @@ import { Button, Card, cn, PageHeader } from '../../components/ui';
 import { api, type Attachment } from '../../lib/api';
 import { useAccounts, useList } from '../../lib/expenses';
 import { useContracts, useJournalMutation, usePlays, useTrade } from '../../lib/journal';
+import { useMoneyFormat, usePnlCurrency } from '../../lib/pnlCurrency';
 import { TradeForm } from './TradeForm';
 
 const tradeFieldLabels: Record<string, string> = {
@@ -33,6 +34,8 @@ const tradeFieldLabels: Record<string, string> = {
 export function TradeDetailPage({ tradeId }: { tradeId: string }) {
   const navigate = useNavigate();
   const { data: t, error } = useTrade(tradeId);
+  const { currency } = usePnlCurrency();
+  const money = useMoneyFormat();
   const { data: plays = [] } = usePlays();
   const { data: contracts = [] } = useContracts();
   const { data: accounts = [] } = useAccounts();
@@ -92,7 +95,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
       {!t.needsReview && t.source === 'import' && <p className="-mt-4 text-xs text-muted">Fills imported from your broker.</p>}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        <Stat label="Net (USD)" value={<Pnl cents={t.netCents} />} />
+        <Stat label={`Net (${currency})`} value={<Pnl cents={t.netCents} day={t.tradingDay} />} />
         <Stat label="R multiple" value={t.r === null ? '—' : `${t.r}R`} />
         <Stat label="Play" value={play?.title ?? 'No Play'} />
         <Stat label="Grade" value={<GradeBadge grade={t.grade} outsidePlan={t.outsidePlan} />} />
@@ -132,7 +135,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
             <dd className="tabular">
               {t.plannedRiskPoints ? `${t.plannedRiskPoints} pts` : '—'}
               {t.accounts.some((a) => a.plannedRiskCents) && (
-                <span className="text-muted"> · ${(t.accounts.reduce((s, a) => s + (a.plannedRiskCents ?? 0), 0) / 100).toFixed(2)}</span>
+                <span className="text-muted"> · {money(t.accounts.reduce((s, a) => s + (a.plannedRiskCents ?? 0), 0), { day: t.tradingDay })}</span>
               )}
             </dd>
             <dt className="text-muted">Planned R:R</dt>
@@ -180,11 +183,11 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
                     <td className="py-1">{accountName(a.accountId)}</td>
                     <td className="tabular py-1 text-right">{a.maxQty}</td>
                     <td className="py-1 text-right">
-                      <Pnl cents={a.grossCents} />
+                      <Pnl cents={a.grossCents} day={t.tradingDay} />
                     </td>
-                    <td className="tabular py-1 text-right text-muted">${(a.feesCents / 100).toFixed(2)}</td>
+                    <td className="tabular py-1 text-right text-muted">{money(a.feesCents, { day: t.tradingDay })}</td>
                     <td className="py-1 text-right font-medium">
-                      <Pnl cents={a.netCents} />
+                      <Pnl cents={a.netCents} day={t.tradingDay} />
                     </td>
                   </tr>
                 ))}

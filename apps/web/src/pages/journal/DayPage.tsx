@@ -8,6 +8,7 @@ import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import { Button, Card, cn, PageHeader } from '../../components/ui';
 import { api } from '../../lib/api';
 import { useContracts, usePlays, useTrades } from '../../lib/journal';
+import { usePnlCurrency } from '../../lib/pnlCurrency';
 import { useSessions, useSessionTypes } from '../../lib/sessions';
 import { useDayReadings } from '../../lib/checkins';
 import { ReadingChips, ReadingNotes } from '../../components/ReadingSummary';
@@ -18,6 +19,7 @@ export function DayPage({ day }: { day: string }) {
   const navigate = useNavigate();
   const dt = DateTime.fromISO(day);
   const { data: trades = [] } = useTrades(day, day);
+  const { currency } = usePnlCurrency();
   const { data: sessions = [] } = useSessions(day, day);
   const { data: types = [] } = useSessionTypes();
   const { data: readings = [] } = useDayReadings(day);
@@ -51,7 +53,7 @@ export function DayPage({ day }: { day: string }) {
       />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <div className="tile col-span-2 px-5 py-4 sm:col-span-1">
-          <div className="text-xs text-muted">Net (USD)</div>
+          <div className="text-xs text-muted">Net ({currency})</div>
           <div className="font-display mt-1 text-2xl leading-tight">
             <Pnl cents={net} />
           </div>

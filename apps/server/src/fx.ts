@@ -1,4 +1,4 @@
-import { inArray, sql } from 'drizzle-orm';
+import { inArray, isNull, min, sql } from 'drizzle-orm';
 import { schema } from '@tc/db';
 import { usdPerQuoteUnit } from '@tc/domain';
 import { db } from './context';
@@ -130,4 +130,20 @@ export async function usdRates(currency: string, from: string, to: string): Prom
     }
   }
   return Object.fromEntries(days.map((d) => [d, known.get(key(d > today ? today : d))!]));
+}
+
+/**
+ * USD per unit of `currency` for every day from the user's first trade to today: what the app needs to show all of
+ * their P&L in that currency. Fetched in year-sized pieces because the rate service answers a range in one go.
+ */
+export async function usdRatesSinceFirstTrade(currency: string): Promise<Record<string, number>> {
+  const [row] = await db.select({ first: min(schema.trade.tradingDay) }).from(schema.trade).where(isNull(schema.trade.deletedAt));
+  if (!row?.first) return {};
+  const today = new Date().toISOString().slice(0, 10);
+  const out: Record<string, number> = {};
+  for (let from = row.first; from <= today; from = addDays(from, 366)) {
+    const to = addDays(from, 365) < today ? addDays(from, 365) : today;
+    Object.assign(out, await usdRates(currency, from, to));
+  }
+  return out;
 }

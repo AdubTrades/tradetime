@@ -314,7 +314,7 @@ export function ImportTradesDialog({ open, onClose }: { open: boolean; onClose: 
                           <td className="px-2 py-1.5">{t.symbol}</td>
                           <td className="px-2 py-1.5 capitalize">{t.direction}</td>
                           <td className="px-2 py-1.5">{t.accounts.map((a) => `${a.name || '—'} (${a.maxQty})`).join(', ')}</td>
-                          <td className="px-2 py-1.5 text-right">{t.netCents === null ? '—' : <Pnl cents={t.netCents} />}</td>
+                          <td className="px-2 py-1.5 text-right">{t.netCents === null ? '—' : <Pnl cents={t.netCents} currency="USD" />}</td>
                           <td className="px-2 py-1.5">
                             {t.status === 'attach' && <span className="text-ember">Adds to your logged trade</span>}
                             {t.status === 'error' && (

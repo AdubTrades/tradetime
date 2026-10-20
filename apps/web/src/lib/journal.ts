@@ -1,12 +1,35 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { api, type AccountGroup, type Contract, type Play, type PlayDetail, type TradeDetail, type TradeRow } from './api';
+import { usePnlCurrency } from './pnlCurrency';
 
 export const useContracts = () => useQuery({ queryKey: ['contracts'], queryFn: () => api.get<Contract[]>('/contracts') });
 export const useAccountGroups = () => useQuery({ queryKey: ['account-groups'], queryFn: () => api.get<AccountGroup[]>('/account-groups') });
 export const usePlays = () => useQuery({ queryKey: ['plays'], queryFn: () => api.get<Play[]>('/plays') });
 export const usePlay = (id: string) => useQuery({ queryKey: ['plays', id], queryFn: () => api.get<PlayDetail>(`/plays/${id}`) });
-export const useTrades = (from: string, to: string) =>
-  useQuery({ queryKey: ['trades', from, to], queryFn: () => api.get<TradeRow[]>(`/trades?from=${from}&to=${to}`) });
+/** A trade with its money converted from stored USD to the shown currency, at its trading day's rate. */
+function convertTrade(t: TradeRow, toDisplay: (usdCents: number, day: string) => number): TradeRow {
+  const c = (n: number) => toDisplay(n, t.tradingDay);
+  return {
+    ...t,
+    netCents: c(t.netCents),
+    grossCents: c(t.grossCents),
+    feesCents: c(t.feesCents),
+    accounts: t.accounts.map((a) => ({ ...a, netCents: c(a.netCents), grossCents: c(a.grossCents), feesCents: c(a.feesCents), plannedRiskCents: a.plannedRiskCents === null ? null : c(a.plannedRiskCents) })),
+  };
+}
+
+/**
+ * Trades for a date range, with their money in the currency the app is showing (AUD converts each trade at its own
+ * day's rate). Every list, total and chart is built from these, so they stay consistent. Anything that edits a trade
+ * uses `useTrade`, which stays in stored USD.
+ */
+export function useTrades(from: string, to: string) {
+  const query = useQuery({ queryKey: ['trades', from, to], queryFn: () => api.get<TradeRow[]>(`/trades?from=${from}&to=${to}`) });
+  const { currency, toDisplay } = usePnlCurrency();
+  const data = useMemo(() => (query.data && currency !== 'USD' ? query.data.map((t) => convertTrade(t, toDisplay)) : query.data), [query.data, currency, toDisplay]);
+  return { ...query, data };
+}
 /** Imported trades still waiting for a Play, checklist and notes. */
 export const useReviewCount = () =>
   useQuery({
@@ -21,21 +44,9 @@ export function useJournalMutation<TVars, TResult = unknown>(fn: (vars: TVars) =
   return useMutation({
     mutationFn: fn,
     onSuccess: () => {
-      for (const key of ['trades', 'trade', 'plays', 'history', 'daily-review']) void qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ['trades', 'trade', 'plays', 'history', 'daily-review', 'pnl-rates']) void qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }
 
 
-/**
- * USD per 1 unit of `currency` for every day from `from` to `to`, for showing totals in that currency (trades are stored
- * in USD). Only fetched when `enabled`; rates for past days never change, so they're kept.
- */
-export const useUsdRates = (currency: string, from: string | undefined, to: string | undefined, enabled: boolean) =>
-  useQuery({
-    queryKey: ['fx-rates', currency, from, to],
-    queryFn: () => api.get<{ rates: Record<string, number> }>(`/contracts/fx-rates?currency=${currency}&from=${from}&to=${to}`).then((r) => r.rates),
-    enabled: enabled && !!from && !!to,
-    staleTime: 60 * 60_000,
-    retry: 1,
-  });

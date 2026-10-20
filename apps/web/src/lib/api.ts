@@ -70,8 +70,8 @@ export interface Settings {
   reportName: string | null;
   reportAbn: string | null;
   homeHidePnl: boolean;
-  /** Currency the Performance card shows P&L in. */
-  homeCurrency: 'USD' | 'AUD';
+  /** Currency P&L is shown in across the app (trades are stored in USD). */
+  pnlCurrency: 'USD' | 'AUD';
   /** The welcome steps have been finished or skipped. */
   onboarded: boolean;
 }

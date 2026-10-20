@@ -1,3 +1,4 @@
+import { moneyText, usePnlCurrency, type PnlCurrency } from '../lib/pnlCurrency';
 import { cn } from './ui';
 
 /** Grade pill: A+ filled near-black, A filled dark grey, B+ and below white with a border. Outside plan in orange. */
@@ -19,12 +20,27 @@ export function GradeBadge({ grade, outsidePlan, className }: { grade: string | 
 }
 
 /** Signed money with P&L colour, always showing the sign (+$322.14, -$33.98). */
-export function Pnl({ cents, className, onDark = false, currency = 'USD' }: { cents: number; className?: string; onDark?: boolean; currency?: 'USD' | 'AUD' }) {
-  const formatted = new Intl.NumberFormat('en-AU', { style: 'currency', currency, currencyDisplay: 'narrowSymbol', signDisplay: 'exceptZero' }).format(cents / 100);
-  // en-AU writes both as "$", so say which when it's Australian dollars.
-  const text = currency === 'AUD' ? formatted.replace('$', 'A$') : formatted;
+export function Pnl({
+  cents,
+  day,
+  className,
+  onDark = false,
+  currency,
+}: {
+  cents: number;
+  /** Marks `cents` as stored USD for this trading day, to be shown in the app's currency (AUD when chosen). */
+  day?: string;
+  className?: string;
+  onDark?: boolean;
+  /** Forces a currency for an amount that is already in it, e.g. the USD figures in the trade form. */
+  currency?: PnlCurrency;
+}) {
+  const app = usePnlCurrency();
+  const shown = currency ?? app.currency;
+  const amount = day !== undefined && currency === undefined ? app.toDisplay(cents, day) : cents;
+  const text = moneyText(amount, shown, app.currency, { sign: true });
   return (
-    <span className={cn('tabular-nums', cents > 0 ? (onDark ? 'text-profit-dark' : 'text-profit') : cents < 0 ? 'text-loss' : onDark ? 'text-dark-muted' : 'text-muted', className)}>
+    <span className={cn('tabular-nums', amount > 0 ? (onDark ? 'text-profit-dark' : 'text-profit') : amount < 0 ? 'text-loss' : onDark ? 'text-dark-muted' : 'text-muted', className)}>
       {text}
     </span>
   );

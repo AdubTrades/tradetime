@@ -327,12 +327,12 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
           <span className="mr-auto self-center text-sm">
             {imported ? (
               <>
-                Net <Pnl cents={trade!.netCents} className="font-semibold" />
+                Net <Pnl cents={trade!.netCents} className="font-semibold" currency="USD" />
               </>
             ) : null}
             {!imported && canSave && preview && !preview.error && (
               <>
-                Net <Pnl cents={preview.net!} className="font-semibold" />
+                Net <Pnl cents={preview.net!} className="font-semibold" currency="USD" />
                 {preview.r !== null && <span className="text-muted"> · {preview.r}R</span>}
               </>
             )}
@@ -469,7 +469,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                   {preview.plan!.plannedRR !== null && <> · planned {preview.plan!.plannedRR}:1</>}
                 </div>
                 <div className="text-muted">
-                  ≈ <Pnl cents={-(preview.rows!.reduce((s, r) => s + (r.risk ?? 0), 0))} /> across accounts
+                  ≈ <Pnl cents={-(preview.rows!.reduce((s, r) => s + (r.risk ?? 0), 0))} currency="USD" /> across accounts
                 </div>
               </div>
             )}
@@ -541,7 +541,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                     <td className="py-1.5">{accountName(r.accountId)}</td>
                     <td className="tabular py-1.5 text-right">×{r.multiplier}</td>
                     <td className="py-1.5 text-right">
-                      <Pnl cents={r.gross} />
+                      <Pnl cents={r.gross} currency="USD" />
                     </td>
                     <td className="py-1.5 pl-4">
                       <MoneyInput
@@ -552,7 +552,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                       />
                     </td>
                     <td className="py-1.5 text-right font-medium">
-                      <Pnl cents={r.net} />
+                      <Pnl cents={r.net} currency="USD" />
                     </td>
                   </tr>
                 ))}
@@ -835,7 +835,7 @@ function ImportedExecution({ trade, title }: { trade: TradeDetail; title: string
               </td>
               <td className="tabular py-1.5 text-right text-muted">${(a.feesCents / 100).toFixed(2)}</td>
               <td className="py-1.5 text-right">
-                <Pnl cents={a.netCents} />
+                <Pnl cents={a.netCents} currency="USD" />
               </td>
             </tr>
           ))}

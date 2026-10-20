@@ -6,11 +6,13 @@ import { Pnl } from '../../components/GradeBadge';
 import { Button, cn, PageHeader, SummaryStrip } from '../../components/ui';
 import type { DayFigures, MarketEvent, OccurrenceView } from '../../lib/api';
 import { hoursLabel, LAYERS, useCalendarRange, useEventTypes, useLayers, type LayerId } from '../../lib/calendar';
+import { usePnlCurrency } from '../../lib/pnlCurrency';
 import { useSettings } from '../../lib/settings';
 import { swatch } from '../../lib/theme';
 import { DayDetail } from './DayDetail';
 import { EventDialog } from './EventDialog';
 import { UpcomingPanel } from './UpcomingPanel';
+import { CurrencyToggle } from '../../components/CurrencyToggle';
 import { ImpactMarker } from '../../components/ImpactMarker';
 
 const emptyDay: DayFigures = { netCents: 0, trades: 0, wins: 0, tradingMinutes: 0, otherMinutes: 0, expensesCents: 0, hasReview: false };
@@ -39,6 +41,7 @@ export function CalendarPage() {
   const from = weeks[0]![0]!;
   const to = weeks.at(-1)!.at(-1)!;
   const { data } = useCalendarRange(from, to);
+  const { currency, toDisplay } = usePnlCurrency();
   const dt = DateTime.fromISO(`${month}-01`);
 
   const fig = (d: string) => data?.days[d] ?? emptyDay;
@@ -52,7 +55,7 @@ export function CalendarPage() {
   const totals = monthDays.reduce(
     (t, d) => {
       const f = fig(d);
-      t.net += f.netCents;
+      t.net += toDisplay(f.netCents, d);
       t.traded += f.trades > 0 ? 1 : 0;
       t.trading += f.tradingMinutes;
       t.other += f.otherMinutes;
@@ -71,9 +74,12 @@ export function CalendarPage() {
       <PageHeader
         title="Calendar"
         actions={
-          <Button variant="primary" className="h-11 px-[18px]" onClick={() => setEventDialog({ date: today })}>
-            + New event
-          </Button>
+          <>
+            <CurrencyToggle className="mr-1" />
+            <Button variant="primary" className="h-11 px-[18px]" onClick={() => setEventDialog({ date: today })}>
+              + New event
+            </Button>
+          </>
         }
       />
       <div className="flex flex-wrap items-start gap-6">
@@ -117,7 +123,7 @@ export function CalendarPage() {
 
           <SummaryStrip
             items={[
-              { label: 'Net P&L · USD', value: <Pnl cents={totals.net} /> },
+              { label: `Net P&L · ${currency}`, value: <Pnl cents={totals.net} /> },
               {
                 label: 'Days traded',
                 value: (
@@ -156,7 +162,7 @@ export function CalendarPage() {
                   const w = week.reduce(
                     (t, d) => {
                       const f = fig(d);
-                      return { net: t.net + f.netCents, traded: t.traded + (f.trades > 0 ? 1 : 0), minutes: t.minutes + f.tradingMinutes + f.otherMinutes };
+                      return { net: t.net + toDisplay(f.netCents, d), traded: t.traded + (f.trades > 0 ? 1 : 0), minutes: t.minutes + f.tradingMinutes + f.otherMinutes };
                     },
                     { net: 0, traded: 0, minutes: 0 },
                   );
@@ -283,7 +289,7 @@ function MonthAgenda({
             <span className="flex min-w-0 flex-1 flex-col gap-1">
               {(showPnl || (layers.has('screen') && screen > 0) || (layers.has('journal') && f.hasReview)) && (
                 <span className="flex items-center gap-2.5 text-sm">
-                  {showPnl && <Pnl cents={f.netCents} className="font-medium" />}
+                  {showPnl && <Pnl cents={f.netCents} day={d} className="font-medium" />}
                   {showPnl && <span className="text-xs text-muted">{Math.round((f.wins / f.trades) * 100)}%</span>}
                   {layers.has('screen') && screen > 0 && <span className="font-mono text-xs text-faint">{hoursLabel(screen)}</span>}
                   {layers.has('journal') && f.hasReview && <NotebookPen size={13} className="ml-auto text-faint" aria-label="Journal entry" />}
@@ -369,7 +375,7 @@ function DayCell({ date, inMonth, isToday, figures: f, market, occurrences, noTr
       </span>
       {showPnl && (
         <>
-          <Pnl cents={f.netCents} className="text-[15px] font-medium tracking-[-0.02em]" />
+          <Pnl cents={f.netCents} day={date} className="text-[15px] font-medium tracking-[-0.02em]" />
           <span className="text-[11px] text-muted" title={`${f.trades} trade${f.trades === 1 ? '' : 's'}, ${f.wins} won`}>
             {Math.round((f.wins / f.trades) * 100)}%
           </span>

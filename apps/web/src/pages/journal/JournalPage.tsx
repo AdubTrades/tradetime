@@ -4,10 +4,12 @@ import { DateTime } from 'luxon';
 import { useEffect, useMemo, useState } from 'react';
 import { financialYear, financialYearOf, formatLocal, GRADES, stats, tradingDay } from '@tc/domain';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
+import { CurrencyToggle } from '../../components/CurrencyToggle';
 import { Button, cn, PageHeader, SegmentedTabs, Select, StatusPill, SummaryStrip } from '../../components/ui';
 import type { TradeRow } from '../../lib/api';
 import { useAccounts } from '../../lib/expenses';
 import { useContracts, usePlays, useReviewCount, useTrades } from '../../lib/journal';
+import { usePnlCurrency } from '../../lib/pnlCurrency';
 import { useSettings } from '../../lib/settings';
 import { StatsView } from './StatsView';
 import { ImportTradesDialog } from './ImportTradesDialog';
@@ -86,6 +88,7 @@ export function JournalPage() {
   }, [range, today]);
 
   const { data: trades = [], isLoading } = useTrades(from, to);
+  const { currency } = usePnlCurrency();
   const filtered = useMemo(() => applyFilters(trades, filters), [trades, filters]);
   const active = range !== DEFAULT_RANGE || Object.values(filters).some(Boolean);
   const clear = () => {
@@ -97,9 +100,10 @@ export function JournalPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Journal"
-        description="P&L in USD, after fees, summed across copied accounts."
+        description={`P&L in ${currency}, after fees, summed across copied accounts.`}
         actions={
           <>
+            <CurrencyToggle className="mr-1" />
             <Button onClick={() => setImporting(true)}>
               <FileUp size={15} aria-hidden /> Import
             </Button>

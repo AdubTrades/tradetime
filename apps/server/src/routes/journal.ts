@@ -4,7 +4,7 @@ import { GRADES } from '@tc/domain';
 import { getAttachment } from '../attachments';
 import { createContract, deleteAccountGroup, ensureContract, listAccountGroups, listContracts, saveAccountGroup, updateContract } from '../contracts';
 import { AppError } from '../errors';
-import { usdRate, usdRates } from '../fx';
+import { usdRate, usdRatesSinceFirstTrade } from '../fx';
 import { body, cents, instant, isoDate } from '../http';
 import { addCriterion, addExample, createPlay, deleteExample, getPlay, listPlays, updateCriterion, updateExample, updatePlay } from '../plays';
 import {
@@ -37,8 +37,6 @@ export const contractRoutes = new Hono()
   .post('/', async (c) => c.json(await createContract(await body(c.req, contractSchema)), 201))
   /** USD for one unit of a currency on a day, for previewing forex crosses' P&L in USD. */
   .get('/fx-rate', async (c) => c.json({ rate: await usdRate(c.req.query('currency') ?? '', c.req.query('date') ?? '') }))
-  /** USD for one unit of a currency on every day in a range, for showing P&L totals in that currency. */
-  .get('/fx-rates', async (c) => c.json({ rates: await usdRates(c.req.query('currency') ?? '', c.req.query('from') ?? '', c.req.query('to') ?? '') }))
   /** Add a contract from the futures catalogue (or return the user's own one for that symbol). */
   .post('/catalogue', async (c) => {
     const { symbol } = await body(c.req, z.object({ symbol: z.string().trim().min(1).max(12) }));
@@ -145,6 +143,12 @@ export const tradeRoutes = new Hono()
     return c.json(await listTrades({ from: from.data, to: to.data }));
   })
   .post('/', async (c) => c.json(await createTrade(await body(c.req, tradeSchema)), 201))
+  /** USD per unit of a currency for every day since the first trade, so the app can show P&L in that currency. */
+  .get('/rates', async (c) => {
+    const currency = (c.req.query('currency') ?? '').toUpperCase();
+    if (!/^[A-Z]{3}$/.test(currency)) throw new AppError(400, 'currency (3 letters) is required');
+    return c.json({ rates: await usdRatesSinceFirstTrade(currency) });
+  })
   .get('/:id', async (c) => c.json(await getTrade(c.req.param('id'))))
   .put('/:id', async (c) => {
     const { reason, ...input } = await body(c.req, tradeSchema.extend({ reason: z.string().max(500).nullable().optional() }));
