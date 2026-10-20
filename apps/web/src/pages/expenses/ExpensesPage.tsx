@@ -54,21 +54,22 @@ export function ExpensesPage() {
         title="Expenses"
         description="Business costs for tax time, in AUD."
         actions={
-          <>
-            <Select aria-label="Financial year" className="w-[140px]" value={fy} onChange={(e) => setFy(Number(e.target.value))}>
+          // One row on a phone: the year takes the spare width, Import CSV shrinks to its icon and Add expense to "Add".
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <Select aria-label="Financial year" className="min-w-0 flex-1 sm:w-[140px] sm:flex-none" value={fy} onChange={(e) => setFy(Number(e.target.value))}>
               {years.map((y) => (
                 <option key={y} value={y}>
                   FY {financialYear(y).label}
                 </option>
               ))}
             </Select>
-            <Button onClick={() => setImporting(true)}>
-              <FileUp size={15} aria-hidden /> Import CSV
+            <Button className="shrink-0 max-sm:w-11 max-sm:px-0" aria-label="Import CSV" onClick={() => setImporting(true)}>
+              <FileUp size={15} aria-hidden /> <span className="max-sm:hidden">Import CSV</span>
             </Button>
-            <Button variant="primary" onClick={() => setEditing('new')}>
-              <Plus size={14} aria-hidden /> Add expense
+            <Button variant="primary" className="shrink-0" onClick={() => setEditing('new')}>
+              <Plus size={14} aria-hidden /> Add<span className="max-sm:hidden"> expense</span>
             </Button>
-          </>
+          </div>
         }
       />
       <SegmentedTabs label="Expenses view" className="-mt-6 flex-wrap self-start" value={tab} onChange={setTab} options={tabs.map((t) => ({ value: t.id, label: t.label }))} />
