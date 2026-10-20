@@ -74,7 +74,7 @@ function HomeDashboard() {
 
       <div className="flex flex-wrap gap-6">
         <PerformanceCard trades={trades} today={today} fyLabel={fy.label} revealed={revealed} onReveal={setRevealed} canHide={settings.homeHidePnl} />
-        <TonightCard now={now} today={today} types={types} trades={trades} revealed={revealed} onAdd={() => setDialog('event')} />
+        <TonightCard now={now} today={today} types={types} onAdd={() => setDialog('event')} />
       </div>
 
       <div className="flex flex-wrap gap-6">

@@ -1,11 +1,9 @@
 import { Link } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useMemo, useState } from 'react';
-import { currentZone, durationMinutes, formatDuration, formatLocal, stats } from '@tc/domain';
-import { Pnl } from '../../components/GradeBadge';
-import { SegmentedTabs } from '../../components/ui';
-import type { OccurrenceView, SessionType, TradeRow } from '../../lib/api';
+import { useMemo } from 'react';
+import { currentZone, durationMinutes, formatLocal } from '@tc/domain';
+import type { OccurrenceView, SessionType } from '../../lib/api';
 import { useEventTypes, useUpcoming } from '../../lib/calendar';
 import { useSessions } from '../../lib/sessions';
 import { ImpactMarker } from '../../components/ImpactMarker';
@@ -45,24 +43,16 @@ function useUsualSessionMinutes(types: SessionType[], today: string): number | n
   }, [sessions, types]);
 }
 
-/** The day's agenda (or the last session's result) beside Performance. The session timer lives in the page header. */
-export function TonightCard({ now, today, types, trades, revealed, onAdd }: { now: Date; today: string; types: SessionType[]; trades: TradeRow[]; revealed: boolean; onAdd: () => void }) {
-  const [mode, setMode] = useState<'tonight' | 'last'>('tonight');
+/** The day's agenda beside Performance. The session timer lives in the page header; the last session's result is on the Recent trades card. */
+export function TonightCard({ now, today, types, onAdd }: { now: Date; today: string; types: SessionType[]; onAdd: () => void }) {
   return (
-    <section aria-label="Tonight" className="flex min-w-0 flex-[1_1_340px] flex-col rounded-xl bg-dark text-dark-text">
+    <section aria-labelledby="tonight-h" className="flex min-w-0 flex-[1_1_340px] flex-col rounded-xl bg-dark text-dark-text">
       <div className="flex min-w-0 flex-1 flex-col gap-[18px] px-6 py-[22px]">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <SegmentedTabs
-            dark
-            label="Dashboard mode"
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: 'tonight', label: 'Tonight' },
-              { value: 'last', label: 'Last session' },
-            ]}
-          />
-          <div className="ml-auto flex items-center gap-1">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="tonight-h" className="text-base font-semibold">
+            Tonight
+          </h2>
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={onAdd}
@@ -76,7 +66,7 @@ export function TonightCard({ now, today, types, trades, revealed, onAdd }: { no
             </Link>
           </div>
         </div>
-        {mode === 'tonight' ? <Agenda now={now} today={today} types={types} /> : <LastSession trades={trades} revealed={revealed} today={today} />}
+        <Agenda now={now} today={today} types={types} />
       </div>
     </section>
   );
@@ -170,34 +160,5 @@ function Agenda({ now, today, types }: { now: Date; today: string; types: Sessio
         </a>
       )}
     </>
-  );
-}
-
-function LastSession({ trades, revealed, today }: { trades: TradeRow[]; revealed: boolean; today: string }) {
-  // The most recent trading day that has trades (today counts once it has some).
-  const day = useMemo(() => [...new Set(trades.map((t) => t.tradingDay))].filter((d) => d <= today).sort().at(-1), [trades, today]);
-  const { data: sessions = [] } = useSessions(day ?? today, day ?? today);
-  if (!day) return <p className="text-sm text-dark-muted">No trades logged yet. Your last session will show here.</p>;
-  const dayTrades = trades.filter((t) => t.tradingDay === day);
-  const s = stats.summarise(dayTrades);
-  const screen = sessions.reduce((sum, x) => sum + durationMinutes(x), 0);
-  return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-[13px] text-dark-muted">
-        {DateTime.fromISO(day).toFormat('cccc d LLLL')}
-        {screen > 0 && ` · ${formatDuration(screen)}`}
-      </p>
-      <div className="text-[36px] font-medium tracking-[-0.03em]">
-        {revealed ? <Pnl cents={s.netCents} onDark /> : <span className="tracking-widest text-dark-muted">••••</span>}
-      </div>
-      <p className="text-sm text-dark-muted">
-        {s.n} trade{s.n === 1 ? '' : 's'}
-        {revealed && s.winRate !== null && ` · ${Math.round(s.winRate * 100)}% win`}
-        {revealed && s.avgR !== null && ` · ${s.avgR}R avg`}.{' '}
-        <Link to="/journal/day/$day" params={{ day }} className="font-medium text-dark-text underline-offset-2 hover:underline">
-          Review →
-        </Link>
-      </p>
-    </div>
   );
 }
