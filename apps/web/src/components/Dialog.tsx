@@ -39,7 +39,7 @@ export function Dialog({ open, onClose, title, children, footer, width = 'max-w-
               <X size={18} />
             </button>
           </header>
-          <div className="flex-1 overflow-y-auto px-6 py-5 max-sm:px-4">{children}</div>
+          <div className="flex-1 overflow-x-hidden overflow-y-auto px-6 py-5 max-sm:px-4">{children}</div>
           {footer && <footer className="flex flex-wrap justify-end gap-2 border-t border-border bg-inset px-6 py-3 max-sm:px-4 max-sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">{footer}</footer>}
         </div>
       )}

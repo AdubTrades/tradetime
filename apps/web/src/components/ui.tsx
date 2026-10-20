@@ -51,7 +51,7 @@ export function ViewLink({ to, children, search }: { to: string; children: React
 // ---------- Fields ----------
 
 const fieldClass =
-  'h-10 w-full rounded-md border border-border bg-card px-3 text-sm text-text shadow-card placeholder:text-faint disabled:opacity-50';
+  'h-10 pointer-coarse:h-11 w-full min-w-0 max-w-full appearance-none rounded-md border border-border bg-card px-3 text-sm text-text shadow-card placeholder:text-faint disabled:opacity-50 [&::-webkit-date-and-time-value]:min-h-[1.5em] [&::-webkit-date-and-time-value]:text-left';
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(fieldClass, className)} {...props} />;

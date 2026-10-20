@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, X } from 'lucide-react';
+import { Minus, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { findFutures, formatLocal, gradeTrade, isOnTick, needsCrossRate, usdPerQuoteUnit, latestReadingBefore, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule, zoneLabel } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
@@ -369,7 +369,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
           </Field>
           {imported ? (
             <div className="space-y-1">
-              <span className="text-sm font-medium">Accounts</span>
+              <span className="text-[13px] font-medium text-secondary">Accounts</span>
               <p className="text-sm text-muted">{trade!.accounts.length} account{trade!.accounts.length === 1 ? '' : 's'}, from your broker export</p>
             </div>
           ) : (
@@ -395,13 +395,13 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
             </Field>
             {form.mode === 'simple' && (
               <Field label="Direction">
-                <div className="flex overflow-hidden rounded-full border border-border">
+                <div className="flex w-full overflow-hidden rounded-full border border-border sm:w-auto">
                   {(['long', 'short'] as const).map((d) => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => set('direction', d)}
-                      className={cn('px-4 py-1.5 text-sm capitalize', form.direction === d ? 'bg-text text-card' : 'text-muted hover:text-text')}
+                      className={cn('h-10 flex-1 px-4 text-sm capitalize pointer-coarse:h-11 sm:h-auto sm:flex-none sm:py-1.5', form.direction === d ? 'bg-text text-card' : 'text-muted hover:text-text')}
                     >
                       {d}
                     </button>
@@ -575,7 +575,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                     key={v}
                     type="button"
                     onClick={() => set('followedPlan', form.followedPlan === v ? null : v)}
-                    className={cn('flex-1 px-3 py-1.5 text-sm capitalize', form.followedPlan === v ? 'bg-text text-card' : 'text-muted')}
+                    className={cn('h-10 flex-1 px-3 text-sm capitalize pointer-coarse:h-11 sm:h-auto sm:py-1.5', form.followedPlan === v ? 'bg-text text-card' : 'text-muted')}
                   >
                     {v}
                   </button>
@@ -601,7 +601,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                     key={n}
                     type="button"
                     onClick={() => set('confidence', form.confidence === n ? null : n)}
-                    className={cn('h-8 w-8 rounded-md border text-sm', form.confidence === n ? 'border-text bg-text text-card' : 'border-border text-muted')}
+                    className={cn('h-8 w-8 rounded-md border text-sm pointer-coarse:h-11 pointer-coarse:w-11', form.confidence === n ? 'border-text bg-text text-card' : 'border-border text-muted')}
                   >
                     {n}
                   </button>
@@ -657,6 +657,29 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
   );
 }
 
+const MULTIPLIERS = [1, 2, 3, 4, 5, 10];
+
+/** − ×N + control for an account's size multiplier: steps through the usual sizes, no popup to open. */
+function MultiplierStepper({ label, value, onChange }: { label: string; value: number; onChange: (m: number) => void }) {
+  const lower = [...MULTIPLIERS].reverse().find((m) => m < value);
+  const higher = MULTIPLIERS.find((m) => m > value);
+  const btn =
+    'flex h-7 w-7 items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-text disabled:opacity-30 disabled:hover:bg-transparent pointer-coarse:h-9 pointer-coarse:w-9';
+  return (
+    <span role="group" aria-label={`Size multiplier for ${label}`} className="inline-flex shrink-0 items-center rounded-md bg-inset">
+      <button type="button" aria-label="Smaller size" disabled={lower === undefined} onClick={() => lower !== undefined && onChange(lower)} className={btn}>
+        <Minus size={14} aria-hidden />
+      </button>
+      <span className="tabular min-w-8 text-center text-[13px] font-medium" aria-live="polite">
+        ×{value}
+      </span>
+      <button type="button" aria-label="Larger size" disabled={higher === undefined} onClick={() => higher !== undefined && onChange(higher)} className={btn}>
+        <Plus size={14} aria-hidden />
+      </button>
+    </span>
+  );
+}
+
 function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (v: AccountPick[]) => void }) {
   const { data: accounts = [] } = useAccounts();
   const { data: groups = [] } = useAccountGroups();
@@ -666,7 +689,7 @@ function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Accounts</span>
+        <span className="text-[13px] font-medium text-secondary">Accounts</span>
         {groups.length > 0 && (
           <Select
             aria-label="Use account group"
@@ -689,23 +712,20 @@ function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {value.map((a, i) => (
-          <span key={a.accountId} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card py-0.5 pr-1.5 pl-2.5 text-xs shadow-card">
-            {name(a.accountId)}
-            <Select
-              aria-label={`Size multiplier for ${name(a.accountId)}`}
-              size="sm"
-              className="w-16"
+          <span key={a.accountId} className="inline-flex max-w-full items-center gap-2 rounded-md border border-border bg-card py-1 pr-1.5 pl-2.5 text-[13px] shadow-card">
+            <span className="min-w-0 truncate">{name(a.accountId)}</span>
+            <MultiplierStepper
+              label={name(a.accountId)}
               value={a.multiplier}
-              onChange={(e) => onChange(value.map((x, j) => (j === i ? { ...x, multiplier: Number(e.target.value) } : x)))}
+              onChange={(m) => onChange(value.map((x, j) => (j === i ? { ...x, multiplier: m } : x)))}
+            />
+            <button
+              type="button"
+              aria-label={`Remove ${name(a.accountId)}`}
+              onClick={() => onChange(value.filter((_, j) => j !== i))}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-loss pointer-coarse:h-9 pointer-coarse:w-9"
             >
-              {[1, 2, 3, 4, 5, 10].map((n) => (
-                <option key={n} value={n}>
-                  ×{n}
-                </option>
-              ))}
-            </Select>
-            <button type="button" aria-label={`Remove ${name(a.accountId)}`} onClick={() => onChange(value.filter((_, j) => j !== i))} className="text-muted hover:text-loss">
-              <X size={12} />
+              <X size={14} />
             </button>
           </span>
         ))}
