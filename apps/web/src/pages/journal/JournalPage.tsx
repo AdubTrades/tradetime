@@ -4,7 +4,6 @@ import { DateTime } from 'luxon';
 import { useEffect, useMemo, useState } from 'react';
 import { financialYear, financialYearOf, formatLocal, GRADES, stats, tradingDay } from '@tc/domain';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
-import { CurrencyToggle } from '../../components/CurrencyToggle';
 import { Button, cn, PageHeader, SegmentedTabs, Select, StatusPill, SummaryStrip } from '../../components/ui';
 import type { TradeRow } from '../../lib/api';
 import { useAccounts } from '../../lib/expenses';
@@ -103,7 +102,6 @@ export function JournalPage() {
         description={`P&L in ${currency}, after fees, summed across copied accounts.`}
         actions={
           <>
-            <CurrencyToggle className="mr-1" />
             <Button onClick={() => setImporting(true)}>
               <FileUp size={15} aria-hidden /> Import
             </Button>

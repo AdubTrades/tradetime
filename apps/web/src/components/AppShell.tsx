@@ -1,4 +1,3 @@
-import { PnlCurrencyProvider } from '../lib/pnlCurrency';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import {
   BookOpen,
@@ -134,9 +133,7 @@ export function AppShell() {
         <main className="px-4 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))] sm:px-8 md:px-12 md:pt-8 md:pb-24">
           <div className={cn('mx-auto', wide ? 'max-w-[1240px]' : 'max-w-[1120px]')}>
             <ErrorBoundary resetKey={pathname}>
-              <PnlCurrencyProvider>
-                <Outlet />
-              </PnlCurrencyProvider>
+              <Outlet />
             </ErrorBoundary>
           </div>
         </main>

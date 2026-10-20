@@ -79,7 +79,11 @@ export function PerformanceCard({
       <CardHeader
         id="perf-h"
         title="Performance"
-        description={`After fees, in ${currency}`}
+        description={
+          <span className="flex flex-wrap items-center gap-x-1.5">
+            After fees, in <CurrencyToggle />
+          </span>
+        }
         action={
           <>
             {canHide && (
@@ -92,10 +96,7 @@ export function PerformanceCard({
         }
       />
       <div className="-mt-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="text-[13px] text-muted">Financial year {fyLabel}</div>
-          <CurrencyToggle className="flex flex-col items-end" />
-        </div>
+        <div className="text-[13px] text-muted">Financial year {fyLabel}</div>
         <div className="mt-1 text-[48px] leading-[1.1] font-medium tracking-[-0.035em]">{revealed ? <Pnl cents={fy.netCents} /> : HIDDEN}</div>
         <div className="mt-1 text-sm text-muted">
           {fy.n} trade{fy.n === 1 ? '' : 's'}

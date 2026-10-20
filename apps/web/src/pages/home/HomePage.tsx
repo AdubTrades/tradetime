@@ -10,6 +10,7 @@ import { api } from '../../lib/api';
 import { useHealth } from '../../lib/demo';
 import { useTrades } from '../../lib/journal';
 import { useNow, useSessionTypes } from '../../lib/sessions';
+import { PnlCurrencyProvider } from '../../lib/pnlCurrency';
 import { useSettings } from '../../lib/settings';
 import { EventDialog } from '../calendar/EventDialog';
 import { ExpenseDialog } from '../expenses/ExpenseDialog';
@@ -23,7 +24,16 @@ import { TonightCard } from './TonightCard';
 import { usePnlReveal } from './usePnlReveal';
 
 /** Landing page: tonight's agenda and timer, then summaries that link through to each tab. */
+/** The USD / AUD choice applies to the Home dashboard only; every other screen shows P&L in USD. */
 export function HomePage() {
+  return (
+    <PnlCurrencyProvider>
+      <HomeDashboard />
+    </PnlCurrencyProvider>
+  );
+}
+
+function HomeDashboard() {
   const { data: settings } = useSettings();
   const now = useNow(30_000);
   const today = tradingDay(now, settings?.rolloverTime);

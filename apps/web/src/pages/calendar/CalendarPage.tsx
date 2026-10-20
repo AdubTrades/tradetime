@@ -12,7 +12,6 @@ import { swatch } from '../../lib/theme';
 import { DayDetail } from './DayDetail';
 import { EventDialog } from './EventDialog';
 import { UpcomingPanel } from './UpcomingPanel';
-import { CurrencyToggle } from '../../components/CurrencyToggle';
 import { ImpactMarker } from '../../components/ImpactMarker';
 
 const emptyDay: DayFigures = { netCents: 0, trades: 0, wins: 0, tradingMinutes: 0, otherMinutes: 0, expensesCents: 0, hasReview: false };
@@ -75,7 +74,6 @@ export function CalendarPage() {
         title="Calendar"
         actions={
           <>
-            <CurrencyToggle className="mr-1" />
             <Button variant="primary" className="h-11 px-[18px]" onClick={() => setEventDialog({ date: today })}>
               + New event
             </Button>
