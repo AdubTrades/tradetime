@@ -1,6 +1,7 @@
 # Notes for Claude Code
 
 - The build plan and confirmed product decisions are in `docs/plan.md`. Follow its phase order.
+- Ideas agreed for later are in `docs/backlog.md`. Add new "later" requests there, and remove an item when it's built.
 - **Branches:** `main` is the local single-user Mac app (SQLite, launchd). `cloud` is the Supabase + Vercel multi-user version being built from `docs/cloud-beta-plan.md`. The notes below marked *(cloud)* apply to the `cloud` branch; the installed app keeps running from `main` until the cloud version replaces it.
   - **The installed Mac app runs from its own git worktree, `~/Projects/tradetime-mac` (branch `main`)**, set in `~/Library/LaunchAgents/com.tradingcompanion.server.plist`. This folder (`~/Projects/trading-companion`, on `cloud`) is for development only, so building here never changes the installed app's screens or server. Changes to the Mac app: commit on `main`, then in `~/Projects/tradetime-mac` run `pnpm install && pnpm build` and `launchctl kickstart -k gui/$(id -u)/com.tradingcompanion.server`.
   - Live cloud app: https://tradetime-zeta.vercel.app (Vercel production branch `cloud`; pushes deploy automatically).
