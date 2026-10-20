@@ -12,6 +12,7 @@ import { useDayReadings } from '../../lib/checkins';
 import { ReadingChips } from '../../components/ReadingSummary';
 import { useAccounts, useList } from '../../lib/expenses';
 import { ContractPicker } from '../../components/ContractPicker';
+import { MenuButton } from '../../components/Menu';
 import { useAccountGroups, useContracts, useJournalMutation, usePlays } from '../../lib/journal';
 import { instantToLocalTime, tradingDayTimeToInstant } from '../../lib/localTime';
 import { useSettings } from '../../lib/settings';
@@ -685,30 +686,33 @@ function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (
   const { data: groups = [] } = useAccountGroups();
   const unused = accounts.filter((a) => a.status === 'active' && !value.some((v) => v.accountId === a.id));
   const name = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'Unknown';
+  // The account group (copy-trading set) the current list matches exactly, if any.
+  const sameAs = (g: (typeof groups)[number]) =>
+    g.members.length === value.length && g.members.every((m) => value.some((v) => v.accountId === m.accountId && v.multiplier === m.multiplier));
+  const current = groups.find(sameAs);
+  // One "+ Add" menu: a group replaces the list with its accounts and sizes; a single account is added to it.
+  const addItems = [
+    ...groups
+      .filter((g) => !sameAs(g))
+      .map((g) => ({
+        label: (
+          <span>
+            {g.name} <span className="text-muted">· {g.members.length} account{g.members.length === 1 ? '' : 's'}</span>
+          </span>
+        ),
+        onSelect: () => onChange(g.members.map((m) => ({ ...m, feesCents: null }))),
+      })),
+    ...unused.map((a) => ({ label: a.name, onSelect: () => onChange([...value, { accountId: a.id, multiplier: 1, feesCents: null }]) })),
+  ];
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="text-[13px] font-medium text-secondary">Accounts</span>
-        {groups.length > 0 && (
-          <Select
-            aria-label="Use account group"
-            size="sm"
-            className="w-40"
-            value=""
-            onChange={(e) => {
-              const g = groups.find((x) => x.id === e.target.value);
-              if (g) onChange(g.members.map((m) => ({ ...m, feesCents: null })));
-            }}
-          >
-            <option value="">Use group…</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </Select>
-        )}
+    <div className="space-y-1.5">
+      {/* Same box as a Field label, so it lines up with Trading day and Contract. */}
+      <div>
+        <span className="text-[13px] font-medium text-secondary">
+          Accounts
+          {current && <span className="font-normal text-muted"> · {current.name}</span>}
+        </span>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {value.map((a, i) => (
@@ -729,21 +733,16 @@ function AccountsPicker({ value, onChange }: { value: AccountPick[]; onChange: (
             </button>
           </span>
         ))}
-        {unused.length > 0 && (
-          <Select
-            aria-label="Add account"
-            size="sm"
-            className="w-40"
-            value=""
-            onChange={(e) => e.target.value && onChange([...value, { accountId: e.target.value, multiplier: 1, feesCents: null }])}
-          >
-            <option value="">+ Add account</option>
-            {unused.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
+        {addItems.length > 0 && (
+          <MenuButton
+            label={
+              <>
+                <Plus size={14} aria-hidden /> Add
+              </>
+            }
+            items={addItems}
+            triggerClassName="h-[38px] px-3 text-[13px] pointer-coarse:h-11"
+          />
         )}
         {accounts.length === 0 && <span className="text-xs text-loss">Add a trading account in Settings → Trading accounts first.</span>}
       </div>

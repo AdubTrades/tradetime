@@ -12,7 +12,20 @@ export interface MenuItem {
  * Outline button that opens a small action menu (same look as the Select menu).
  * With `icon`, the trigger is a quiet 32px ⋯ button and `label` becomes its accessible name.
  */
-export function MenuButton({ label, items, className, icon = false }: { label: ReactNode; items: MenuItem[]; className?: string; icon?: boolean }) {
+export function MenuButton({
+  label,
+  items,
+  className,
+  icon = false,
+  triggerClassName,
+}: {
+  label: ReactNode;
+  items: MenuItem[];
+  className?: string;
+  icon?: boolean;
+  /** Extra classes for a labelled trigger (e.g. a different height). */
+  triggerClassName?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
@@ -75,7 +88,7 @@ export function MenuButton({ label, items, className, icon = false }: { label: R
             e.preventDefault();
           }
         }}
-        className={icon ? 'flex h-8 w-8 items-center justify-center rounded-sm pointer-coarse:h-11 pointer-coarse:w-11 text-muted hover:bg-hover hover:text-text' : cn(buttonClass('secondary'), 'h-11')}
+        className={icon ? 'flex h-8 w-8 items-center justify-center rounded-sm pointer-coarse:h-11 pointer-coarse:w-11 text-muted hover:bg-hover hover:text-text' : cn(buttonClass('secondary'), 'h-11', triggerClassName)}
       >
         {icon ? (
           <MoreHorizontal size={16} aria-hidden />
