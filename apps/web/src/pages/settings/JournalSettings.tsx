@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { formatMoney } from '@tc/domain';
+import { forexPair, forexTickSize, formatMoney, normaliseSymbol } from '@tc/domain';
 import { Dialog } from '../../components/Dialog';
 import { MoneyInput } from '../../components/MoneyInput';
 import { ContractPicker } from '../../components/ContractPicker';
-import { Button, Card, Field, Input, Select } from '../../components/ui';
+import { Button, Card, Field, Input, SegmentedTabs, Select } from '../../components/ui';
 import { api, type AccountGroup, type Contract } from '../../lib/api';
 import { useAccounts } from '../../lib/expenses';
 import { useAccountGroups, useContracts } from '../../lib/journal';
@@ -67,7 +67,7 @@ function ContractsEditor() {
                   <td className="tabular py-1.5 text-right">{formatMoney(Math.round(c.pointValueCents * c.tickSize), 'USD')}</td>
                 </>
               )}
-              <td className="tabular py-1.5 text-right">{formatMoney(c.feePerSideCents, 'USD')}</td>
+              <td className="tabular py-1.5 text-right">{forexPair(c.symbol) ? <span className="text-xs text-muted">per trade</span> : formatMoney(c.feePerSideCents, 'USD')}</td>
               <td className="py-1.5 text-right">
                 <Button variant="ghost" className="px-2" aria-label={`Edit ${c.symbol}`} onClick={() => setEditing(c)}>
                   <Pencil size={14} />
@@ -78,7 +78,7 @@ function ContractsEditor() {
         </tbody>
       </table>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <ContractPicker value="" onChange={() => undefined} aria-label="Add from the futures list" placeholder="Add futures or forex…" className="max-w-[300px]" />
+        <ContractPicker value="" onChange={() => undefined} aria-label="Add from the futures and forex list" placeholder="Add futures or forex…" className="max-w-[300px]" />
         <Button variant="ghost" onClick={() => setEditing('new')}>
           <Plus size={16} aria-hidden /> Add your own
         </Button>
@@ -88,19 +88,37 @@ function ContractsEditor() {
   );
 }
 
+type InstrumentKind = 'futures' | 'forex';
+
 function ContractDialog({ contract, open, onClose, onSaved }: { contract: Contract | null; open: boolean; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ symbol: '', name: '', tickSize: '0.25', pointValueCents: null as number | null, feePerSideCents: 0 as number | null, archived: false });
+  const blank = { kind: 'futures' as InstrumentKind, symbol: '', name: '', tickSize: '0.25', pointValueCents: null as number | null, feePerSideCents: 0 as number | null, archived: false };
+  const [form, setForm] = useState(blank);
   useEffect(() => {
     if (open)
       setForm(
         contract
-          ? { symbol: contract.symbol, name: contract.name, tickSize: String(contract.tickSize), pointValueCents: contract.pointValueCents, feePerSideCents: contract.feePerSideCents, archived: contract.archived }
-          : { symbol: '', name: '', tickSize: '0.25', pointValueCents: null, feePerSideCents: 0, archived: false },
+          ? {
+              kind: forexPair(contract.symbol) ? 'forex' : 'futures',
+              symbol: contract.symbol,
+              name: contract.name,
+              tickSize: String(contract.tickSize),
+              pointValueCents: contract.pointValueCents,
+              feePerSideCents: contract.feePerSideCents,
+              archived: contract.archived,
+            }
+          : blank,
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, contract]);
+
+  const forex = form.kind === 'forex';
+  const pair = forex ? forexPair(form.symbol) : null;
   const save = useMutation({
     mutationFn: () => {
-      const payload = { ...form, tickSize: Number(form.tickSize), feePerSideCents: form.feePerSideCents ?? 0 };
+      // Forex: sized in units, P&L of 1 per unit per 1.0 move in the quote currency (the server sets the currency from the pair).
+      const payload = pair
+        ? { symbol: normaliseSymbol(form.symbol), name: form.name.trim() || `${pair.base}/${pair.quote}`, tickSize: forexTickSize(form.symbol), pointValueCents: 100, feePerSideCents: 0, archived: form.archived }
+        : { symbol: form.symbol, name: form.name, tickSize: Number(form.tickSize), pointValueCents: form.pointValueCents, feePerSideCents: form.feePerSideCents ?? 0, archived: form.archived };
       return contract ? api.patch(`/contracts/${contract.id}`, payload) : api.post('/contracts', payload);
     },
     onSuccess: () => {
@@ -108,12 +126,13 @@ function ContractDialog({ contract, open, onClose, onSaved }: { contract: Contra
       onClose();
     },
   });
-  const valid = form.symbol.trim() && form.name.trim() && Number(form.tickSize) > 0 && form.pointValueCents;
+  const valid = forex ? !!pair : form.symbol.trim() && form.name.trim() && Number(form.tickSize) > 0 && form.pointValueCents;
+  const badPair = forex && form.symbol.trim().length > 0 && !pair;
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      title={contract ? `Edit ${contract.symbol}` : 'Add contract'}
+      title={contract ? `Edit ${contract.symbol}` : forex ? 'Add forex pair' : 'Add contract'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -125,28 +144,61 @@ function ContractDialog({ contract, open, onClose, onSaved }: { contract: Contra
         </>
       }
     >
+      {!contract && (
+        <div className="mb-4">
+          <SegmentedTabs
+            label="Instrument type"
+            value={form.kind}
+            onChange={(kind) => setForm({ ...blank, kind, symbol: form.symbol, name: form.name })}
+            options={[
+              { value: 'futures', label: 'Futures' },
+              { value: 'forex', label: 'Forex' },
+            ]}
+          />
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Symbol">
-          <Input value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value })} placeholder="RTY" />
+        <Field
+          label={forex ? 'Currency pair' : 'Symbol'}
+          error={badPair ? 'Use two currency codes, like EUR/USD or GBP/JPY' : null}
+          hint={pair ? `P&L is in ${pair.quote}, shown and totalled in USD` : undefined}
+        >
+          <Input
+            value={form.symbol}
+            onChange={(e) => setForm({ ...form, symbol: e.target.value })}
+            placeholder={forex ? 'EUR/USD' : 'RTY'}
+            autoCapitalize="characters"
+            autoCorrect="off"
+            disabled={forex && !!contract}
+          />
         </Field>
-        <Field label="Name">
-          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="E-mini Russell 2000" />
+        <Field label={forex ? 'Name (optional)' : 'Name'}>
+          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={forex ? (pair ? `${pair.base}/${pair.quote}` : 'Euro / US Dollar') : 'E-mini Russell 2000'} />
         </Field>
-        <Field label="Tick size (points)">
-          <Input inputMode="decimal" value={form.tickSize} onChange={(e) => setForm({ ...form, tickSize: e.target.value })} />
-        </Field>
-        <Field label="Value of 1 point (USD)">
-          <MoneyInput value={form.pointValueCents} onChange={(v) => setForm({ ...form, pointValueCents: v })} prefix="US$" className="pl-10" />
-        </Field>
-        <Field label="Fee per contract per side (USD)" hint="Commission + exchange/clearing fees">
-          <MoneyInput value={form.feePerSideCents} onChange={(v) => setForm({ ...form, feePerSideCents: v })} prefix="US$" className="pl-10" />
-        </Field>
+        {!forex && (
+          <>
+            <Field label="Tick size (points)">
+              <Input inputMode="decimal" value={form.tickSize} onChange={(e) => setForm({ ...form, tickSize: e.target.value })} />
+            </Field>
+            <Field label="Value of 1 point (USD)">
+              <MoneyInput value={form.pointValueCents} onChange={(v) => setForm({ ...form, pointValueCents: v })} prefix="US$" className="pl-10" />
+            </Field>
+            <Field label="Fee per contract per side (USD)" hint="Commission + exchange/clearing fees">
+              <MoneyInput value={form.feePerSideCents} onChange={(v) => setForm({ ...form, feePerSideCents: v })} prefix="US$" className="pl-10" />
+            </Field>
+          </>
+        )}
         {contract && (
           <label className="flex items-center gap-2 self-end pb-2 text-sm">
             <input type="checkbox" checked={form.archived} onChange={(e) => setForm({ ...form, archived: e.target.checked })} /> Archived
           </label>
         )}
       </div>
+      {forex && (
+        <p className="mt-4 text-xs text-muted">
+          Forex is sized in units (10,000 = a mini lot) and priced to a fifth of a pip, so there's no tick value to set. Fees are entered on each trade.
+        </p>
+      )}
       {contract && <p className="mt-3 text-xs text-muted">Changes apply to new and edited trades. Saved trades keep the spec they were logged with.</p>}
       {save.error && <p className="mt-2 text-sm text-loss">{save.error.message}</p>}
     </Dialog>

@@ -79,3 +79,31 @@ describe('forex trades', () => {
       expect(t.accounts[0]).toMatchObject({ grossCents: 2000, pointValueCents: 200 });
     }));
 });
+
+describe('your own forex pairs (Settings → Contracts → Add your own)', () => {
+  it('takes the P&L currency from the pair, stores it as EURUSD-style, and never charges a per-unit fee', () =>
+    asUser(async () => {
+      const c = await contracts.createContract({ symbol: 'eur/sek', name: 'Euro / Swedish Krona', tickSize: 0.00001, pointValueCents: 100, feePerSideCents: 50 });
+      expect(c).toMatchObject({ symbol: 'EURSEK', currency: 'SEK', feePerSideCents: 0 });
+      const edited = await contracts.updateContract(c.id, { feePerSideCents: 25, name: 'EUR/SEK' });
+      expect(edited).toMatchObject({ currency: 'SEK', feePerSideCents: 0, name: 'EUR/SEK' });
+    }));
+
+  it('a custom USD-quoted pair is already in USD; a custom futures contract stays USD with its fee', () =>
+    asUser(async () => {
+      const pair = await contracts.createContract({ symbol: 'USD/ZAR', name: 'US Dollar / Rand', tickSize: 0.00001, pointValueCents: 100 });
+      expect(pair.currency).toBe('ZAR');
+      const eurusd = await contracts.createContract({ symbol: 'EUR/NOK', name: 'Euro / Norwegian Krone', tickSize: 0.00001, pointValueCents: 100 });
+      expect(eurusd.currency).toBe('NOK');
+      const fut = await contracts.createContract({ symbol: 'zb', name: 'Custom bond', tickSize: 0.5, pointValueCents: 100_000, feePerSideCents: 210 });
+      expect(fut).toMatchObject({ symbol: 'ZB', currency: 'USD', feePerSideCents: 210 });
+    }));
+
+  it('a pair that comes from your own list converts to USD like a built-in one', () =>
+    asUser(async () => {
+      const c = await contracts.createContract({ symbol: 'USD/CHF', name: 'US Dollar / Swiss Franc', tickSize: 0.00001, pointValueCents: 100 });
+      const t = await trades.createTrade(forexTrade(c.id, 100_000, 0.9, 0.901));
+      // 100,000 units × 0.001 = CHF 100, converted at the exit price
+      expect(t.accounts[0]!.grossCents).toBe(Math.round((100 / 0.901) * 100));
+    }));
+});

@@ -155,6 +155,24 @@ export const FUTURES_CATALOGUE: FuturesSpec[] = [
 
 export const FUTURES_GROUPS: FuturesGroup[] = ['Equity index', 'Energy', 'Metals', 'Grains', 'Livestock', 'Interest rates', 'FX', 'Crypto', 'Forex'];
 
+/** Currency codes accepted as either side of a forex pair (FOREX.com's majors and the common minors). */
+const FOREX_CURRENCIES = new Set(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'SEK', 'NOK', 'DKK', 'SGD', 'HKD', 'MXN', 'ZAR', 'TRY', 'PLN', 'CZK', 'HUF', 'CNH']);
+
+/**
+ * The two currencies of a spot forex symbol ("EUR/USD", "eurusd"), or null if it isn't one: six letters, both halves
+ * currency codes, and not the same currency twice. This is how contracts are told apart (futures roots are 1–4 letters).
+ */
+export function forexPair(symbol: string): { base: string; quote: string } | null {
+  const sym = normaliseSymbol(symbol);
+  if (!/^[A-Z]{6}$/.test(sym)) return null;
+  const base = sym.slice(0, 3);
+  const quote = sym.slice(3);
+  return base !== quote && FOREX_CURRENCIES.has(base) && FOREX_CURRENCIES.has(quote) ? { base, quote } : null;
+}
+
+/** Smallest price step for a pair: a fifth of a pip, i.e. 0.00001, or 0.001 for yen pairs. */
+export const forexTickSize = (symbol: string): number => (forexPair(symbol)?.quote === 'JPY' ? 0.001 : 0.00001);
+
 /** "EUR/USD", "eur_usd" and "EURUSD" are the same instrument. */
 export const normaliseSymbol = (symbol: string): string => symbol.trim().toUpperCase().replace(/[/_]/g, '');
 

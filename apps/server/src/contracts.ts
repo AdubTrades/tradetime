@@ -1,6 +1,6 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { schema } from '@tc/db';
-import { findFutures, newId, normaliseSymbol } from '@tc/domain';
+import { findFutures, forexPair, newId, normaliseSymbol } from '@tc/domain';
 import { db } from './context';
 import { AppError } from './errors';
 
@@ -15,16 +15,29 @@ export async function getContract(id: string) {
   return row;
 }
 
+/**
+ * What the symbol decides about a contract. A forex pair is stored as "EURUSD", takes its P&L currency from the quote
+ * side (converted to USD when a trade is saved), and has no per-contract fee because its size is in units. Anything
+ * else is a USD futures contract.
+ */
+function instrumentFields(symbol: string) {
+  const pair = forexPair(symbol);
+  return pair ? { symbol: normaliseSymbol(symbol), currency: pair.quote, feePerSideCents: 0 } : { symbol: symbol.trim().toUpperCase(), currency: 'USD' };
+}
+
 export async function createContract(input: ContractInput) {
   const sortOrder = (await listContracts()).length;
-  const [row] = await db.insert(contract).values({ ...input, id: newId(), symbol: input.symbol.trim().toUpperCase(), sortOrder }).returning();
+  const [row] = await db.insert(contract).values({ ...input, ...instrumentFields(input.symbol), id: newId(), sortOrder }).returning();
   return row!;
 }
 
 export async function updateContract(id: string, patch: Partial<ContractInput>) {
+  const [existing] = await db.select().from(contract).where(eq(contract.id, id));
+  if (!existing) throw new AppError(404, 'Contract not found');
+  const instrument = patch.symbol ? instrumentFields(patch.symbol) : forexPair(existing.symbol) ? { feePerSideCents: 0 } : {};
   const [row] = await db
     .update(contract)
-    .set({ ...patch, ...(patch.symbol ? { symbol: patch.symbol.trim().toUpperCase() } : {}), updatedAt: new Date().toISOString() })
+    .set({ ...patch, ...instrument, updatedAt: new Date().toISOString() })
     .where(eq(contract.id, id))
     .returning();
   if (!row) throw new AppError(404, 'Contract not found');

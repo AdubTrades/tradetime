@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findFutures, FUTURES_CATALOGUE, FUTURES_GROUPS, needsCrossRate, searchFutures, usdPerQuoteUnit } from './futures';
+import { findFutures, forexPair, forexTickSize, FUTURES_CATALOGUE, FUTURES_GROUPS, needsCrossRate, searchFutures, usdPerQuoteUnit } from './futures';
 
 describe('futures catalogue', () => {
   it('has one entry per symbol, in a known group', () => {
@@ -44,5 +44,24 @@ describe('futures catalogue', () => {
     expect(needsCrossRate({ symbol: 'EURGBP', currency: 'GBP' })).toBe(true);
     expect(needsCrossRate({ symbol: 'USDJPY', currency: 'JPY' })).toBe(false);
     expect(needsCrossRate({ symbol: 'NQ', currency: 'USD' })).toBe(false);
+  });
+});
+
+describe('forexPair', () => {
+  it('reads pairs however they are typed', () => {
+    expect(forexPair('EUR/USD')).toEqual({ base: 'EUR', quote: 'USD' });
+    expect(forexPair('gbp_jpy')).toEqual({ base: 'GBP', quote: 'JPY' });
+    expect(forexPair(' audnzd ')).toEqual({ base: 'AUD', quote: 'NZD' });
+  });
+  it('is null for anything that is not a currency pair', () => {
+    for (const s of ['ES', 'MNQ', 'EURUSDX', 'EUREUR', 'ABCDEF', 'EUR', '']) expect(forexPair(s)).toBeNull();
+  });
+  it('recognises every pair in the catalogue', () => {
+    for (const spec of FUTURES_CATALOGUE.filter((x) => x.group === 'Forex')) expect(forexPair(spec.symbol)?.quote, spec.symbol).toBe(spec.currency);
+    for (const spec of FUTURES_CATALOGUE.filter((x) => x.group !== 'Forex')) expect(forexPair(spec.symbol), spec.symbol).toBeNull();
+  });
+  it('uses a coarser tick for yen pairs', () => {
+    expect(forexTickSize('USD/JPY')).toBe(0.001);
+    expect(forexTickSize('EURUSD')).toBe(0.00001);
   });
 });

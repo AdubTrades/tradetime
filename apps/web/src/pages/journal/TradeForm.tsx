@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Minus, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { findFutures, formatLocal, gradeTrade, isOnTick, needsCrossRate, usdPerQuoteUnit, latestReadingBefore, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule, zoneLabel } from '@tc/domain';
+import { forexPair, formatLocal, gradeTrade, isOnTick, needsCrossRate, usdPerQuoteUnit, latestReadingBefore, newId, pnlFromFills, riskPlan, rMultiple, simpleFills, tradingDay, type Fill, type GradeRule, zoneLabel } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
 import { Dialog } from '../../components/Dialog';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
@@ -214,7 +214,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
     enabled: !!contract && needsCrossRate(contract) && /^\d{4}-\d{2}-\d{2}$/.test(form.tradingDay),
     staleTime: Infinity,
   });
-  const forex = findFutures(contract?.symbol ?? '')?.group === 'Forex';
+  const forex = !!contract && forexPair(contract.symbol) !== null;
 
   const preview = useMemo(() => {
     if (!fills || !contract) return null;
@@ -558,7 +558,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                 ))}
               </tbody>
             </table>
-            {contract && contract.feePerSideCents === 0 && (
+            {contract && !forex && contract.feePerSideCents === 0 && (
               <p className="mt-1 text-xs text-muted">Tip: set {contract.symbol}'s fee per side in Settings → Contracts to fill fees automatically.</p>
             )}
           </section>
