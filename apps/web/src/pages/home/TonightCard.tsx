@@ -3,7 +3,6 @@ import { DateTime } from 'luxon';
 import { useMemo, useState } from 'react';
 import { currentZone, durationMinutes, formatDuration, formatLocal, stats } from '@tc/domain';
 import { Pnl } from '../../components/GradeBadge';
-import { SessionTimer } from '../../components/SessionTimer';
 import { SegmentedTabs } from '../../components/ui';
 import type { OccurrenceView, SessionType, TradeRow } from '../../lib/api';
 import { useEventTypes, useUpcoming } from '../../lib/calendar';
@@ -45,25 +44,12 @@ function useUsualSessionMinutes(types: SessionType[], today: string): number | n
   }, [sessions, types]);
 }
 
-export function TonightCard({
-  now,
-  today,
-  types,
-  trades,
-  revealed,
-  longSessionHours,
-}: {
-  now: Date;
-  today: string;
-  types: SessionType[];
-  trades: TradeRow[];
-  revealed: boolean;
-  longSessionHours: number;
-}) {
+/** The day's agenda (or the last session's result) beside Performance. The session timer lives in the page header. */
+export function TonightCard({ now, today, types, trades, revealed }: { now: Date; today: string; types: SessionType[]; trades: TradeRow[]; revealed: boolean }) {
   const [mode, setMode] = useState<'tonight' | 'last'>('tonight');
   return (
-    <section aria-label="Tonight" className="flex flex-wrap overflow-hidden rounded-xl bg-dark text-dark-text">
-      <div className="flex min-w-0 flex-[2_1_420px] flex-col gap-[18px] px-6 py-[22px]">
+    <section aria-label="Tonight" className="flex min-w-0 flex-[1_1_340px] flex-col rounded-xl bg-dark text-dark-text">
+      <div className="flex min-w-0 flex-1 flex-col gap-[18px] px-6 py-[22px]">
         <div className="flex items-center justify-between gap-3">
           <SegmentedTabs
             dark
@@ -80,9 +66,6 @@ export function TonightCard({
           </Link>
         </div>
         {mode === 'tonight' ? <Agenda now={now} today={today} types={types} /> : <LastSession trades={trades} revealed={revealed} today={today} />}
-      </div>
-      <div className="flex min-w-0 flex-[1_1_280px] flex-col justify-center bg-dark-raised px-6 py-[22px]">
-        <SessionTimer types={types} longSessionHours={longSessionHours} timeLogLink />
       </div>
     </section>
   );

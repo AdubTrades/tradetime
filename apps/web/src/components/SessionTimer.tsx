@@ -41,8 +41,8 @@ export function SessionTimer({
   longSessionHours: number;
   clock?: 48 | 56;
   timeLogLink?: boolean;
-  /** `row` puts the controls to the right of the clock (time log). */
-  layout?: 'stack' | 'row';
+  /** `row` puts the controls to the right of the clock (time log); `compact` is one light row for the Home header. */
+  layout?: 'stack' | 'row' | 'compact';
 }) {
   const now = useNow();
   const { data: running } = useRunningSession();
@@ -65,6 +65,87 @@ export function SessionTimer({
   const row = layout === 'row';
   const rootRef = useRef<HTMLDivElement>(null);
   useReportTimerVisible(rootRef);
+  const dialogs = (
+    <>
+      <SessionStartDialog type={checklistFor} open={!!checklistFor} onClose={() => setChecklistFor(null)} />
+      {running && <CheckInDialog sessionId={checkingIn ? running.id : null} elapsedMinutes={Math.floor(minutes)} onClose={() => setCheckingIn(false)} />}
+    </>
+  );
+
+  if (layout === 'compact') {
+    const clockText = running ? elapsedClock(running.start, now) : '00:00:00';
+    return (
+      <div ref={rootRef} className="flex items-center gap-2">
+        {running ? (
+          <>
+            <Link
+              to="/time-log"
+              title={`${runningType?.name ?? 'Session'} since ${formatLocal(running.start, 'HH:mm')}${longRunning ? `: running for ${formatDuration(minutes)}. Stop it at the right time on the Time log.` : ''}`}
+              className="flex h-11 items-center gap-2 rounded-md border border-border bg-card px-3 shadow-card hover:bg-hover"
+            >
+              <span className={cn('h-[7px] w-[7px] rounded-full', longRunning ? 'bg-warning' : 'bg-profit')} aria-hidden />
+              <span className="hidden max-w-[8rem] truncate text-[13px] text-muted sm:inline">{runningType?.name ?? 'Session'}</span>
+              <span className={cn('font-mono text-[15px] tracking-[-0.02em]', longRunning && 'text-warning')} aria-label={`Running for ${clockText}`}>
+                {clockText}
+              </span>
+            </Link>
+            {runningType?.isTrading && (
+              <button
+                type="button"
+                onClick={() => setCheckingIn(true)}
+                aria-label="Check in"
+                title="Check in"
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-card text-secondary shadow-card hover:bg-hover hover:text-text"
+              >
+                <MessageCircleQuestion size={17} aria-hidden />
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={stop.isPending}
+              onClick={() => stop.mutate(undefined)}
+              className="flex h-11 items-center gap-2 rounded-md bg-text px-4 text-sm font-semibold text-card hover:opacity-90 disabled:opacity-50"
+            >
+              <Square size={13} fill="currentColor" aria-hidden /> Stop
+            </button>
+          </>
+        ) : (
+          <>
+            <Select
+              aria-label="Activity"
+              className="w-[150px]"
+              value={selected?.id}
+              onChange={(e) => {
+                setTypeId(e.target.value);
+                try {
+                  localStorage.setItem(LAST_TYPE_KEY, e.target.value);
+                } catch {
+                  // Not critical.
+                }
+              }}
+            >
+              {active.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+            <button
+              type="button"
+              disabled={!selected || start.isPending}
+              onClick={() => selected && begin(selected)}
+              title={start.error?.message}
+              className="flex h-11 items-center gap-2 rounded-md bg-ember px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              <Play size={14} fill="currentColor" aria-hidden /> Start
+            </button>
+          </>
+        )}
+        {dialogs}
+      </div>
+    );
+  }
+
   return (
     <div ref={rootRef} className={row ? 'flex flex-wrap items-center justify-between gap-x-8 gap-y-5' : 'flex flex-col gap-[18px]'}>
       <div className={cn('flex flex-col', row ? 'gap-2.5' : 'gap-[18px]')}>
@@ -166,8 +247,7 @@ export function SessionTimer({
           Time log →
         </Link>
       )}
-      <SessionStartDialog type={checklistFor} open={!!checklistFor} onClose={() => setChecklistFor(null)} />
-      {running && <CheckInDialog sessionId={checkingIn ? running.id : null} elapsedMinutes={Math.floor(minutes)} onClose={() => setCheckingIn(false)} />}
+      {dialogs}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import { useState } from 'react';
 import { currentZone, financialYear, financialYearOf, tradingDay } from '@tc/domain';
 import { MenuButton } from '../../components/Menu';
+import { SessionTimer } from '../../components/SessionTimer';
 import { Button } from '../../components/ui';
 import { api } from '../../lib/api';
 import { useHealth } from '../../lib/demo';
@@ -23,7 +24,7 @@ import { TodoCard } from './TodoCard';
 import { TonightCard } from './TonightCard';
 import { usePnlReveal } from './usePnlReveal';
 
-/** Landing page: tonight's agenda and timer, then summaries that link through to each tab. */
+/** Landing page: performance and tonight's agenda, then summaries that link through to each tab. The session timer sits in the header. */
 /** The USD / AUD choice applies to the Home dashboard only; every other screen shows P&L in USD. */
 export function HomePage() {
   return (
@@ -61,7 +62,8 @@ function HomeDashboard() {
             {firstName ? `, ${firstName}` : ''}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+          <div className="flex items-center gap-2">
           <MenuButton
             label="Add"
             items={[
@@ -72,24 +74,27 @@ function HomeDashboard() {
           <Button variant="primary" className="h-11 px-[18px]" onClick={() => setDialog('trade')}>
             Log trades
           </Button>
+          </div>
+          <SessionTimer types={types} longSessionHours={settings.longSessionHours} layout="compact" />
         </div>
       </header>
 
       <Alerts />
 
-      <TonightCard now={now} today={today} types={types} trades={trades} revealed={revealed} longSessionHours={settings.longSessionHours} />
-
       <div className="flex flex-wrap gap-6">
         <PerformanceCard trades={trades} today={today} fyLabel={fy.label} revealed={revealed} onReveal={setRevealed} canHide={settings.homeHidePnl} />
-        <DisciplineCard trades={trades} today={today} />
+        <TonightCard now={now} today={today} types={types} trades={trades} revealed={revealed} />
       </div>
 
       <div className="flex flex-wrap gap-6">
         <RecentTradesCard trades={trades} revealed={revealed} />
-        <BusinessCard fyStartYear={fy.startYear} today={today} />
+        <DisciplineCard trades={trades} today={today} />
       </div>
 
-      <TodoCard today={today} />
+      <div className="flex flex-wrap gap-6">
+        <BusinessCard fyStartYear={fy.startYear} today={today} />
+        <TodoCard today={today} />
+      </div>
 
       <TradeForm open={dialog === 'trade'} onClose={() => setDialog(null)} defaults={{ tradingDay: today }} />
       <ExpenseDialog open={dialog === 'expense'} expense={null} onClose={() => setDialog(null)} onHistory={() => undefined} onMakeRecurring={() => undefined} />

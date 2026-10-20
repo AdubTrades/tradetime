@@ -23,7 +23,7 @@ export function TodoCard({ today }: { today: string }) {
   const hidden = todos.length - shown.length;
 
   return (
-    <section aria-labelledby="todo-h" className="card scroll-mt-6 p-6">
+    <section aria-labelledby="todo-h" className="card min-w-0 flex-[2_1_520px] scroll-mt-6 p-6">
       <CardHeader
         id="todo-h"
         title="To do"
