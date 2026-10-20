@@ -1,5 +1,5 @@
 import { ChevronDown, MoreHorizontal } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { buttonClass, cn } from './ui';
 
 export interface MenuItem {
@@ -17,6 +17,21 @@ export function MenuButton({ label, items, className, icon = false }: { label: R
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // Which edge of the trigger the menu lines up with. Icon (⋯) triggers prefer the right edge, labelled buttons the left;
+  // whichever side would run off the screen loses, so the menu stays visible on a phone.
+  const [align, setAlign] = useState<'left' | 'right'>(icon ? 'right' : 'left');
+
+  useLayoutEffect(() => {
+    if (!open || !menuRef.current || !triggerRef.current) return;
+    const edge = 8;
+    const trigger = triggerRef.current.getBoundingClientRect();
+    const width = menuRef.current.offsetWidth;
+    const fitsLeft = trigger.left + width <= window.innerWidth - edge;
+    const fitsRight = trigger.right - width >= edge;
+    const preferred = icon ? 'right' : 'left';
+    setAlign(preferred === 'left' ? (fitsLeft || !fitsRight ? 'left' : 'right') : fitsRight || !fitsLeft ? 'right' : 'left');
+  }, [open, icon]);
 
   useEffect(() => {
     if (!open) return;
@@ -72,7 +87,11 @@ export function MenuButton({ label, items, className, icon = false }: { label: R
         )}
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 z-50 mt-1.5 min-w-[160px] rounded-lg border border-border bg-card p-1 shadow-menu">
+        <div
+          ref={menuRef}
+          role="menu"
+          className={cn('absolute z-50 mt-1.5 min-w-[160px] max-w-[calc(100vw-16px)] rounded-lg border border-border bg-card p-1 shadow-menu', align === 'right' ? 'right-0' : 'left-0')}
+        >
           {items.map((it, i) => (
             <button
               key={i}
