@@ -5,6 +5,7 @@ import { Button, Card, Field, Input, Select } from '../../components/ui';
 import { api, type Settings, type SessionType } from '../../lib/api';
 import { useSessionTypes } from '../../lib/sessions';
 import { useUpdateSettings } from '../../lib/settings';
+import { swatch } from '../../lib/theme';
 
 export function TimeLogSettings({ settings }: { settings: Settings }) {
   const update = useUpdateSettings();
@@ -58,21 +59,24 @@ function SessionTypesEditor() {
       <p className="mb-3 text-xs text-muted">All types count as business hours. Trading types get the session-start checklist and check-ins.</p>
       <ul className="divide-y divide-border rounded-md border border-border">
         {types.map((t, i) => (
-          <li key={t.id} className={`flex items-center gap-2 px-3 py-2 text-sm ${t.archived ? 'opacity-50' : ''}`}>
-            <input
-              type="color"
-              aria-label={`Colour for ${t.name}`}
-              value={t.color}
-              onChange={(e) => patch.mutate({ id: t.id, color: e.target.value })}
-              className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent p-0"
-            />
+          <li key={t.id} className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 text-sm ${t.archived ? 'opacity-50' : ''}`}>
+            {/* A visible swatch with the real colour input laid invisibly on top, so it shows (and opens the picker) on iOS too. */}
+            <span className="relative h-8 w-8 shrink-0 rounded-full border border-border pointer-coarse:h-10 pointer-coarse:w-10" style={{ background: swatch(t.color) }}>
+              <input
+                type="color"
+                aria-label={`Colour for ${t.name}`}
+                value={t.color}
+                onChange={(e) => patch.mutate({ id: t.id, color: e.target.value })}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </span>
             <Input
               defaultValue={t.name}
               aria-label="Name"
-              className="max-w-56"
+              className="min-w-0 flex-1 basis-32 sm:max-w-56 sm:flex-none"
               onBlur={(e) => e.target.value.trim() && e.target.value !== t.name && patch.mutate({ id: t.id, name: e.target.value })}
             />
-            <label className="flex items-center gap-1.5 text-muted">
+            <label className="flex min-h-10 items-center gap-1.5 text-muted">
               <input type="checkbox" checked={t.isTrading} onChange={(e) => patch.mutate({ id: t.id, isTrading: e.target.checked })} />
               Trading
             </label>
@@ -97,7 +101,7 @@ function SessionTypesEditor() {
           if (newName.trim()) create.mutate(newName.trim());
         }}
       >
-        <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New session type" className="max-w-56" />
+        <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New session type" className="min-w-0 flex-1 sm:max-w-56 sm:flex-none" />
         <Button type="submit" disabled={!newName.trim() || create.isPending}>
           <Plus size={16} aria-hidden /> Add
         </Button>
