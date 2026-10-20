@@ -4,7 +4,7 @@ import { GRADES } from '@tc/domain';
 import { getAttachment } from '../attachments';
 import { createContract, deleteAccountGroup, ensureContract, listAccountGroups, listContracts, saveAccountGroup, updateContract } from '../contracts';
 import { AppError } from '../errors';
-import { usdRate } from '../fx';
+import { usdRate, usdRates } from '../fx';
 import { body, cents, instant, isoDate } from '../http';
 import { addCriterion, addExample, createPlay, deleteExample, getPlay, listPlays, updateCriterion, updateExample, updatePlay } from '../plays';
 import {
@@ -37,6 +37,8 @@ export const contractRoutes = new Hono()
   .post('/', async (c) => c.json(await createContract(await body(c.req, contractSchema)), 201))
   /** USD for one unit of a currency on a day, for previewing forex crosses' P&L in USD. */
   .get('/fx-rate', async (c) => c.json({ rate: await usdRate(c.req.query('currency') ?? '', c.req.query('date') ?? '') }))
+  /** USD for one unit of a currency on every day in a range, for showing P&L totals in that currency. */
+  .get('/fx-rates', async (c) => c.json({ rates: await usdRates(c.req.query('currency') ?? '', c.req.query('from') ?? '', c.req.query('to') ?? '') }))
   /** Add a contract from the futures catalogue (or return the user's own one for that symbol). */
   .post('/catalogue', async (c) => {
     const { symbol } = await body(c.req, z.object({ symbol: z.string().trim().min(1).max(12) }));

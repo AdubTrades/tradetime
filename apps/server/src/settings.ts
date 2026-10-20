@@ -30,6 +30,8 @@ const settingsShape = z.object({
   reportAbn: z.string().trim().regex(/^(\d\s?){11}$/, 'An ABN is 11 digits').nullable(),
   /** Keep P&L figures on Home hidden until revealed, so results don't colour the next session. */
   homeHidePnl: z.boolean(),
+  /** Currency the Home page's Performance card shows P&L in. Trades are stored in USD; AUD converts at each trading day's rate. */
+  homeCurrency: z.enum(['USD', 'AUD']),
   /** The welcome steps have been finished or skipped (new accounts see them once). */
   onboarded: z.boolean(),
 });
@@ -51,6 +53,7 @@ export const defaultSettings: Settings = {
   reportName: null,
   reportAbn: null,
   homeHidePnl: true,
+  homeCurrency: 'USD',
   onboarded: false,
 };
 

@@ -26,3 +26,16 @@ export function useJournalMutation<TVars, TResult = unknown>(fn: (vars: TVars) =
   });
 }
 
+
+/**
+ * USD per 1 unit of `currency` for every day from `from` to `to`, for showing totals in that currency (trades are stored
+ * in USD). Only fetched when `enabled`; rates for past days never change, so they're kept.
+ */
+export const useUsdRates = (currency: string, from: string | undefined, to: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: ['fx-rates', currency, from, to],
+    queryFn: () => api.get<{ rates: Record<string, number> }>(`/contracts/fx-rates?currency=${currency}&from=${from}&to=${to}`).then((r) => r.rates),
+    enabled: enabled && !!from && !!to,
+    staleTime: 60 * 60_000,
+    retry: 1,
+  });

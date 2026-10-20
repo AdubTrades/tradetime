@@ -43,3 +43,16 @@ describe('settings', () => {
     }, 'alice');
   });
 });
+
+describe('home currency', () => {
+  it('starts as USD and can be switched to AUD and back', () =>
+    asUser(async () => {
+      expect(settings.getSettings().homeCurrency).toBe('USD');
+      await settings.updateSettings({ homeCurrency: 'AUD' });
+    }).then(() =>
+      asUser(async () => {
+        expect(settings.getSettings().homeCurrency).toBe('AUD');
+        await expect(settings.updateSettings({ homeCurrency: 'EUR' as never })).rejects.toThrow();
+      }),
+    ));
+});

@@ -10,7 +10,7 @@ import { api } from '../../lib/api';
 import { useHealth } from '../../lib/demo';
 import { useTrades } from '../../lib/journal';
 import { useNow, useSessionTypes } from '../../lib/sessions';
-import { useSettings } from '../../lib/settings';
+import { useSettings, useUpdateSettings } from '../../lib/settings';
 import { EventDialog } from '../calendar/EventDialog';
 import { ExpenseDialog } from '../expenses/ExpenseDialog';
 import { TradeForm } from '../journal/TradeForm';
@@ -25,6 +25,7 @@ import { usePnlReveal } from './usePnlReveal';
 /** Landing page: tonight's agenda and timer, then summaries that link through to each tab. */
 export function HomePage() {
   const { data: settings } = useSettings();
+  const updateSettings = useUpdateSettings();
   const now = useNow(30_000);
   const today = tradingDay(now, settings?.rolloverTime);
   const fy = financialYear(financialYearOf(today).startYear);
@@ -70,7 +71,7 @@ export function HomePage() {
       <TonightCard now={now} today={today} types={types} trades={trades} revealed={revealed} longSessionHours={settings.longSessionHours} />
 
       <div className="flex flex-wrap gap-6">
-        <PerformanceCard trades={trades} today={today} fyLabel={fy.label} revealed={revealed} onReveal={setRevealed} canHide={settings.homeHidePnl} />
+        <PerformanceCard trades={trades} today={today} fyLabel={fy.label} revealed={revealed} onReveal={setRevealed} canHide={settings.homeHidePnl} currency={settings.homeCurrency} onCurrency={(homeCurrency) => updateSettings.mutate({ homeCurrency })} />
         <DisciplineCard trades={trades} today={today} />
       </div>
 

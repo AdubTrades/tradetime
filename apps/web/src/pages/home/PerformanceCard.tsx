@@ -3,8 +3,9 @@ import { Eye, EyeOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { stats, weekStart } from '@tc/domain';
 import { Pnl } from '../../components/GradeBadge';
-import { Button, CardHeader, ViewLink } from '../../components/ui';
+import { Button, CardHeader, SegmentedTabs, ViewLink } from '../../components/ui';
 import type { TradeRow } from '../../lib/api';
+import { useUsdRates } from '../../lib/journal';
 
 const HIDDEN = <span className="tracking-widest text-faint">••••</span>;
 
@@ -51,6 +52,8 @@ export function PerformanceCard({
   revealed,
   onReveal,
   canHide,
+  currency,
+  onCurrency,
 }: {
   trades: TradeRow[];
   today: string;
@@ -58,7 +61,19 @@ export function PerformanceCard({
   revealed: boolean;
   onReveal: (r: boolean) => void;
   canHide: boolean;
+  currency: 'USD' | 'AUD';
+  onCurrency: (c: 'USD' | 'AUD') => void;
 }) {
+  // Trades are stored in USD. For AUD, each trade is converted at its own trading day's rate, so a past total never
+  // moves when today's rate does.
+  const tradingDays = trades.map((t) => t.tradingDay).sort();
+  const rates = useUsdRates('AUD', tradingDays[0], tradingDays[tradingDays.length - 1], currency === 'AUD' && revealed && trades.length > 0);
+  const converted = currency === 'AUD' && rates.data ? trades.map((t) => ({ rate: rates.data[t.tradingDay], t })) : null;
+  const ready = currency === 'AUD' && (trades.length === 0 || (!!converted && converted.every((c) => !!c.rate)));
+  const shown: TradeRow[] = ready && converted ? converted.map(({ t, rate }) => ({ ...t, netCents: Math.round(t.netCents / rate!) })) : trades;
+  const shownCurrency = ready ? 'AUD' : 'USD';
+  const fx = (cents: number, className?: string) => <Pnl cents={cents} currency={shownCurrency} className={className} />;
+  trades = shown;
   const fy = stats.summarise(trades);
   const week = stats.summarise(trades.filter((t) => t.tradingDay >= weekStart(today) && t.tradingDay <= today));
   const monthTrades = trades.filter((t) => t.tradingDay.startsWith(today.slice(0, 7)));
@@ -74,7 +89,7 @@ export function PerformanceCard({
       <CardHeader
         id="perf-h"
         title="Performance"
-        description="After fees, in USD"
+        description={`After fees, in ${shownCurrency}`}
         action={
           <>
             {canHide && (
@@ -87,8 +102,11 @@ export function PerformanceCard({
         }
       />
       <div className="-mt-5">
-        <div className="text-[13px] text-muted">Financial year {fyLabel}</div>
-        <div className="mt-1 text-[48px] leading-[1.1] font-medium tracking-[-0.035em]">{revealed ? <Pnl cents={fy.netCents} /> : HIDDEN}</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[13px] text-muted">Financial year {fyLabel}</div>
+          <SegmentedTabs label="Currency" value={currency} onChange={onCurrency} options={[{ value: 'USD', label: 'USD' }, { value: 'AUD', label: 'AUD' }]} />
+        </div>
+        <div className="mt-1 text-[48px] leading-[1.1] font-medium tracking-[-0.035em]">{revealed ? fx(fy.netCents) : HIDDEN}</div>
         <div className="mt-1 text-sm text-muted">
           {fy.n} trade{fy.n === 1 ? '' : 's'}
           {revealed && fy.n > 0 && ` · ${winR(fy)}`}
@@ -108,7 +126,7 @@ export function PerformanceCard({
             {revealed && (
               <>
                 {' · '}
-                <Pnl cents={total30} className="text-faint" />
+                {fx(total30, "text-faint")}
               </>
             )}
           </span>
@@ -116,20 +134,29 @@ export function PerformanceCard({
         </div>
       </div>
       <div className="flex flex-wrap border-t border-border-subtle">
-        <Stat label="This week" n={week.n} value={revealed ? <Pnl cents={week.netCents} /> : HIDDEN} sub={revealed ? winR(week) : `${week.n} trades`} />
+        <Stat label="This week" n={week.n} value={revealed ? fx(week.netCents) : HIDDEN} sub={revealed ? winR(week) : `${week.n} trades`} />
         <Stat
           label={DateTime.fromISO(today).toFormat('LLLL')}
           n={month.n}
-          value={revealed ? <Pnl cents={month.netCents} /> : HIDDEN}
+          value={revealed ? fx(month.netCents) : HIDDEN}
           sub={revealed ? winR(month) : `${month.n} trades`}
         />
         <Stat
           last
           label="Streak"
           value={revealed ? (streak.current === 0 ? '—' : `${Math.abs(streak.current)} ${streak.current > 0 ? (streak.current === 1 ? 'win' : 'wins') : streak.current === -1 ? 'loss' : 'losses'}`) : HIDDEN}
-          sub={revealed && last ? <>Last trade <Pnl cents={last.netCents} className="text-faint" /></> : last ? 'Last trade hidden' : 'No trades yet'}
+          sub={revealed && last ? <>Last trade {fx(last.netCents, "text-faint")}</> : last ? 'Last trade hidden' : 'No trades yet'}
         />
       </div>
+      {currency === 'AUD' && revealed && trades.length > 0 && (
+        <p className="-mt-2 text-xs text-faint" role="status">
+          {ready
+            ? 'Converted from USD at each trading day’s ECB rate.'
+            : rates.isError
+              ? 'Couldn’t get the AUD rates, so this is showing USD. Try again shortly.'
+              : 'Getting AUD rates…'}
+        </p>
+      )}
     </section>
   );
 }

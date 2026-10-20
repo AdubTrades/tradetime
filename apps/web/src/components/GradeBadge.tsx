@@ -19,8 +19,10 @@ export function GradeBadge({ grade, outsidePlan, className }: { grade: string | 
 }
 
 /** Signed money with P&L colour, always showing the sign (+$322.14, -$33.98). */
-export function Pnl({ cents, className, onDark = false }: { cents: number; className?: string; onDark?: boolean }) {
-  const text = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', signDisplay: 'exceptZero' }).format(cents / 100);
+export function Pnl({ cents, className, onDark = false, currency = 'USD' }: { cents: number; className?: string; onDark?: boolean; currency?: 'USD' | 'AUD' }) {
+  const formatted = new Intl.NumberFormat('en-AU', { style: 'currency', currency, currencyDisplay: 'narrowSymbol', signDisplay: 'exceptZero' }).format(cents / 100);
+  // en-AU writes both as "$", so say which when it's Australian dollars.
+  const text = currency === 'AUD' ? formatted.replace('$', 'A$') : formatted;
   return (
     <span className={cn('tabular-nums', cents > 0 ? (onDark ? 'text-profit-dark' : 'text-profit') : cents < 0 ? 'text-loss' : onDark ? 'text-dark-muted' : 'text-muted', className)}>
       {text}
