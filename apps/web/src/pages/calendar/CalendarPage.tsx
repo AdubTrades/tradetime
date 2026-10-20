@@ -134,21 +134,21 @@ export function CalendarPage() {
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[3_1_640px] flex-col gap-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Phone: the month sits on the left; Today, the arrows and Layers share the right in one row. */}
+            {/* Phone, one row: the month with its arrows beside it, then Today and Layers pushed to the right. */}
             <div className="flex w-full items-center gap-1 sm:w-auto">
-              <Button className={cn(navButton, 'max-sm:order-3')} aria-label="Previous month" onClick={() => setMonth(dt.minus({ months: 1 }).toFormat('yyyy-MM'))}>
+              <Button className={cn(navButton, 'max-sm:order-2 max-sm:ml-1')} aria-label="Previous month" onClick={() => setMonth(dt.minus({ months: 1 }).toFormat('yyyy-MM'))}>
                 <ChevronLeft size={16} />
               </Button>
               <h2
-                className="min-w-0 truncate text-xl font-medium tracking-[-0.02em] max-sm:order-1 max-sm:mr-auto sm:mx-3 sm:min-w-[150px] sm:text-center"
+                className="min-w-0 truncate text-xl font-medium tracking-[-0.02em] max-sm:order-1 sm:mx-3 sm:min-w-[150px] sm:text-center"
                 aria-live="polite"
               >
                 {dt.toFormat('LLLL yyyy')}
               </h2>
-              <Button className={cn(navButton, 'max-sm:order-4')} aria-label="Next month" onClick={() => setMonth(dt.plus({ months: 1 }).toFormat('yyyy-MM'))}>
+              <Button className={cn(navButton, 'max-sm:order-3')} aria-label="Next month" onClick={() => setMonth(dt.plus({ months: 1 }).toFormat('yyyy-MM'))}>
                 <ChevronRight size={16} />
               </Button>
-              <Button className="h-10 text-[13px] max-sm:order-2 sm:ml-2" onClick={() => setMonth(today.slice(0, 7))} disabled={month === today.slice(0, 7)}>
+              <Button className="h-10 text-[13px] max-sm:order-4 max-sm:ml-auto sm:ml-2" onClick={() => setMonth(today.slice(0, 7))} disabled={month === today.slice(0, 7)}>
                 Today
               </Button>
               <LayersMenu layers={layers} onToggle={toggleLayer} className="max-sm:order-5 sm:hidden" />
