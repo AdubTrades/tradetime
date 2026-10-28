@@ -5,7 +5,7 @@ import { commitImport, deleteAlias, listAliases, previewImport } from '../tradeI
 
 const options = z.object({
   csv: z.string().min(1),
-  format: z.enum(['ninjatrader-executions', 'tradovate-performance', 'generic']).optional(),
+  format: z.enum(['ninjatrader-executions', 'tradovate-performance', 'trade-list', 'generic']).optional(),
   mapping: z.partialRecord(z.enum(['time', 'date', 'side', 'qty', 'price', 'symbol', 'account', 'id', 'commission']), z.string()).optional(),
   zone: z.string().optional(),
   dateOrder: z.enum(['dmy', 'mdy']).optional(),

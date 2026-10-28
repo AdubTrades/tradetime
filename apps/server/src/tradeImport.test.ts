@@ -155,3 +155,69 @@ describe('contracts from the futures catalogue', () => {
     });
   });
 });
+
+describe('trade lists (one row per trade, e.g. TradeZella)', () => {
+  // Same layout as a TradeZella export: no side, size or entry time; P&L tells us both.
+  const list = [
+    'Open Date,Symbol,Status,Close Date,Entry Price,Exit Price,Net P&L,Net ROI,Zella Score,Close Time,Commission',
+    '2026-04-16,NQ,Win,2026-04-16,26376.25,26374.75,30.0,0.00005687,4.8,21:42:57 AWST,0.0',
+    '2026-04-16,NQ,Win,2026-04-16,26382.75,26467.5,1695.0,0.0032,99.4,23:09:25 AWST,0.0',
+    '2026-04-21,NQ,Win,2026-04-21,26807.5,26832.5,1000.0,0.0009,79.4,21:59:53 AWST,0.0',
+    '2026-04-22,MNQ,Loss,2026-04-22,26827.25,26847.0,-40.5,-0.0007,-91.9,21:52:28 AWST,1.0',
+    '2026-04-23,NQ,Win,2026-04-23,27053.0,27053.0,0,0,0,22:57:52 AWST,0.0',
+  ].join('\n');
+
+  it('works out side and size from the P&L, at the close time in the zone the file names', () =>
+    asUser(async () => {
+      const p = await imp.previewImport({ csv: list, defaultAccount: 'Backtesting', accountMap: { Backtesting: a1 } });
+      expect(p.format).toBe('trade-list');
+      expect(p.rowIssues).toEqual([{ line: 6, message: 'Entry and exit are the same, so the direction and size can’t be worked out' }]);
+      const byNet = Object.fromEntries(p.trades.map((t) => [t.netCents, t]));
+      // 1.5 points against a short × $20 = +$30
+      expect(byNet[3000]).toMatchObject({ symbol: 'NQ', direction: 'short', tradingDay: '2026-04-16', openedAt: '2026-04-16T13:42:57Z' });
+      expect(byNet[169500]).toMatchObject({ direction: 'long' });
+      // 25 points × $20 × 2 contracts = $1,000
+      expect(byNet[100000]!.accounts[0]!.maxQty).toBe(2);
+      // MNQ: 19.75 points × $2 = $39.50 gross loss, short, $1 commission → net −$40.50
+      expect(byNet[-4050]).toMatchObject({ symbol: 'MNQ', direction: 'short' });
+    }));
+
+  it('keeps a stated $0 commission (a backtest) instead of applying the contract’s fee', () =>
+    asUser(async () => {
+      await contracts.updateContract('ct_nq', { feePerSideCents: 129 });
+      const p = await imp.previewImport({ csv: list, defaultAccount: 'Backtesting', accountMap: { Backtesting: a1 } });
+      expect(p.trades.map((t) => t.netCents).sort((x, y) => x! - y!)).toEqual([-4050, 3000, 100000, 169500]);
+    }));
+
+  it('imports into the chosen account and skips the same file the second time', async () => {
+    const opts = { csv: list, defaultAccount: 'Backtesting', accountMap: { Backtesting: a1 } };
+    expect((await asUser(() => imp.commitImport(opts))).created).toBe(4);
+    const all = await asUser(() => trades.listTrades({ from: '2026-04-01', to: '2026-04-30' }));
+    expect(all).toHaveLength(4);
+    expect(all.every((t) => t.accounts.length === 1 && t.accounts[0]!.accountId === a1 && t.needsReview)).toBe(true);
+    expect(all.reduce((s, t) => s + t.netCents, 0)).toBe(3000 + 169500 + 100000 - 4050);
+    expect((await asUser(() => imp.commitImport(opts))).created).toBe(0);
+  });
+});
+
+describe('trade lists with the extra columns (Open Time, Gross P&L, Realized RR)', () => {
+  const list = [
+    'Open Date,Symbol,Status,Close Date,Entry Price,Exit Price,Net P&L,Net ROI,Close Time,Commission,Realized RR,Points,Open Time,Gross P&L,Executions,Duration',
+    '2026-04-16,NQ,Loss,2026-04-16,26323.5,26348.75,-505.0,-0.0009583,22:26:26 AWST,0.0,-1.0,-25.25,22:19:29 AWST,-505.0,2,417.0',
+    '2026-04-16,NQ,Win,2026-04-16,26382.75,26467.5,1695.0,0.00321233,23:09:25 AWST,0.0,3.35643564,84.75,22:43:29 AWST,1695.0,2,1556.0',
+    '2026-04-21,NQ,Win,2026-04-21,26807.5,26832.5,1000.0,0.00093257,21:59:53 AWST,0.0,1.0,25.0,21:55:59 AWST,1000.0,3,233.001',
+  ].join('\n');
+
+  it('uses the real entry time and gives each trade its R from the realized RR', async () => {
+    const opts = { csv: list, defaultAccount: 'Backtesting', accountMap: { Backtesting: a1 } };
+    const p = await asUser(() => imp.previewImport(opts));
+    expect(p.trades.find((t) => t.netCents === -50500)).toMatchObject({ direction: 'short', openedAt: '2026-04-16T14:19:29Z', closedAt: '2026-04-16T14:26:26Z' });
+    expect((await asUser(() => imp.commitImport(opts))).created).toBe(3);
+    const all = await asUser(() => trades.listTrades({ from: '2026-04-01', to: '2026-04-30' }));
+    const r = Object.fromEntries(all.map((t) => [t.netCents, t.r]));
+    expect(r[-50500]).toBe(-1);
+    expect(r[169500]).toBeCloseTo(3.36, 2);
+    // 2 contracts, 25 points of risk each: +$1,000 is 1R
+    expect(r[100000]).toBe(1);
+  });
+});

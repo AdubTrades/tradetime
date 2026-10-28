@@ -103,7 +103,15 @@ async function analyse(opts: ImportOptions, { addContracts = false }: { addContr
     if (missing.length) return { headers, format, mapping, zone, dateOrder, detectedOrder, missing, addsContracts: [] as string[], accountsInFile: [], trades: [] as PreviewTrade[], counts: { rows: rows.length, executions: 0, duplicates: 0, open: 0, issues: 0 }, rowIssues: [], merged: [] as ImportTrade[] };
   }
 
-  const { executions, issues: rowIssues } = rowsToExecutions(rows, format, mapping, { zone, dateOrder, defaultAccount: opts.defaultAccount });
+  // Trade lists give P&L but no size: size comes from each contract's dollars per point (yours, or the catalogue's).
+  const known = await listContracts();
+  const pointValueFor = (root: string) => {
+    const c = known.find((x) => normaliseSymbol(x.symbol) === normaliseSymbol(root));
+    if (c) return c.currency && c.currency !== 'USD' ? undefined : c.pointValueCents;
+    const spec = findFutures(root);
+    return spec && spec.currency === 'USD' ? spec.pointValueCents : undefined;
+  };
+  const { executions, issues: rowIssues } = rowsToExecutions(rows, format, mapping, { zone, dateOrder, defaultAccount: opts.defaultAccount, pointValueFor });
 
   // Fills already in TradeTime are skipped, so overlapping exports only add what's new.
   const ids = executions.map((e) => e.externalId);
@@ -166,7 +174,7 @@ async function analyse(opts: ImportOptions, { addContracts = false }: { addContr
         let net: number | null = null;
         if (c && pointValue !== null) {
           const r = pnlFromFills(a.fills, pointValue);
-          const fees = a.commissionCents || r.totalQty * c.feePerSideCents;
+          const fees = a.commissionStated ? a.commissionCents : a.commissionCents || r.totalQty * c.feePerSideCents;
           net = r.grossCents - fees;
         }
         return { name: a.account, accountId: id, maxQty: a.maxQty, multiplier: a.multiplier, fills: a.fills.length, netCents: net };
@@ -239,7 +247,7 @@ export async function commitImport(opts: ImportOptions) {
       .map((x) => ({
         accountId: p.accounts.find((pa) => pa.name === x.account)!.accountId!,
         multiplier: x.multiplier,
-        feesCents: x.commissionCents || null,
+        feesCents: x.commissionStated ? x.commissionCents : x.commissionCents || null,
         fills: x.fills,
       }));
     const base = accounts.reduce((m, x) => (x.multiplier < m.multiplier ? x : m), accounts[0]!);
@@ -275,7 +283,7 @@ export async function commitImport(opts: ImportOptions) {
         );
         attached++;
         } else {
-          await createTrade({ tradingDay: p.tradingDay, contractId: p.contractId!, fills: base.fills, accounts, source: 'import', needsReview: true });
+          await createTrade({ tradingDay: p.tradingDay, contractId: p.contractId!, fills: base.fills, accounts, source: 'import', needsReview: true, riskPoints: t.riskPoints ?? null });
           created++;
         }
       });

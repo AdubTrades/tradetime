@@ -9,7 +9,7 @@ import { api } from '../../lib/api';
 import { useAccounts } from '../../lib/expenses';
 import { useJournalMutation } from '../../lib/journal';
 
-type Format = 'ninjatrader-executions' | 'tradovate-performance' | 'generic';
+type Format = 'ninjatrader-executions' | 'tradovate-performance' | 'trade-list' | 'generic';
 type ColumnKey = 'time' | 'date' | 'side' | 'qty' | 'price' | 'symbol' | 'account' | 'id' | 'commission';
 
 interface Preview {
@@ -50,6 +50,7 @@ interface Result {
 const formatLabels: Record<Format, string> = {
   'ninjatrader-executions': 'NinjaTrader 8 — Executions',
   'tradovate-performance': 'Tradovate — Performance report',
+  'trade-list': 'Trade list — one row per trade (TradeZella)',
   generic: 'Other (choose the columns)',
 };
 const fieldLabels: { key: ColumnKey; label: string; required?: boolean }[] = [

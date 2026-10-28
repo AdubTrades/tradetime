@@ -91,6 +91,10 @@ export interface Execution {
   price: number;
   at: string;
   commissionCents: Cents;
+  /** The file states the commission, so 0 really means none (a backtest), not "use the contract's fee". */
+  commissionStated?: boolean;
+  /** Planned risk in points per contract, when the export gives it (trade lists with a realized R). */
+  riskPoints?: number;
 }
 
 export interface RoundTrip {
@@ -99,6 +103,8 @@ export interface RoundTrip {
   direction: Direction;
   fills: (Fill & { externalId: string })[];
   commissionCents: Cents;
+  commissionStated?: boolean;
+  riskPoints?: number;
   openedAt: string;
   closedAt: string;
   maxQty: number;
@@ -134,6 +140,8 @@ export function groupRoundTrips(executions: readonly Execution[]): { trips: Roun
     const share = closeQty / e.qty;
     state.trip.fills.push({ at: e.at, side: e.side, qty: closeQty, price: e.price, externalId: flips ? `${e.externalId}#close` : e.externalId });
     state.trip.commissionCents += Math.round(e.commissionCents * share);
+    if (e.commissionStated) state.trip.commissionStated = true;
+    if (e.riskPoints && state.trip.riskPoints === undefined) state.trip.riskPoints = e.riskPoints;
     state.trip.closedAt = e.at;
     state.execs.push(e);
     const newPos = flips ? 0 : after;
@@ -151,6 +159,7 @@ export function groupRoundTrips(executions: readonly Execution[]): { trips: Roun
         direction: after > 0 ? 'long' : 'short',
         fills: [{ at: e.at, side: e.side, qty: rest, price: e.price, externalId: `${e.externalId}#open` }],
         commissionCents: e.commissionCents - Math.round(e.commissionCents * share),
+        commissionStated: e.commissionStated,
         openedAt: e.at,
         closedAt: e.at,
         maxQty: rest,
@@ -169,8 +178,10 @@ export interface ImportTrade {
   direction: Direction;
   openedAt: string;
   closedAt: string;
+  /** Planned risk in points per contract, when the export gives it. */
+  riskPoints?: number;
   /** One entry per account; fills are each account's actual fills (prices can differ slightly between accounts). */
-  accounts: { account: string; fills: RoundTrip['fills']; commissionCents: Cents; maxQty: number; multiplier: number }[];
+  accounts: { account: string; fills: RoundTrip['fills']; commissionCents: Cents; commissionStated?: boolean; maxQty: number; multiplier: number }[];
 }
 
 const within = (a: string, b: string, seconds: number) => Math.abs(Date.parse(a) - Date.parse(b)) <= seconds * 1000;
@@ -200,7 +211,8 @@ export function mergeCopyTrades(trips: readonly RoundTrip[], entrySeconds = 5, e
       direction: t.direction,
       openedAt: group.map((g) => g.openedAt).sort()[0]!,
       closedAt: group.map((g) => g.closedAt).sort().at(-1)!,
-      accounts: group.map((g) => ({ account: g.account, fills: g.fills, commissionCents: g.commissionCents, maxQty: g.maxQty, multiplier: Math.max(1, Math.round(g.maxQty / base)) })),
+      riskPoints: group.find((g) => g.riskPoints)?.riskPoints,
+      accounts: group.map((g) => ({ account: g.account, fills: g.fills, commissionCents: g.commissionCents, commissionStated: g.commissionStated, maxQty: g.maxQty, multiplier: Math.max(1, Math.round(g.maxQty / base)) })),
     });
   }
   return out;
@@ -212,7 +224,7 @@ export type ImportField = 'time' | 'date' | 'side' | 'qty' | 'price' | 'symbol' 
 export type ImportMapping = Partial<Record<ImportField, string>>;
 
 export interface FormatPreset {
-  id: 'ninjatrader-executions' | 'tradovate-performance' | 'generic';
+  id: 'ninjatrader-executions' | 'tradovate-performance' | 'trade-list' | 'generic';
   label: string;
 }
 
@@ -221,6 +233,7 @@ export function detectFormat(headers: string[]): FormatPreset['id'] {
   const h = new Set(headers.map((x) => x.trim().toLowerCase()));
   if (['instrument', 'action', 'quantity', 'price', 'time'].every((k) => h.has(k)) && (h.has('e/x') || h.has('position') || h.has('order id'))) return 'ninjatrader-executions';
   if (['symbol', 'buyfillid', 'sellfillid', 'qty', 'buyprice', 'sellprice', 'boughttimestamp', 'soldtimestamp'].every((k) => h.has(k))) return 'tradovate-performance';
+  if (['open date', 'symbol', 'close date', 'entry price', 'exit price', 'net p&l'].every((k) => h.has(k))) return 'trade-list';
   return 'generic';
 }
 
@@ -255,6 +268,37 @@ export interface ParseOptions {
   dateOrder: DateOrder;
   /** Account name to use when the file has no account column (e.g. a per-account Tradovate report). */
   defaultAccount?: string;
+  /** Dollars (in cents) per 1.0 point for a contract root, for trade lists that give P&L but no side or size. */
+  pointValueFor?: (root: string) => number | undefined;
+}
+
+/** Time-zone abbreviations seen in exports ("21:42:57 AWST"), mapped to zones so daylight saving is handled. */
+const ZONE_ABBREVIATIONS: Record<string, string> = {
+  AWST: 'Australia/Perth',
+  AEST: 'Australia/Sydney',
+  AEDT: 'Australia/Sydney',
+  ACST: 'Australia/Adelaide',
+  ACDT: 'Australia/Adelaide',
+  NZST: 'Pacific/Auckland',
+  NZDT: 'Pacific/Auckland',
+  UTC: 'UTC',
+  GMT: 'UTC',
+  ET: 'America/New_York',
+  EST: 'America/New_York',
+  EDT: 'America/New_York',
+  CT: 'America/Chicago',
+  CST: 'America/Chicago',
+  CDT: 'America/Chicago',
+  PT: 'America/Los_Angeles',
+  PST: 'America/Los_Angeles',
+  PDT: 'America/Los_Angeles',
+};
+
+/** "21:42:57 AWST" → the time and the zone it names (or the fallback zone if it names none). */
+export function splitZone(time: string, fallback: string): { time: string; zone: string } {
+  const m = /^(.*?)\s+([A-Z]{2,5})$/.exec(time.trim());
+  const zone = m ? ZONE_ABBREVIATIONS[m[2]!] : undefined;
+  return zone ? { time: m![1]!, zone } : { time: time.trim(), zone: fallback };
 }
 
 export type RowIssue = { line: number; message: string };
@@ -269,6 +313,61 @@ export function rowsToExecutions(
   const executions: Execution[] = [];
   const issues: RowIssue[] = [];
   const get = (row: Record<string, string>, col?: string) => (col ? (row[col] ?? '').trim() : '');
+
+  if (format === 'trade-list') {
+    // One row per finished trade (TradeZella and similar): open/close dates, entry and exit prices and P&L, but no side
+    // or size. Side and size follow from the P&L: gross = (exit − entry) × size × dollars per point, with the sign telling
+    // long from short. Optional columns: Open Time (else the entry is placed at the close time), Gross P&L (else net +
+    // commission), and Realized RR, which gives the planned risk (points moved ÷ R) so trades get an R multiple.
+    rows.forEach((row, i) => {
+      const line = i + 2;
+      const col = (name: string) => {
+        const key = Object.keys(row).find((k) => k.trim().toLowerCase() === name);
+        return key ? (row[key] ?? '').trim() : '';
+      };
+      const root = contractRoot(col('symbol'));
+      const entry = parseNumber(col('entry price'));
+      const exit = parseNumber(col('exit price'));
+      const netCents = parseImportMoney(col('net p&l'));
+      const commissionCents = Math.abs(parseImportMoney(col('commission')) ?? 0);
+      const closeDate = col('close date') || col('open date');
+      const { time, zone } = splitZone(col('close time') || '00:00:00', opts.zone);
+      const at = parseBrokerTime(`${closeDate} ${time}`, zone, opts.dateOrder);
+      const opened = col('open time') ? splitZone(col('open time'), opts.zone) : null;
+      const openAt = opened ? parseBrokerTime(`${col('open date') || closeDate} ${opened.time}`, opened.zone, opts.dateOrder) : at;
+      if (!root || entry === null || exit === null || netCents === null || !at || !openAt) {
+        issues.push({ line, message: 'Missing or unreadable symbol, entry or exit price, net P&L or close date/time' });
+        return;
+      }
+      const pointValue = opts.pointValueFor?.(root);
+      if (!pointValue) {
+        issues.push({ line, message: `${root} isn't a contract TradeTime knows, so its size can't be worked out. Add it in Settings → Journal → Contracts.` });
+        return;
+      }
+      const move = exit - entry;
+      const statedGross = col('gross p&l') ? parseImportMoney(col('gross p&l')) : null;
+      const grossCents = statedGross ?? netCents + commissionCents;
+      if (move === 0 || grossCents === 0) {
+        issues.push({ line, message: 'Entry and exit are the same, so the direction and size can’t be worked out' });
+        return;
+      }
+      const size = Math.abs(grossCents) / (Math.abs(move) * pointValue);
+      const qty = Math.round(size);
+      if (qty < 1 || Math.abs(size - qty) > 0.05) {
+        issues.push({ line, message: `The P&L doesn’t match a whole number of ${root} contracts (${size.toFixed(2)})` });
+        return;
+      }
+      const long = move > 0 === grossCents > 0;
+      const account = col('account') || opts.defaultAccount || '';
+      const id = `tl:${col('open date')}:${root}:${entry}:${exit}:${closeDate}:${col('close time')}:${col('net p&l')}`;
+      const stated = col('commission') !== '';
+      const rr = parseNumber(col('realized rr'));
+      const riskPoints = rr ? Math.round((Math.abs(move) / Math.abs(rr)) * 10_000) / 10_000 : undefined;
+      executions.push({ externalId: `${id}:e`, account, root, side: long ? 'buy' : 'sell', qty, price: entry, at: openAt, commissionCents: Math.round(commissionCents / 2), commissionStated: stated, riskPoints });
+      executions.push({ externalId: `${id}:x`, account, root, side: long ? 'sell' : 'buy', qty, price: exit, at, commissionCents: commissionCents - Math.round(commissionCents / 2), commissionStated: stated });
+    });
+    return { executions, issues };
+  }
 
   if (format === 'tradovate-performance') {
     // Each row pairs a buy fill with a sell fill; a fill split across rows keeps a per-row id.
