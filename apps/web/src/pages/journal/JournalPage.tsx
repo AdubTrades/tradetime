@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, FileUp, Plus } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { financialYear, financialYearOf, formatLocal, GRADES, stats, tradingDay } from '@tc/domain';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import { Button, cn, PageHeader, SegmentedTabs, Select, StatusPill, SummaryStrip } from '../../components/ui';
@@ -62,9 +62,21 @@ export function JournalPage() {
   const { data: settings } = useSettings();
   const today = tradingDay(new Date(), settings?.rolloverTime);
   const [tab, setTab] = useState<'trades' | 'stats'>('trades');
-  const [range, setRange] = useState<Range>(DEFAULT_RANGE);
   // Home links here with ?review=1 to show imported trades that still need a Play and checklist.
-  const [filters, setFilters] = useState<TradeFilters>(() => ({ ...noFilters, review: new URLSearchParams(window.location.search).get('review') === '1' }));
+  const startInReview = new URLSearchParams(window.location.search).get('review') === '1';
+  // "Needs review" counts trades from any date, so turning it on shows all time (and turning it off puts the range back).
+  const [range, setRange] = useState<Range>(startInReview ? 'all' : DEFAULT_RANGE);
+  const rangeBeforeReview = useRef<Range>(DEFAULT_RANGE);
+  const [filters, setFiltersState] = useState<TradeFilters>(() => ({ ...noFilters, review: startInReview }));
+  const setFilters = (next: TradeFilters) => {
+    if (next.review && !filters.review) {
+      rangeBeforeReview.current = range;
+      setRange('all');
+    } else if (!next.review && filters.review && range === 'all') {
+      setRange(rangeBeforeReview.current);
+    }
+    setFiltersState(next);
+  };
   const [logging, setLogging] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -92,7 +104,7 @@ export function JournalPage() {
   const active = range !== DEFAULT_RANGE || Object.values(filters).some(Boolean);
   const clear = () => {
     setRange(DEFAULT_RANGE);
-    setFilters(noFilters);
+    setFiltersState(noFilters);
   };
 
   return (
