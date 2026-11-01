@@ -1,6 +1,6 @@
 import { SignJWT } from 'jose';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DEFAULT_LINE_LABEL, DEFAULT_LINE_STYLE } from '@tc/domain';
+import { DEFAULT_LINE_LABEL, DEFAULT_LINE_STYLE, marketOrder, newSimAccount } from '@tc/domain';
 import { app } from './app';
 import { backtest } from './config';
 import { useTestDb } from './testing';
@@ -40,6 +40,14 @@ describe('backtesting routes', () => {
     const tools = { templates: [{ id: 't1', name: 'Asia High', style: DEFAULT_LINE_STYLE, label: line.label }], last: null };
     expect((await call('PUT', '/api/backtest/line-tools', OWNER, tools)).status).toBe(200);
     expect(await (await call('GET', '/api/backtest/line-tools', OWNER)).json()).toEqual(tools);
+  });
+
+  it('save and load the practice account per instrument', async () => {
+    backtest.ownerIds.push(OWNER);
+    expect(await (await call('GET', '/api/backtest/sim/BTCUSDT', OWNER)).json()).toBeNull();
+    const account = marketOrder(newSimAccount(10_000), { symbol: 'BTCUSDT', pointValue: 1, feePerSide: 0, feeRate: 0.001 }, 'buy', 0.05, 80_000, 1_800_000_000, { stop: 79_000, target: null });
+    expect((await call('PUT', '/api/backtest/sim/BTCUSDT', OWNER, account)).status).toBe(200);
+    expect(await (await call('GET', '/api/backtest/sim/BTCUSDT', OWNER)).json()).toEqual(account);
   });
 
   it('refuse bad input and unknown instruments', async () => {

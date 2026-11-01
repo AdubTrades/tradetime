@@ -65,6 +65,11 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   Visibility, live preview, Cancel reverts), right-click for templates, Delete to remove. Templates ("Save as…",
   "Apply defaults") and lines per instrument are saved to the account (`state.backtest.*` settings rows). New lines
   take the last look used. Lines stay hidden while the replay is before their start bar.
+- **Stage 2 (simulated trading):** engine `packages/domain/src/sim.ts` (netted position per contract, brackets,
+  limit/stop orders, fills from base bars, ambiguity flag, R from the first stop); order ticket and the Positions /
+  Orders / History panel in `pages/backtest/SimTrading.tsx`; account per instrument saved via `/api/backtest/sim/:id`.
+  Futures fees per side come from the user's contracts; crypto uses a % fee per side (default 0.1%). Going back in the
+  replay is off while a position or order is open. Market orders fill at the last closed base bar's close.
 
 ## Owner steps
 1. Futures data: a Databento account needs a card at sign-up (a Visa/Mastercard debit card should do). The other route

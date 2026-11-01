@@ -35,6 +35,59 @@ const lineToolsSchema = z.object({
   last: z.object({ style: lineStyle, label: lineLabel }).nullable(),
 });
 
+const num = z.number().finite();
+const bracket = z.object({ stop: num.nullable(), target: num.nullable() });
+const side = z.enum(['buy', 'sell']);
+const fill = z.object({ time: z.number().int(), side, qty: num.positive(), price: num, fee: num, reason: z.enum(['entry', 'manual', 'stop', 'target']) });
+const id = z.string().min(1).max(40);
+const simSchema = z.object({
+  startBalance: num.min(0),
+  processedTo: z.number().int().nullable(),
+  orders: z.array(z.object({ id, symbol: z.string().max(20), type: z.enum(['limit', 'stop']), side, qty: num.positive(), price: num, bracket, placedAt: z.number().int() })).max(200),
+  positions: z
+    .array(
+      z.object({
+        id,
+        symbol: z.string().max(20),
+        side: z.enum(['long', 'short']),
+        qty: num.positive(),
+        avgEntry: num,
+        openedAt: z.number().int(),
+        bracket,
+        initialStop: num.nullable(),
+        fills: z.array(fill).max(500),
+        realised: num,
+        maxQty: num,
+        ambiguous: z.boolean(),
+      }),
+    )
+    .max(20),
+  trades: z
+    .array(
+      z.object({
+        id,
+        symbol: z.string().max(20),
+        side: z.enum(['long', 'short']),
+        qty: num,
+        avgEntry: num,
+        avgExit: num,
+        openedAt: z.number().int(),
+        closedAt: z.number().int(),
+        gross: num,
+        fees: num,
+        net: num,
+        initialStop: num.nullable(),
+        riskPoints: num.nullable(),
+        r: num.nullable(),
+        exitReason: z.enum(['entry', 'manual', 'stop', 'target']),
+        ambiguous: z.boolean(),
+        fills: z.array(fill).max(500),
+      }),
+    )
+    .max(5000),
+  fees: z.object({ cryptoRate: num.min(0).max(0.05) }),
+});
+
 const instrumentParam = (id: string) => {
   if (!findInstrument(id)) throw new AppError(404, 'Unknown instrument');
   return id;
@@ -77,5 +130,13 @@ export const backtestRoutes = new Hono<{ Variables: { user: AuthUser } }>()
   .put('/line-tools', async (c) => {
     const data = await body(c.req, lineToolsSchema);
     await setState('backtest.lineTools', data);
+    return c.json(data);
+  })
+  /** The simulated trading account on an instrument (balance, orders, positions, closed trades). */
+  .get('/sim/:instrument', async (c) => c.json((await getState(`backtest.sim.${instrumentParam(c.req.param('instrument'))}`)) ?? null))
+  .put('/sim/:instrument', async (c) => {
+    const id = instrumentParam(c.req.param('instrument'));
+    const data = await body(c.req, simSchema);
+    await setState(`backtest.sim.${id}`, data);
     return c.json(data);
   });

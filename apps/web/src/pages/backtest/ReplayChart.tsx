@@ -1,7 +1,21 @@
 import { ArrowRightFromLine, Magnet, Minus, MousePointer2, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
-import { CandlestickSeries, createChart, CrosshairMode, HistogramSeries, TickMarkType, type IChartApi, type ISeriesApi, type Time, type UTCTimestamp } from 'lightweight-charts';
+import {
+  CandlestickSeries,
+  createChart,
+  createSeriesMarkers,
+  CrosshairMode,
+  HistogramSeries,
+  LineStyle,
+  TickMarkType,
+  type IChartApi,
+  type IPriceLine,
+  type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type Time,
+  type UTCTimestamp,
+} from 'lightweight-charts';
 import { currentZone, isIntraday, type Bar, type BacktestInstrument, type HorizontalLine, type LineTools, type Timeframe } from '@tc/domain';
 import { cn } from '../../components/ui';
 import { LineLayer, type DrawTool } from './LineLayer';
@@ -24,6 +38,21 @@ const decimals = (tick: number) => Math.max(0, (String(tick).split('.')[1] ?? ''
 
 const MAGNET_KEY = 'tc-backtest-magnet';
 
+/** A trading level on the chart: a position's entry, stop or target, or a working order. */
+export interface ChartPriceLine {
+  price: number;
+  kind: 'entry' | 'stop' | 'target' | 'order';
+  title: string;
+  /** A working order's bracket: shown lighter. */
+  faint?: boolean;
+}
+/** A fill, on the bar it happened in. */
+export interface ChartMarker {
+  time: number;
+  side: 'buy' | 'sell';
+  text: string;
+}
+
 /** A TradingView-style candle chart with volume and drawing tools, redrawn as the replay moves. Times show in the user's zone. */
 export function ReplayChart({
   bars,
@@ -33,6 +62,8 @@ export function ReplayChart({
   onLinesChange,
   tools,
   onToolsChange,
+  priceLines = [],
+  markers = [],
 }: {
   bars: Bar[] | null;
   tf: Timeframe;
@@ -41,6 +72,8 @@ export function ReplayChart({
   onLinesChange: (lines: HorizontalLine[]) => void;
   tools: LineTools;
   onToolsChange: (tools: LineTools) => void;
+  priceLines?: ChartPriceLine[];
+  markers?: ChartMarker[];
 }) {
   const [ready, setReady] = useState<{ chart: IChartApi; series: ISeriesApi<'Candlestick'>; host: HTMLDivElement } | null>(null);
   const [tool, setTool] = useState<DrawTool>('cursor');
@@ -52,6 +85,8 @@ export function ReplayChart({
     }
   });
   const [background, setBackground] = useState(() => palette().bg);
+  const levelLines = useRef<IPriceLine[]>([]);
+  const fillMarkers = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const candles = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -134,6 +169,7 @@ export function ReplayChart({
       setLegend(d ? { t: d.time, o: d.open, h: d.high, l: d.low, c: d.close, v: 0 } : null);
     });
     chart.current = api;
+    fillMarkers.current = createSeriesMarkers(candles.current, []);
     setReady({ chart: api, series: candles.current, host: el.current! });
 
     // Follow light/dark changes.
@@ -161,6 +197,8 @@ export function ReplayChart({
     return () => {
       observer.disconnect();
       setReady(null);
+      levelLines.current = [];
+      fillMarkers.current = null;
       api.remove();
       chart.current = null;
     };
@@ -210,6 +248,38 @@ export function ReplayChart({
     }
     shown.current = { key, first: bars[0]?.t ?? 0, count: bars.length };
   }, [bars, inst, tf]);
+
+  // Trading levels: redrawn whenever they change (there are only a handful).
+  useEffect(() => {
+    const series = candles.current;
+    if (!series) return;
+    for (const l of levelLines.current) series.removePriceLine(l);
+    const p = palette();
+    const colour = { entry: css('--text-secondary'), stop: p.down, target: p.up, order: '#2962ff' };
+    levelLines.current = priceLines.map((l) =>
+      series.createPriceLine({
+        price: l.price,
+        color: l.faint ? `${colour[l.kind]}88` : colour[l.kind],
+        lineWidth: 1,
+        lineStyle: l.kind === 'entry' ? LineStyle.Solid : LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: l.title,
+      }),
+    );
+  }, [priceLines, background]);
+
+  useEffect(() => {
+    const p = palette();
+    fillMarkers.current?.setMarkers(
+      markers.map((m) => ({
+        time: m.time as UTCTimestamp,
+        position: m.side === 'buy' ? 'belowBar' : 'aboveBar',
+        shape: m.side === 'buy' ? 'arrowUp' : 'arrowDown',
+        color: m.side === 'buy' ? p.up : p.down,
+        text: m.text,
+      })),
+    );
+  }, [markers, background]);
 
   const show = legend ?? bars?.at(-1) ?? null;
   const dp = decimals(inst.tickSize);

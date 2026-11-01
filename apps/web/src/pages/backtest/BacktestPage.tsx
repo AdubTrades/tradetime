@@ -1,11 +1,14 @@
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DateTime } from 'luxon';
 import {
   BACKTEST_INSTRUMENTS,
   currentZone,
   findInstrument,
+  bucketTime,
   isIntraday,
+  newSimAccount,
+  replayTo,
   replayView,
   sessionDate,
   sessionOpen,
@@ -14,12 +17,14 @@ import {
   type Bar,
   type BacktestInstrument,
   type Timeframe,
+  type SimAccount,
 } from '@tc/domain';
 import { Select } from '../../components/Select';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
-import { useLines, useLineTools } from '../../lib/drawings';
-import { ReplayChart } from './ReplayChart';
+import { useLines, useLineTools, useSimAccount } from '../../lib/drawings';
+import { ReplayChart, type ChartMarker, type ChartPriceLine } from './ReplayChart';
+import { DEFAULT_START_BALANCE, OrderTicket, SimPanel, useSimSpecs } from './SimTrading';
 
 /** History shown behind the replay for short timeframes, in trading days of base bars. */
 const BASE_DAYS: Partial<Record<Timeframe, number>> = {
@@ -113,6 +118,7 @@ function Backtester() {
   const [daily, setDaily] = useState<Bar[] | null | undefined>(undefined);
   const [lines, setLines, linesError] = useLines(instrumentId);
   const { tools, saveTools } = useLineTools();
+  const [savedAccount, setAccount, simError] = useSimAccount(instrumentId);
 
   useEffect(() => {
     try {
@@ -185,6 +191,74 @@ function Backtester() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p, ready, version, cursor, tf, inst]);
+
+  // ---------- Simulated trading ----------
+
+  // Before the first trade on an instrument there's nothing saved: start a fresh practice account.
+  const flat = !savedAccount || (savedAccount.positions.length === 0 && savedAccount.orders.length === 0);
+  const account: SimAccount | null = useMemo(() => {
+    if (savedAccount === undefined) return null;
+    const a = savedAccount ?? newSimAccount(DEFAULT_START_BALANCE);
+    // With nothing open, the replay can go anywhere: actions start from the current moment.
+    return a.positions.length === 0 && a.orders.length === 0 ? { ...a, processedTo: null } : a;
+  }, [savedAccount]);
+  const specs = useSimSpecs(inst, account);
+
+  /** The latest closed base bar at the cursor: its close is the price you'd trade at. */
+  const last = useMemo(() => {
+    if (cursor === null || !dates.length) return null;
+    const cur = sessionDate(cursor, inst.kind);
+    for (const d of [...dates.filter((x) => x <= cur)].reverse().slice(0, 3)) {
+      const day = peekBars(dayFile(inst.id, d));
+      const b = day ? [...day].reverse().find((x) => x.t + inst.baseSeconds <= cursor) : undefined;
+      if (b) return b;
+    }
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursor, dates, inst, version]);
+  const price = last?.c ?? null;
+
+  // As the replay moves on, run the new bars through working orders, stops and targets.
+  useEffect(() => {
+    if (!account || flat || cursor === null || account.processedTo === null || cursor <= account.processedTo) return;
+    const from = sessionDate(account.processedTo, inst.kind);
+    const files = dates.filter((d) => d >= from && d <= sessionDate(cursor, inst.kind)).map((d) => dayFile(inst.id, d));
+    if (files.some((f) => peekBars(f) === undefined)) {
+      loadAll(files)
+        .then(() => setVersion((v) => v + 1))
+        .catch((err: Error) => setError(err.message));
+      return;
+    }
+    const bars = files.flatMap((f) => peekBars(f) ?? []).filter((b) => b.t + inst.baseSeconds > account.processedTo!);
+    const next = replayTo(account, specs, bars, inst.baseSeconds, cursor);
+    if (next !== account) setAccount(next);
+  }, [account, flat, cursor, dates, inst, specs, setAccount, version]);
+
+  // Orders, positions and fills drawn on the chart.
+  const priceLines = useMemo<ChartPriceLine[]>(() => {
+    if (!account) return [];
+    const out: ChartPriceLine[] = [];
+    for (const p of account.positions) {
+      out.push({ price: p.avgEntry, kind: 'entry', title: `${p.side === 'long' ? 'Long' : 'Short'} ${p.qty} ${p.symbol}` });
+      if (p.bracket.stop !== null) out.push({ price: p.bracket.stop, kind: 'stop', title: 'SL' });
+      if (p.bracket.target !== null) out.push({ price: p.bracket.target, kind: 'target', title: 'TP' });
+    }
+    for (const o of account.orders) {
+      out.push({ price: o.price, kind: 'order', title: `${o.side === 'buy' ? 'Buy' : 'Sell'} ${o.type} ${o.qty}` });
+      if (o.bracket.stop !== null) out.push({ price: o.bracket.stop, kind: 'stop', title: 'SL', faint: true });
+      if (o.bracket.target !== null) out.push({ price: o.bracket.target, kind: 'target', title: 'TP', faint: true });
+    }
+    return out;
+  }, [account]);
+  const markers = useMemo<ChartMarker[]>(() => {
+    if (!account || !bars?.length) return [];
+    const lastBar = bars.at(-1)!.t;
+    const fills = [...account.trades.slice(-100).flatMap((t) => t.fills), ...account.positions.flatMap((p) => p.fills)];
+    return fills
+      .map((f) => ({ time: bucketTime(f.time, tf, inst.kind), side: f.side, text: `${f.side === 'buy' ? 'B' : 'S'} ${f.qty}` }))
+      .filter((m) => m.time <= lastBar)
+      .sort((a, b) => a.time - b.time);
+  }, [account, bars, tf, inst]);
 
   /** The next replay moment: one step on, skipping closed markets (nights, weekends) straight to the next bar. */
   const advance = useCallback(
@@ -267,30 +341,35 @@ function Backtester() {
         </div>
       </div>
 
-      <div className="relative hidden min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-card md:block">
-        {error ? (
-          <p className="p-6 text-sm text-loss">{error}</p>
-        ) : daily === null || (daily && daily.length === 0) ? (
-          <div className="p-6 text-sm text-secondary">
-            <p className="font-medium text-text">No price data for {inst.label.split(' · ')[0]} yet.</p>
-            <p className="mt-1">
-              {inst.kind === 'crypto' ? (
-                <>
-                  Download it with <code className="font-mono text-[13px]">pnpm --filter @tc/server market-data crypto</code>.
-                </>
-              ) : (
-                'Futures data comes from Databento, once the API key is set up (see docs/backtesting-plan.md).'
-              )}
-            </p>
-          </div>
-        ) : (
-          <ReplayChart bars={bars} tf={tf} inst={inst} lines={lines} onLinesChange={setLines} tools={tools} onToolsChange={saveTools} />
-        )}
+      <div className="hidden min-h-0 flex-1 gap-3 md:flex">
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-card">
+          {error ? (
+            <p className="p-6 text-sm text-loss">{error}</p>
+          ) : daily === null || (daily && daily.length === 0) ? (
+            <div className="p-6 text-sm text-secondary">
+              <p className="font-medium text-text">No price data for {inst.label.split(' · ')[0]} yet.</p>
+              <p className="mt-1">
+                {inst.kind === 'crypto' ? (
+                  <>
+                    Download it with <code className="font-mono text-[13px]">pnpm --filter @tc/server market-data crypto</code>.
+                  </>
+                ) : (
+                  'Futures data comes from Databento, once the API key is set up (see docs/backtesting-plan.md).'
+                )}
+              </p>
+            </div>
+          ) : (
+            <ReplayChart bars={bars} tf={tf} inst={inst} lines={lines} onLinesChange={setLines} tools={tools} onToolsChange={saveTools} priceLines={priceLines} markers={markers} />
+          )}
+        </div>
+        <aside aria-label="Order ticket" className="w-72 shrink-0 overflow-y-auto rounded-lg border border-border bg-card">
+          {account ? <OrderTicket inst={inst} account={account} specs={specs} price={price} time={cursor} onChange={setAccount} /> : <p className="p-3 text-[13px] text-muted">Loading…</p>}
+        </aside>
       </div>
 
       <div className="hidden flex-wrap items-center gap-3 md:flex">
         <div className="flex items-center gap-1">
-          <Button variant="secondary" size="sm" aria-label="Step back" title="Step back" onClick={stepBack} disabled={cursor === null}>
+          <Button variant="secondary" size="sm" aria-label="Step back" title="Step back" onClick={stepBack} disabled={cursor === null || !flat}>
             <SkipBack size={15} />
           </Button>
           <Button variant="primary" size="sm" aria-label={playing ? 'Pause' : 'Play'} title="Play/pause (space)" onClick={() => setPlaying((v) => !v)} disabled={!bars} className="w-20">
@@ -326,23 +405,29 @@ function Backtester() {
           initial={local}
           min={dates[0]}
           max={dates.at(-1)}
+          disabled={!flat}
           onJump={(date, time) => {
             setPlaying(false);
             setCursor(DateTime.fromISO(`${date}T${time}`, { zone }).toSeconds());
           }}
         />
-        {linesError && <p className="text-[13px] text-loss">{linesError}</p>}
+        {!flat && <p className="text-[12px] text-muted">Going back is off while you have a position or order open.</p>}
+        {(linesError || simError) && <p className="text-[13px] text-loss">{linesError ?? simError}</p>}
         <div className="ml-auto text-right font-mono text-[13px] text-secondary">
           {local ? local.toFormat('ccc d LLL yyyy · HH:mm:ss') : '–'}
           <span className="ml-2 font-sans text-muted">{zoneLabel()}</span>
         </div>
+      </div>
+
+      <div className="hidden h-56 shrink-0 overflow-hidden rounded-lg border border-border bg-card md:block">
+        {account && <SimPanel inst={inst} account={account} specs={specs} price={price} time={cursor} onChange={setAccount} />}
       </div>
     </div>
   );
 }
 
 /** Pick a date and time (in the user's zone) to replay from. */
-function JumpTo({ initial, min, max, onJump }: { initial: DateTime | null; min?: string; max?: string; onJump: (date: string, time: string) => void }) {
+function JumpTo({ initial, min, max, disabled, onJump }: { initial: DateTime | null; min?: string; max?: string; disabled?: boolean; onJump: (date: string, time: string) => void }) {
   const [date, setDate] = useState(initial?.toISODate() ?? '');
   const [time, setTime] = useState(initial?.toFormat('HH:mm') ?? '09:00');
   return (
@@ -355,7 +440,7 @@ function JumpTo({ initial, min, max, onJump }: { initial: DateTime | null; min?:
     >
       <input type="date" aria-label="Replay date" value={date} min={min} max={max} onChange={(e) => setDate(e.target.value)} className="h-8 rounded-md border border-border bg-card px-2 text-[13px]" />
       <input type="time" aria-label="Replay time" value={time} onChange={(e) => setTime(e.target.value)} className="h-8 rounded-md border border-border bg-card px-2 font-mono text-[13px]" />
-      <Button type="submit" variant="secondary" size="sm">
+      <Button type="submit" variant="secondary" size="sm" disabled={disabled}>
         Go
       </Button>
     </form>
