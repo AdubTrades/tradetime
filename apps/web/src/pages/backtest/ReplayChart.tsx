@@ -45,6 +45,14 @@ export interface ChartPriceLine {
   title: string;
   /** A working order's bracket: shown lighter. */
   faint?: boolean;
+  /** Set when the line can be dragged to a new price. */
+  drag?: LevelRef;
+}
+/** What a draggable level belongs to. */
+export interface LevelRef {
+  what: 'stop' | 'target' | 'order';
+  owner: 'position' | 'order';
+  id: string;
 }
 /** A fill, on the bar it happened in. */
 export interface ChartMarker {
@@ -64,6 +72,8 @@ export function ReplayChart({
   onToolsChange,
   priceLines = [],
   markers = [],
+  onLevelMove,
+  describeLevel,
 }: {
   bars: Bar[] | null;
   tf: Timeframe;
@@ -74,6 +84,10 @@ export function ReplayChart({
   onToolsChange: (tools: LineTools) => void;
   priceLines?: ChartPriceLine[];
   markers?: ChartMarker[];
+  /** A level was dragged to a new price. */
+  onLevelMove?: (ref: LevelRef, price: number) => void;
+  /** The label while dragging, e.g. "SL −$300.00". */
+  describeLevel?: (ref: LevelRef, price: number) => string;
 }) {
   const [ready, setReady] = useState<{ chart: IChartApi; series: ISeriesApi<'Candlestick'>; host: HTMLDivElement } | null>(null);
   const [tool, setTool] = useState<DrawTool>('cursor');
@@ -88,6 +102,9 @@ export function ReplayChart({
   const levelLines = useRef<IPriceLine[]>([]);
   const fillMarkers = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const el = useRef<HTMLDivElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
+  const levels = useRef({ priceLines, onLevelMove, describeLevel, tool });
+  levels.current = { priceLines, onLevelMove, describeLevel, tool };
   const chart = useRef<IChartApi | null>(null);
   const candles = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volume = useRef<ISeriesApi<'Histogram'> | null>(null);
@@ -281,6 +298,83 @@ export function ReplayChart({
     );
   }, [markers, background]);
 
+  // Drag stops, targets and working orders. Listening on the wrapper (capture) runs before the drawing layer and the
+  // chart, so grabbing a level never moves a drawn line or pans the chart.
+  useEffect(() => {
+    const box = wrap.current;
+    if (!ready || !box) return;
+    const { chart: api, series, host } = ready;
+    const tick = inst.tickSize;
+    const dp = Math.max(0, (String(tick).split('.')[1] ?? '').length);
+    const local = (e: MouseEvent) => {
+      const r = host.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    const levelAt = (x: number, y: number) => {
+      if (levels.current.tool !== 'cursor' || x < 0 || x > host.clientWidth) return -1;
+      let best = -1;
+      let bestD = 6;
+      levels.current.priceLines.forEach((l, i) => {
+        if (!l.drag) return;
+        const ly = series.priceToCoordinate(l.price);
+        if (ly !== null && Math.abs(ly - y) < bestD) {
+          best = i;
+          bestD = Math.abs(ly - y);
+        }
+      });
+      return best;
+    };
+    let swallow = false;
+    const onDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      const { x, y } = local(e);
+      const i = levelAt(x, y);
+      if (i < 0) return;
+      const level = levels.current.priceLines[i]!;
+      const line = levelLines.current[i];
+      if (!line || !level.drag) return;
+      e.preventDefault();
+      e.stopPropagation();
+      swallow = true;
+      api.applyOptions({ handleScroll: false, handleScale: false });
+      let price = level.price;
+      const move = (ev: PointerEvent) => {
+        const raw = series.coordinateToPrice(local(ev).y);
+        if (raw === null) return;
+        price = Number((Math.round(raw / tick) * tick).toFixed(dp));
+        line.applyOptions({ price, title: levels.current.describeLevel?.(level.drag!, price) ?? level.title });
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        api.applyOptions({ handleScroll: true, handleScale: true });
+        if (price !== level.price) levels.current.onLevelMove?.(level.drag!, price);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      if (swallow) {
+        e.stopPropagation();
+        swallow = false;
+      }
+    };
+    const onHover = (e: PointerEvent) => {
+      if (e.buttons) return;
+      const { x, y } = local(e);
+      if (levelAt(x, y) >= 0) box.dataset.level = '1';
+      else delete box.dataset.level;
+    };
+    box.addEventListener('pointerdown', onDown, true);
+    box.addEventListener('mousedown', onMouseDown, true);
+    box.addEventListener('pointermove', onHover, true);
+    return () => {
+      box.removeEventListener('pointerdown', onDown, true);
+      box.removeEventListener('mousedown', onMouseDown, true);
+      box.removeEventListener('pointermove', onHover, true);
+    };
+  }, [ready, inst]);
+
   const show = legend ?? bars?.at(-1) ?? null;
   const dp = decimals(inst.tickSize);
   const up = show ? show.c >= show.o : true;
@@ -303,8 +397,8 @@ export function ReplayChart({
         <div className="my-1 w-6 border-t border-border" />
         <ToolButton icon={Magnet} label={magnet ? 'Magnet on: snaps to open, high, low and close' : 'Magnet off'} active={magnet} onClick={toggleMagnet} />
       </div>
-      <div className="relative min-w-0 flex-1">
-        <div ref={el} className="absolute inset-0 [&[data-cursor=crosshair]_*]:cursor-crosshair! [&[data-cursor=pointer]_*]:cursor-pointer!" />
+      <div ref={wrap} className="group/levels relative min-w-0 flex-1">
+        <div ref={el} className="absolute inset-0 group-data-[level]/levels:[&_*]:cursor-ns-resize! [&[data-cursor=crosshair]_*]:cursor-crosshair! [&[data-cursor=pointer]_*]:cursor-pointer!" />
         {ready && bars && (
           <LineLayer
             chart={ready.chart}

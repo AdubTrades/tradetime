@@ -206,6 +206,22 @@ export function setBracket(account: SimAccount, positionId: string, bracket: Bra
   return { ...account, positions: account.positions.map((p) => (p.id === positionId ? { ...p, bracket } : p)) };
 }
 
+/** Move a working order to a new price; its stop and target move with it, keeping their distances. */
+export function moveOrder(account: SimAccount, orderId: string, price: number): SimAccount {
+  return {
+    ...account,
+    orders: account.orders.map((o) => {
+      if (o.id !== orderId) return o;
+      const d = price - o.price;
+      return { ...o, price, bracket: { stop: o.bracket.stop === null ? null : o.bracket.stop + d, target: o.bracket.target === null ? null : o.bracket.target + d } };
+    }),
+  };
+}
+
+export function setOrderBracket(account: SimAccount, orderId: string, bracket: Bracket): SimAccount {
+  return { ...account, orders: account.orders.map((o) => (o.id === orderId ? { ...o, bracket } : o)) };
+}
+
 /** Move the stop to the average entry. */
 export function breakeven(account: SimAccount, positionId: string): SimAccount {
   return { ...account, positions: account.positions.map((p) => (p.id === positionId ? { ...p, bracket: { ...p.bracket, stop: p.avgEntry } } : p)) };

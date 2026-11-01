@@ -200,7 +200,8 @@ export function LineLayer({
     const onHover = (e: PointerEvent) => {
       if (e.buttons) return;
       const { x, y } = local(e);
-      const hit = st.current.tool === 'cursor' && inPane(x) ? prim.lineAt(x, y) : null;
+      // A trade level under the mouse (stop, target, order) takes priority: the chart handles that drag.
+      const hit = st.current.tool === 'cursor' && inPane(x) && !host.parentElement?.dataset.level ? prim.lineAt(x, y) : null;
       const id = hit?.line.id ?? null;
       if (id !== prim.hovered) {
         prim.hovered = id;

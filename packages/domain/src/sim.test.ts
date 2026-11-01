@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Bar } from './bars';
-import { breakeven, cancelOrder, closePosition, marketOrder, newSimAccount, placeOrder, replayTo, sizeForRisk, stepBar, summariseSim, type SimSpec } from './sim';
+import { breakeven, cancelOrder, moveOrder, setOrderBracket, closePosition, marketOrder, newSimAccount, placeOrder, replayTo, sizeForRisk, stepBar, summariseSim, type SimSpec } from './sim';
 
 const MNQ: SimSpec = { symbol: 'MNQ', pointValue: 2, feePerSide: 0.5, feeRate: 0 };
 const BTC: SimSpec = { symbol: 'BTCUSDT', pointValue: 1, feePerSide: 0, feeRate: 0.001 };
@@ -56,6 +56,14 @@ describe('pending orders', () => {
     acc = stepBar(acc, specs, bar(T, 97, 98, 94, 96), 30);
     expect(acc.positions[0]).toMatchObject({ side: 'short', avgEntry: 95, bracket: { stop: 100, target: 85 }, initialStop: 100 });
     expect(acc.orders).toHaveLength(0);
+  });
+
+  it('moves with its bracket, and its bracket can be changed', () => {
+    let acc = placeOrder(newSimAccount(0), { symbol: 'MNQ', type: 'limit', side: 'buy', qty: 1, price: 100, bracket: { stop: 90, target: 120 }, placedAt: T });
+    acc = moveOrder(acc, acc.orders[0]!.id, 105);
+    expect(acc.orders[0]).toMatchObject({ price: 105, bracket: { stop: 95, target: 125 } });
+    acc = setOrderBracket(acc, acc.orders[0]!.id, { stop: 97, target: null });
+    expect(acc.orders[0]!.bracket).toEqual({ stop: 97, target: null });
   });
 
   it('can be cancelled, and never fills on bars from before it was placed', () => {

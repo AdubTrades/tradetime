@@ -70,6 +70,8 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   Orders / History panel in `pages/backtest/SimTrading.tsx`; account per instrument saved via `/api/backtest/sim/:id`.
   Futures fees per side come from the user's contracts; crypto uses a % fee per side (default 0.1%). Going back in the
   replay is off while a position or order is open. Market orders fill at the last closed base bar's close.
+- **Draggable levels:** a position's SL/TP, a working order (its SL/TP move with it) and an order's own SL/TP can be
+  dragged on the chart; labels show the dollar result at that price (e.g. "SL −$300.00").
 
 ## Owner steps
 1. Futures data: a Databento account needs a card at sign-up (a Visa/Mastercard debit card should do). The other route

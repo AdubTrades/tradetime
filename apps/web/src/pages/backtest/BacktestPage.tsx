@@ -7,8 +7,11 @@ import {
   findInstrument,
   bucketTime,
   isIntraday,
+  moveOrder,
   newSimAccount,
   replayTo,
+  setBracket,
+  setOrderBracket,
   replayView,
   sessionDate,
   sessionOpen,
@@ -23,7 +26,7 @@ import { Select } from '../../components/Select';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
 import { useLines, useLineTools, useSimAccount } from '../../lib/drawings';
-import { ReplayChart, type ChartMarker, type ChartPriceLine } from './ReplayChart';
+import { ReplayChart, type ChartMarker, type ChartPriceLine, type LevelRef } from './ReplayChart';
 import { DEFAULT_START_BALANCE, OrderTicket, SimPanel, useSimSpecs } from './SimTrading';
 
 /** History shown behind the replay for short timeframes, in trading days of base bars. */
@@ -234,22 +237,67 @@ function Backtester() {
     if (next !== account) setAccount(next);
   }, [account, flat, cursor, dates, inst, specs, setAccount, version]);
 
-  // Orders, positions and fills drawn on the chart.
+  // Orders, positions and fills drawn on the chart. Stops, targets and working orders can be dragged.
+  const usdAt = useCallback(
+    (symbol: string, side: 'long' | 'short', qty: number, from: number, to: number) => {
+      const spec = specs[symbol];
+      if (!spec) return '';
+      const v = (to - from) * qty * spec.pointValue * (side === 'long' ? 1 : -1);
+      return `${v >= 0 ? '+' : '−'}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    },
+    [specs],
+  );
+  const describeLevel = useCallback(
+    (ref: LevelRef, at: number): string => {
+      if (!account) return '';
+      const tag = ref.what === 'stop' ? 'SL' : ref.what === 'target' ? 'TP' : '';
+      if (ref.owner === 'position') {
+        const p = account.positions.find((x) => x.id === ref.id);
+        return p ? `${tag} ${usdAt(p.symbol, p.side, p.qty, p.avgEntry, at)}` : tag;
+      }
+      const o = account.orders.find((x) => x.id === ref.id);
+      if (!o) return tag;
+      if (ref.what === 'order') return `${o.side === 'buy' ? 'Buy' : 'Sell'} ${o.type} ${o.qty}`;
+      return `${tag} ${usdAt(o.symbol, o.side === 'buy' ? 'long' : 'short', o.qty, o.price, at)}`;
+    },
+    [account, usdAt],
+  );
   const priceLines = useMemo<ChartPriceLine[]>(() => {
     if (!account) return [];
     const out: ChartPriceLine[] = [];
     for (const p of account.positions) {
       out.push({ price: p.avgEntry, kind: 'entry', title: `${p.side === 'long' ? 'Long' : 'Short'} ${p.qty} ${p.symbol}` });
-      if (p.bracket.stop !== null) out.push({ price: p.bracket.stop, kind: 'stop', title: 'SL' });
-      if (p.bracket.target !== null) out.push({ price: p.bracket.target, kind: 'target', title: 'TP' });
+      for (const what of ['stop', 'target'] as const) {
+        const at = p.bracket[what];
+        const drag: LevelRef = { what, owner: 'position', id: p.id };
+        if (at !== null) out.push({ price: at, kind: what, title: describeLevel(drag, at), drag });
+      }
     }
     for (const o of account.orders) {
-      out.push({ price: o.price, kind: 'order', title: `${o.side === 'buy' ? 'Buy' : 'Sell'} ${o.type} ${o.qty}` });
-      if (o.bracket.stop !== null) out.push({ price: o.bracket.stop, kind: 'stop', title: 'SL', faint: true });
-      if (o.bracket.target !== null) out.push({ price: o.bracket.target, kind: 'target', title: 'TP', faint: true });
+      const drag: LevelRef = { what: 'order', owner: 'order', id: o.id };
+      out.push({ price: o.price, kind: 'order', title: describeLevel(drag, o.price), drag });
+      for (const what of ['stop', 'target'] as const) {
+        const at = o.bracket[what];
+        const ref: LevelRef = { what, owner: 'order', id: o.id };
+        if (at !== null) out.push({ price: at, kind: what, title: describeLevel(ref, at), faint: true, drag: ref });
+      }
     }
     return out;
-  }, [account]);
+  }, [account, describeLevel]);
+  const moveLevel = useCallback(
+    (ref: LevelRef, at: number) => {
+      if (!account) return;
+      if (ref.owner === 'position') {
+        const p = account.positions.find((x) => x.id === ref.id);
+        if (p) setAccount(setBracket(account, p.id, { ...p.bracket, [ref.what]: at }));
+      } else if (ref.what === 'order') setAccount(moveOrder(account, ref.id, at));
+      else {
+        const o = account.orders.find((x) => x.id === ref.id);
+        if (o) setAccount(setOrderBracket(account, o.id, { ...o.bracket, [ref.what]: at }));
+      }
+    },
+    [account, setAccount],
+  );
   const markers = useMemo<ChartMarker[]>(() => {
     if (!account || !bars?.length) return [];
     const lastBar = bars.at(-1)!.t;
@@ -359,7 +407,19 @@ function Backtester() {
               </p>
             </div>
           ) : (
-            <ReplayChart bars={bars} tf={tf} inst={inst} lines={lines} onLinesChange={setLines} tools={tools} onToolsChange={saveTools} priceLines={priceLines} markers={markers} />
+            <ReplayChart
+              bars={bars}
+              tf={tf}
+              inst={inst}
+              lines={lines}
+              onLinesChange={setLines}
+              tools={tools}
+              onToolsChange={saveTools}
+              priceLines={priceLines}
+              markers={markers}
+              onLevelMove={moveLevel}
+              describeLevel={describeLevel}
+            />
           )}
         </div>
         <aside aria-label="Order ticket" className="w-72 shrink-0 overflow-y-auto rounded-lg border border-border bg-card">
