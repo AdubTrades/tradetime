@@ -15,8 +15,9 @@ import {
 } from '@tc/domain';
 import { LinesPrimitive } from './linesPrimitive';
 import { LineSettings } from './LineSettings';
+import { claim } from './ShapeLayer';
 
-export type DrawTool = 'cursor' | 'hray' | 'hline';
+export type DrawTool = 'cursor' | 'hray' | 'hline' | 'rect' | 'long' | 'short';
 
 const MAGNET_PX = 30;
 const decimals = (tick: number) => Math.max(0, (String(tick).split('.')[1] ?? '').length);
@@ -41,6 +42,8 @@ export function LineLayer({
   setTool,
   magnet,
   background,
+  selected,
+  setSelected,
 }: {
   chart: IChartApi;
   series: ISeriesApi<'Candlestick'>;
@@ -56,15 +59,17 @@ export function LineLayer({
   setTool: (t: DrawTool) => void;
   magnet: boolean;
   background: string;
+  /** Shared with the shape layer: one drawing is selected at a time. */
+  selected: string | null;
+  setSelected: (id: string | null) => void;
 }) {
   const [prim] = useState(() => new LinesPrimitive());
-  const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<HorizontalLine | null>(null); // the line as it was when settings opened
   const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
 
   // The latest props for the native event handlers below.
-  const st = useRef({ lines, onLinesChange, tools, onToolsChange, tool, setTool, magnet, bars, tf, inst, selected, editing });
-  st.current = { lines, onLinesChange, tools, onToolsChange, tool, setTool, magnet, bars, tf, inst, selected, editing };
+  const st = useRef({ lines, onLinesChange, tools, onToolsChange, tool, setTool, magnet, bars, tf, inst, selected, setSelected, editing });
+  st.current = { lines, onLinesChange, tools, onToolsChange, tool, setTool, magnet, bars, tf, inst, selected, setSelected, editing };
 
   useEffect(() => {
     series.attachPrimitive(prim);
@@ -124,6 +129,7 @@ export function LineLayer({
     const stop = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
+      claim(e);
       swallowMouse = true;
     };
 
@@ -133,7 +139,7 @@ export function LineLayer({
       const { x, y } = local(e);
       if (!inPane(x)) return;
       const s = st.current;
-      if (s.tool !== 'cursor') {
+      if (s.tool === 'hray' || s.tool === 'hline') {
         const price = priceAt(x, y);
         const bar = barAt(x);
         if (price === null || !bar) return;
@@ -141,17 +147,18 @@ export function LineLayer({
         const look = s.tools.last ?? { style: DEFAULT_LINE_STYLE, label: DEFAULT_LINE_LABEL };
         const line: HorizontalLine = { id: newId(), kind: s.tool, price, time: timeOf(bar), style: look.style, label: { ...look.label, text: '' }, hiddenOn: [] };
         s.onLinesChange([...s.lines, line]);
-        setSelected(line.id);
+        s.setSelected(line.id);
         s.setTool('cursor');
         return;
       }
+      if (s.tool !== 'cursor') return; // a shape tool: the shape layer draws it
       const hit = prim.lineAt(x, y);
       if (!hit) {
-        setSelected(null);
+        if (s.selected && s.lines.some((l) => l.id === s.selected)) s.setSelected(null);
         return;
       }
       stop(e);
-      setSelected(hit.line.id);
+      s.setSelected(hit.line.id);
       // Drag: the body moves the price (and the start by as many bars); the handle moves the start to the mouse.
       const start = hit.line;
       const startBar = barAt(x);
@@ -215,7 +222,8 @@ export function LineLayer({
       const hit = prim.lineAt(x, y);
       if (!hit) return;
       e.stopPropagation();
-      setSelected(hit.line.id);
+      claim(e);
+      st.current.setSelected(hit.line.id);
       setEditing(hit.line);
     };
 
@@ -224,7 +232,8 @@ export function LineLayer({
       const hit = prim.lineAt(x, y);
       if (!hit) return;
       e.preventDefault();
-      setSelected(hit.line.id);
+      claim(e);
+      st.current.setSelected(hit.line.id);
       setMenu({ x, y, id: hit.line.id });
     };
 
@@ -254,10 +263,10 @@ export function LineLayer({
         s.setTool('cursor');
         setSelected(null);
         setMenu(null);
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && s.selected && !s.editing) {
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && s.selected && !s.editing && s.lines.some((l) => l.id === s.selected)) {
         e.preventDefault();
         s.onLinesChange(s.lines.filter((l) => l.id !== s.selected));
-        setSelected(null);
+        s.setSelected(null);
       }
     };
     window.addEventListener('keydown', onKey);

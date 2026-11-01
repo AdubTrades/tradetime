@@ -50,6 +50,9 @@ export interface LineTemplate {
 export interface LineTools {
   templates: LineTemplate[];
   last: { style: LineStyle; label: LineLabel } | null;
+  /** The look of the next rectangle, and the dollar risk of the next long/short tool. */
+  rectLast?: RectStyle | null;
+  riskUsd?: number | null;
 }
 
 export const DEFAULT_LINE_STYLE: LineStyle = { color: '#2962ff', width: 1, dash: 'solid', priceLabel: true };
@@ -60,3 +63,58 @@ export const LINE_COLORS = ['#f23645', '#ff9800', '#ffeb3b', '#4caf50', '#089981
 
 /** Templates sorted by name, the way the template menu lists them. */
 export const sortTemplates = (list: readonly LineTemplate[]) => [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+// ---------- Rectangles and the risk-reward tool ----------
+
+export interface RectStyle {
+  border: string;
+  borderWidth: 1 | 2 | 3 | 4;
+  fill: string;
+  /** 0–1. */
+  fillOpacity: number;
+  /** A line through the middle (TradingView's "middle line"), e.g. the 50% of a fair value gap. */
+  midline: boolean;
+  midDash: LineDash;
+  /** Keep going to the right edge of the chart. */
+  extendRight: boolean;
+}
+
+export interface RectDrawing {
+  id: string;
+  kind: 'rect';
+  /** Corners: times (Unix seconds of bars, or past the last bar) and prices. */
+  t1: number;
+  t2: number;
+  p1: number;
+  p2: number;
+  style: RectStyle;
+  label: LineLabel;
+  hiddenOn: Timeframe[];
+}
+
+/**
+ * TradingView's long / short position tool: an entry with a stop zone and a target zone, from a start bar to an end
+ * bar. Sized from a dollar risk on one of the instrument's contracts.
+ */
+export interface RiskRewardDrawing {
+  id: string;
+  kind: 'long' | 'short';
+  t1: number;
+  t2: number;
+  entry: number;
+  stop: number;
+  target: number;
+  /** Contract the size is worked out for (MNQ, NQ…). */
+  symbol: string;
+  riskUsd: number;
+  hiddenOn: Timeframe[];
+}
+
+export type Shape = RectDrawing | RiskRewardDrawing;
+
+export interface Drawings {
+  lines: HorizontalLine[];
+  shapes?: Shape[];
+}
+
+export const DEFAULT_RECT_STYLE: RectStyle = { border: '#2962ff', borderWidth: 1, fill: '#2962ff', fillOpacity: 0.15, midline: true, midDash: 'dashed', extendRight: false };

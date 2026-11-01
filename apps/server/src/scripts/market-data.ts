@@ -1,6 +1,7 @@
 /**
  * Download price history for the backtesting page and write the files it reads (see `marketData.ts`).
  * Usage: pnpm --filter @tc/server market-data crypto [BTCUSDT ETHUSDT SOLUSDT] [--from 2021-11] [--upload]
+ *        pnpm --filter @tc/server market-data futures [NQ] [--months 12] [--buy] [--upload]   (see futures-data.ts)
  * - crypto: Binance's public archive (data.binance.vision), spot 1-minute klines, free and without a key. Whole months
  *   come from the monthly files, the current month from the daily ones. Each file's SHA-256 is checked.
  * - Days already on disk are skipped, so it can be re-run any time to top up. Days older than 5 years are removed.
@@ -30,8 +31,12 @@ const cutoff = (() => {
   return d.toISOString().slice(0, 10);
 })();
 
+if (kind === 'futures') {
+  await import('./futures-data');
+  process.exit(0);
+}
 if (kind !== 'crypto') {
-  console.error(kind === 'futures' ? 'Futures come from Databento: not built yet (needs DATABENTO_API_KEY).' : 'Usage: market-data crypto [SYMBOL…] [--from YYYY-MM] [--upload]');
+  console.error('Usage: market-data crypto [SYMBOL…] [--from YYYY-MM] [--upload]\n       market-data futures [NQ] [--months 12] [--buy] [--upload]');
   process.exit(1);
 }
 

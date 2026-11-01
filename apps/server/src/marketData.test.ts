@@ -5,7 +5,8 @@ describe('market data files', () => {
   it('accepts only the known file paths for known instruments', () => {
     expect(isMarketPath('BTCUSDT/2026/2026-10-31.json.gz')).toBe(true);
     expect(isMarketPath('NQ/hourly/2026.json.gz')).toBe(true);
-    expect(isMarketPath('ES/daily.json.gz')).toBe(true);
+    expect(isMarketPath('NQ/daily.json.gz')).toBe(true);
+    expect(isMarketPath('ES/daily.json.gz')).toBe(false); // not bought
     expect(isMarketPath('NQ/2025/2026-01-02.json.gz')).toBe(false);
     expect(isMarketPath('XYZ/daily.json.gz')).toBe(false);
     expect(isMarketPath('../secrets/daily.json.gz')).toBe(false);

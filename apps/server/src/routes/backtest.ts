@@ -30,10 +30,47 @@ const line = z.object({
   label: lineLabel,
   hiddenOn: z.array(z.enum(TIMEFRAMES as [string, ...string[]])),
 });
-const drawingsSchema = z.object({ lines: z.array(line).max(2000) });
+const rectStyle = z.object({
+  border: color,
+  borderWidth: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  fill: color,
+  fillOpacity: z.number().min(0).max(1),
+  midline: z.boolean(),
+  midDash: z.enum(['solid', 'dashed', 'dotted']),
+  extendRight: z.boolean(),
+});
+const tfs = z.array(z.enum(TIMEFRAMES as [string, ...string[]]));
+const shape = z.discriminatedUnion('kind', [
+  z.object({
+    id: z.string().min(1).max(40),
+    kind: z.literal('rect'),
+    t1: z.number().int(),
+    t2: z.number().int(),
+    p1: z.number().finite(),
+    p2: z.number().finite(),
+    style: rectStyle,
+    label: lineLabel,
+    hiddenOn: tfs,
+  }),
+  z.object({
+    id: z.string().min(1).max(40),
+    kind: z.enum(['long', 'short']),
+    t1: z.number().int(),
+    t2: z.number().int(),
+    entry: z.number().finite(),
+    stop: z.number().finite(),
+    target: z.number().finite(),
+    symbol: z.string().min(1).max(20),
+    riskUsd: z.number().min(0).max(1e9),
+    hiddenOn: tfs,
+  }),
+]);
+const drawingsSchema = z.object({ lines: z.array(line).max(2000), shapes: z.array(shape).max(2000).optional() });
 const lineToolsSchema = z.object({
   templates: z.array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), style: lineStyle, label: lineLabel })).max(200),
   last: z.object({ style: lineStyle, label: lineLabel }).nullable(),
+  rectLast: rectStyle.nullable().optional(),
+  riskUsd: z.number().min(0).max(1e9).nullable().optional(),
 });
 
 const num = z.number().finite();

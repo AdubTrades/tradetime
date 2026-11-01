@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HorizontalLine, LineTools, SimAccount, Timeframe } from '@tc/domain';
+import type { Drawings, HorizontalLine, LineTools, Shape, SimAccount, Timeframe } from '@tc/domain';
 import { api } from './api';
 
 const EMPTY_TOOLS: LineTools = { templates: [], last: null };
@@ -121,11 +121,15 @@ function useSavedDoc<T, R = unknown>(kind: string, key: string, what: string, on
   return [state?.instrument === instrument ? state.value : undefined, set, error];
 }
 
-/** The lines drawn in a session. */
-export function useLines(instrument: string): [HorizontalLine[], (lines: HorizontalLine[]) => void, string | null] {
-  const [doc, setDoc, error] = useSavedDoc<{ lines: HorizontalLine[] }>('drawings', instrument, 'lines');
-  const setLines = useCallback((lines: HorizontalLine[]) => setDoc({ lines }), [setDoc]);
-  return [doc?.lines ?? [], setLines, error];
+/** What's drawn in a session: horizontal lines, and rectangles and long/short tools. */
+export function useDrawings(sessionId: string) {
+  const [doc, setDoc, error] = useSavedDoc<Drawings>('drawings', sessionId, 'drawings');
+  // Lines and shapes are edited separately; each change merges into the latest copy.
+  const latest = useRef<Drawings>({ lines: [], shapes: [] });
+  latest.current = { lines: doc?.lines ?? [], shapes: doc?.shapes ?? [] };
+  const setLines = useCallback((lines: HorizontalLine[]) => setDoc((latest.current = { ...latest.current, lines })), [setDoc]);
+  const setShapes = useCallback((shapes: Shape[]) => setDoc((latest.current = { ...latest.current, shapes })), [setDoc]);
+  return { lines: latest.current.lines, shapes: latest.current.shapes!, setLines, setShapes, error };
 }
 
 export interface JournalResult {

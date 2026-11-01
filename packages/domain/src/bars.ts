@@ -62,22 +62,7 @@ export const BACKTEST_INSTRUMENTS: BacktestInstrument[] = [
     trades: ['NQ', 'MNQ'],
     tickSize: 0.25,
   },
-  {
-    id: 'ES',
-    label: 'ES · E-mini S&P 500',
-    kind: 'futures',
-    baseSeconds: 30,
-    trades: ['ES', 'MES'],
-    tickSize: 0.25,
-  },
-  {
-    id: 'GC',
-    label: 'GC · Gold',
-    kind: 'futures',
-    baseSeconds: 30,
-    trades: ['GC', 'MGC'],
-    tickSize: 0.1,
-  },
+  // ES (ES, MES) and GC (GC, MGC) come back when their data is bought.
   {
     id: 'BTCUSDT',
     label: 'BTC/USDT · Bitcoin (spot)',

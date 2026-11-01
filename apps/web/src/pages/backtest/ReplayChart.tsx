@@ -1,4 +1,4 @@
-import { ArrowRightFromLine, Magnet, Minus, MousePointer2, type LucideIcon } from 'lucide-react';
+import { ArrowRightFromLine, Magnet, Minus, MousePointer2, RectangleHorizontal, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
 import {
@@ -16,9 +16,10 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import { currentZone, isIntraday, type Bar, type BacktestInstrument, type HorizontalLine, type LineTools, type Timeframe } from '@tc/domain';
+import { currentZone, isIntraday, type Bar, type BacktestInstrument, type HorizontalLine, type LineTools, type RiskRewardDrawing, type Shape, type SimSpec, type Timeframe } from '@tc/domain';
 import { cn } from '../../components/ui';
 import { LineLayer, type DrawTool } from './LineLayer';
+import { ShapeLayer } from './ShapeLayer';
 
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -70,6 +71,10 @@ export function ReplayChart({
   onLinesChange,
   tools,
   onToolsChange,
+  shapes,
+  onShapesChange,
+  specs,
+  onPlaceOrder,
   priceLines = [],
   markers = [],
   onLevelMove,
@@ -82,6 +87,11 @@ export function ReplayChart({
   onLinesChange: (lines: HorizontalLine[]) => void;
   tools: LineTools;
   onToolsChange: (tools: LineTools) => void;
+  shapes: Shape[];
+  onShapesChange: (shapes: Shape[]) => void;
+  specs: Record<string, SimSpec>;
+  /** Turn a long/short tool into a working order. */
+  onPlaceOrder?: (rr: RiskRewardDrawing) => void;
   priceLines?: ChartPriceLine[];
   markers?: ChartMarker[];
   /** A level was dragged to a new price. */
@@ -91,6 +101,7 @@ export function ReplayChart({
 }) {
   const [ready, setReady] = useState<{ chart: IChartApi; series: ISeriesApi<'Candlestick'>; host: HTMLDivElement } | null>(null);
   const [tool, setTool] = useState<DrawTool>('cursor');
+  const [selected, setSelected] = useState<string | null>(null);
   const [magnet, setMagnet] = useState(() => {
     try {
       return localStorage.getItem(MAGNET_KEY) === '1';
@@ -394,11 +405,17 @@ export function ReplayChart({
         <ToolButton icon={MousePointer2} label="Cursor (Esc)" active={tool === 'cursor'} onClick={() => setTool('cursor')} />
         <ToolButton icon={ArrowRightFromLine} label="Horizontal ray (Alt+J)" active={tool === 'hray'} onClick={() => setTool(tool === 'hray' ? 'cursor' : 'hray')} />
         <ToolButton icon={Minus} label="Horizontal line (Alt+H)" active={tool === 'hline'} onClick={() => setTool(tool === 'hline' ? 'cursor' : 'hline')} />
+        <ToolButton icon={RectangleHorizontal} label="Rectangle (Alt+Shift+R)" active={tool === 'rect'} onClick={() => setTool(tool === 'rect' ? 'cursor' : 'rect')} />
+        <ToolButton icon={TrendingUp} label="Long position" active={tool === 'long'} onClick={() => setTool(tool === 'long' ? 'cursor' : 'long')} />
+        <ToolButton icon={TrendingDown} label="Short position" active={tool === 'short'} onClick={() => setTool(tool === 'short' ? 'cursor' : 'short')} />
         <div className="my-1 w-6 border-t border-border" />
         <ToolButton icon={Magnet} label={magnet ? 'Magnet on: snaps to open, high, low and close' : 'Magnet off'} active={magnet} onClick={toggleMagnet} />
       </div>
       <div ref={wrap} className="group/levels relative min-w-0 flex-1">
-        <div ref={el} className="absolute inset-0 group-data-[level]/levels:[&_*]:cursor-ns-resize! [&[data-cursor=crosshair]_*]:cursor-crosshair! [&[data-cursor=pointer]_*]:cursor-pointer!" />
+        <div
+          ref={el}
+          className="absolute inset-0 group-data-[level]/levels:[&_*]:cursor-ns-resize! [&[data-cursor=crosshair]_*]:cursor-crosshair! [&[data-cursor=pointer]_*]:cursor-pointer! [&[data-cursor=move]_*]:cursor-move!"
+        />
         {ready && bars && (
           <LineLayer
             chart={ready.chart}
@@ -415,6 +432,30 @@ export function ReplayChart({
             setTool={setTool}
             magnet={magnet}
             background={background}
+            selected={selected}
+            setSelected={setSelected}
+          />
+        )}
+        {ready && bars && (
+          <ShapeLayer
+            chart={ready.chart}
+            series={ready.series}
+            host={ready.host}
+            bars={bars}
+            tf={tf}
+            inst={inst}
+            shapes={shapes}
+            onShapesChange={onShapesChange}
+            tools={tools}
+            onToolsChange={onToolsChange}
+            tool={tool}
+            setTool={setTool}
+            magnet={magnet}
+            selected={selected}
+            setSelected={setSelected}
+            specs={specs}
+            colours={{ profit: css('--positive'), loss: css('--negative'), text: css('--text'), muted: css('--text-muted'), background }}
+            onPlaceOrder={onPlaceOrder}
           />
         )}
         <div className="pointer-events-none absolute top-2.5 left-3 z-10 flex items-center gap-3 font-mono text-[12px]">

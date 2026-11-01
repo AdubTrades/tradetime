@@ -9,6 +9,7 @@ import {
   isIntraday,
   moveOrder,
   newSimAccount,
+  placeOrder,
   replayTo,
   setBracket,
   setOrderBracket,
@@ -21,6 +22,7 @@ import {
   type BacktestInstrument,
   type Timeframe,
   type SimAccount,
+  type RiskRewardDrawing,
 } from '@tc/domain';
 import { Link } from '@tanstack/react-router';
 import { Dialog } from '../../components/Dialog';
@@ -29,9 +31,10 @@ import { Select } from '../../components/Select';
 import { useAccounts } from '../../lib/expenses';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
-import { useCreateSession, useDeleteSession, useLines, useLineTools, useSessions, useSimAccount, useUpdateSession, type BacktestSession } from '../../lib/drawings';
+import { useCreateSession, useDeleteSession, useDrawings, useLineTools, useSessions, useSimAccount, useUpdateSession, type BacktestSession } from '../../lib/drawings';
 import { ReplayChart, type ChartMarker, type ChartPriceLine, type LevelRef } from './ReplayChart';
 import { DEFAULT_START_BALANCE, OrderTicket, SimPanel, useSimSpecs } from './SimTrading';
+import { riskRewardSize } from './ShapeLayer';
 
 /** History shown behind the replay for short timeframes, in trading days of base bars. */
 const BASE_DAYS: Partial<Record<Timeframe, number>> = {
@@ -167,18 +170,18 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
   const [stepPicked, setStep] = useState(prefs.step);
   const updateSession = useUpdateSession();
   const deleteSession = useDeleteSession();
-  const [notice, setNotice] = useState<{ text: string; bad: boolean } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; bad: boolean; journal?: boolean } | null>(null);
   const { data: accounts } = useAccounts();
   const journalName = accounts?.find((a) => a.id === session.accountId)?.name ?? 'Backtesting';
   const step = Math.max(stepPicked, inst.baseSeconds);
   const [version, setVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<Bar[] | null | undefined>(undefined);
-  const [lines, setLines, linesError] = useLines(session.id);
+  const { lines, shapes, setLines, setShapes, error: linesError } = useDrawings(session.id);
   const { tools, saveTools } = useLineTools();
   const [savedAccount, setAccount, simError] = useSimAccount(session.id, (r) => {
     if (r.failed.length) setNotice({ text: `Couldn’t save ${r.failed.length === 1 ? 'a trade' : `${r.failed.length} trades`} to the journal: ${r.failed[0]!.message}`, bad: true });
-    else if (r.journaled) setNotice({ text: `Saved ${r.journaled === 1 ? 'the trade' : `${r.journaled} trades`} to your journal (${journalName}, needs review).`, bad: false });
+    else if (r.journaled) setNotice({ text: `Saved ${r.journaled === 1 ? 'the trade' : `${r.journaled} trades`} to your journal (${journalName}, needs review).`, bad: false, journal: true });
   });
 
   useEffect(() => writeLocal(PREFS_KEY, JSON.stringify({ speed, step: stepPicked } satisfies Prefs)), [speed, stepPicked]);
@@ -359,6 +362,24 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
       .sort((a, b) => a.time - b.time);
   }, [account, bars, tf, inst]);
 
+  /** A long/short tool as a working order: a limit (or stop, if price must rise/fall to it) at its entry, with its stop and target. */
+  const placeFromTool = useCallback(
+    (rr: RiskRewardDrawing) => {
+      if (!account || price === null || cursor === null) return;
+      const spec = specs[rr.symbol];
+      const qty = riskRewardSize(rr, spec, inst.kind === 'crypto');
+      if (!spec || qty <= 0) {
+        setNotice({ text: 'That risk is too small for one contract at this stop distance.', bad: true });
+        return;
+      }
+      const side = rr.kind === 'long' ? 'buy' : 'sell';
+      const type = (side === 'buy') === rr.entry <= price ? 'limit' : 'stop';
+      setAccount(placeOrder(account, { symbol: rr.symbol, type, side, qty, price: rr.entry, bracket: { stop: rr.stop, target: rr.target }, placedAt: cursor }));
+      setNotice({ text: `${side === 'buy' ? 'Buy' : 'Sell'} ${type} ${qty} ${rr.symbol} @ ${rr.entry} placed, with its stop and target.`, bad: false });
+    },
+    [account, price, cursor, specs, inst, setAccount],
+  );
+
   /** The next replay moment: one step on, skipping closed markets (nights, weekends) straight to the next bar. */
   const advance = useCallback(
     (c: number): number | 'wait' | 'end' => {
@@ -496,6 +517,10 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
               tf={tf}
               inst={inst}
               lines={lines}
+              shapes={shapes}
+              onShapesChange={setShapes}
+              specs={specs}
+              onPlaceOrder={placeFromTool}
               onLinesChange={setLines}
               tools={tools}
               onToolsChange={saveTools}
@@ -560,7 +585,7 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
         {notice && (
           <p className={cn('text-[13px]', notice.bad ? 'text-loss' : 'text-secondary')}>
             {notice.text}{' '}
-            {!notice.bad && (
+            {notice.journal && (
               <Link to="/journal" className="link-ember">
                 Open journal
               </Link>

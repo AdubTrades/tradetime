@@ -79,6 +79,14 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   remembers which, so deleting one in the journal doesn't bring it back. Spot pairs (BTCUSDT, ETHUSDT, SOLUSDT) are in
   the contract catalogue with fractional sizes (migration 0007 makes fill and max sizes decimals; `fractionalSizes`
   allows them only for spot crypto).
+- **Stage 4 (drawing tools):** rectangles (drag or click two corners; middle line, fill/opacity, border, label,
+  extend right; corners resize, body moves) and long/short position tools (click to place; entry, stop, target and
+  width handles; size from a dollar risk on the chosen contract; shows "Target hit"/"Stop hit" as the replay reaches
+  them; right-click "Place order from this" puts a limit or stop order with that bracket). Saved with the session's
+  lines (`shapes` in the drawings doc). Rectangle look and RR risk carry over to the next one.
+- **Data bought (1 Nov 2026):** NQ 1-second, Nov 2025 to Oct 2026, US$48.33 from Databento
+  (`market-data futures --buy`; raw files cached in market-data/raw so they're never paid for twice). ES and GC were
+  left out for now and removed from the instrument list. Crypto stays (free).
 
 ## Owner steps
 1. Futures data: a Databento account needs a card at sign-up (a Visa/Mastercard debit card should do). The other route
