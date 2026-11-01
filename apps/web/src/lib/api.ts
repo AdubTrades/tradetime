@@ -291,7 +291,7 @@ export interface TradeBase {
   mistakeIds: string[];
   stateReadingId: string | null;
   stateOverridden: boolean;
-  source: 'manual' | 'import';
+  source: 'manual' | 'import' | 'backtest';
   needsReview: boolean;
   state: Pick<StateReading, 'id' | 'kind' | 'at' | 'answers'> & { decision?: StateReading['decision'] } | null;
 }

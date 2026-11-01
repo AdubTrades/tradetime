@@ -84,7 +84,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
       {t.needsReview && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border-subtle bg-inset px-5 py-4 text-sm">
           <span className="flex-1">
-            <span className="font-medium">Imported from your broker.</span>{' '}
+            <span className="font-medium">{t.source === 'backtest' ? 'From a backtesting session.' : 'Imported from your broker.'}</span>{' '}
             <span className="text-muted">Add the Play, tick what you saw before entry, and note how you felt — the fills and P&L are already in.</span>
           </span>
           <Button variant="primary" onClick={() => setEditing(true)}>
@@ -93,6 +93,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
         </div>
       )}
       {!t.needsReview && t.source === 'import' && <p className="-mt-4 text-xs text-muted">Fills imported from your broker.</p>}
+      {!t.needsReview && t.source === 'backtest' && <p className="-mt-4 text-xs text-muted">Fills from a backtesting session.</p>}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         <Stat label={`Net (${currency})`} value={<Pnl cents={t.netCents} day={t.tradingDay} />} />

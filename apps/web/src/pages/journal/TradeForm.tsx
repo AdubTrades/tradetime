@@ -275,8 +275,8 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
     return created;
   });
 
-  // Imported trades keep their broker fills; reviewing only adds the Play, checklist, plan and notes.
-  const imported = trade?.source === 'import';
+  // Imported and backtest trades keep their fills; reviewing only adds the Play, checklist, plan and notes.
+  const imported = !!trade && trade.source !== 'manual';
   const canSave = imported || (!!fills && !!preview && !preview.error && form.accounts.length > 0 && offTick.length === 0);
   // Say why Save is off, rather than leaving the buttons greyed out.
   const missing = imported

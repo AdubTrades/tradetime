@@ -72,6 +72,13 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   replay is off while a position or order is open. Market orders fill at the last closed base bar's close.
 - **Draggable levels:** a position's SL/TP, a working order (its SL/TP move with it) and an order's own SL/TP can be
   dragged on the chart; labels show the dollar result at that price (e.g. "SL −$300.00").
+- **Stage 3 (journal and sessions):** named sessions (`apps/server/src/backtestSessions.ts`), each with one
+  instrument, a journal account (Backtesting by default, created if missing), its own practice account, replay time,
+  timeframe and lines. Saving the practice account journals each newly closed trade once (`source: 'backtest'`,
+  needs review, fees and first stop/target carried over, note "Backtest: <session>"); `backtest.journaled.<id>`
+  remembers which, so deleting one in the journal doesn't bring it back. Spot pairs (BTCUSDT, ETHUSDT, SOLUSDT) are in
+  the contract catalogue with fractional sizes (migration 0007 makes fill and max sizes decimals; `fractionalSizes`
+  allows them only for spot crypto).
 
 ## Owner steps
 1. Futures data: a Databento account needs a card at sign-up (a Visa/Mastercard debit card should do). The other route

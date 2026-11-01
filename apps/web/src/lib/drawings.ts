@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HorizontalLine, LineTools, SimAccount } from '@tc/domain';
+import type { HorizontalLine, LineTools, SimAccount, Timeframe } from '@tc/domain';
 import { api } from './api';
 
 const EMPTY_TOOLS: LineTools = { templates: [], last: null };
@@ -17,11 +17,61 @@ export function useLineTools() {
   return { tools, saveTools: save.mutate };
 }
 
+/** A backtesting session: one instrument, its own practice account, replay time, timeframe and lines. */
+export interface BacktestSession {
+  id: string;
+  name: string;
+  instrument: string;
+  accountId: string;
+  tf: Timeframe;
+  cursor: number | null;
+  createdAt: string;
+  updatedAt: string;
+  trades: number;
+  net: number;
+}
+
+export function useSessions() {
+  return useQuery({ queryKey: ['backtest', 'sessions'], queryFn: () => api.get<BacktestSession[]>('/backtest/sessions') });
+}
+
+export function useCreateSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; instrument: string; accountId: string | null; startBalance: number; cursor: number | null; tf: Timeframe }) =>
+      api.post<BacktestSession>('/backtest/sessions', input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['backtest', 'sessions'] });
+      // The first session may have created the Backtesting account.
+      void qc.invalidateQueries({ queryKey: ['accounts'] });
+    },
+  });
+}
+
+export function useUpdateSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...patch }: { id: string; name?: string; tf?: Timeframe; cursor?: number | null; accountId?: string }) => api.patch<BacktestSession>(`/backtest/sessions/${id}`, patch),
+    onSuccess: (s) => qc.setQueryData<BacktestSession[]>(['backtest', 'sessions'], (list) => list?.map((x) => (x.id === s.id ? s : x))),
+  });
+}
+
+export function useDeleteSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/backtest/sessions/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['backtest', 'sessions'] }),
+  });
+}
+
 /**
- * A document saved per instrument (`/backtest/<kind>/<instrument>`). Changes show at once and are saved shortly
- * after, in one request for a burst of edits (typing a label, a replay filling orders). Undefined while loading.
+ * A document saved per session (`/backtest/<kind>/<sessionId>`). Changes show at once and are saved shortly after,
+ * in one request for a burst of edits (typing a label, a replay filling orders). Undefined while loading.
  */
-function useSavedDoc<T>(kind: string, instrument: string, what: string): [T | undefined, (value: T) => void, string | null] {
+function useSavedDoc<T, R = unknown>(kind: string, key: string, what: string, onSaved?: (response: R) => void): [T | undefined, (value: T) => void, string | null] {
+  const instrument = key;
+  const saved = useRef(onSaved);
+  saved.current = onSaved;
   const [state, setState] = useState<{ instrument: string; value: T } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,7 +82,11 @@ function useSavedDoc<T>(kind: string, instrument: string, what: string): [T | un
     timer.current = null;
     const p = pending.current;
     pending.current = null;
-    if (p) api.put(`/backtest/${kind}/${p.instrument}`, p.value).catch((err: Error) => setError(`Couldn’t save your ${what}: ${err.message}`));
+    if (p)
+      api
+        .put<R>(`/backtest/${kind}/${p.instrument}`, p.value)
+        .then((res) => saved.current?.(res))
+        .catch((err: Error) => setError(`Couldn’t save your ${what}: ${err.message}`));
   }, [kind, what]);
 
   useEffect(() => {
@@ -67,14 +121,31 @@ function useSavedDoc<T>(kind: string, instrument: string, what: string): [T | un
   return [state?.instrument === instrument ? state.value : undefined, set, error];
 }
 
-/** The lines on an instrument's chart. */
+/** The lines drawn in a session. */
 export function useLines(instrument: string): [HorizontalLine[], (lines: HorizontalLine[]) => void, string | null] {
   const [doc, setDoc, error] = useSavedDoc<{ lines: HorizontalLine[] }>('drawings', instrument, 'lines');
   const setLines = useCallback((lines: HorizontalLine[]) => setDoc({ lines }), [setDoc]);
   return [doc?.lines ?? [], setLines, error];
 }
 
-/** The simulated trading account on an instrument: null if there isn't one yet, undefined while loading. */
-export function useSimAccount(instrument: string): [SimAccount | null | undefined, (account: SimAccount) => void, string | null] {
-  return useSavedDoc<SimAccount | null>('sim', instrument, 'practice account') as [SimAccount | null | undefined, (account: SimAccount) => void, string | null];
+export interface JournalResult {
+  journaled: number;
+  failed: { id: string; message: string }[];
+}
+
+/** A session's practice account (undefined while loading). Saving it also puts newly closed trades in the journal. */
+export function useSimAccount(sessionId: string, onJournal?: (r: JournalResult) => void): [SimAccount | null | undefined, (account: SimAccount) => void, string | null] {
+  const qc = useQueryClient();
+  const handle = useCallback(
+    (r: JournalResult) => {
+      if (r.journaled) {
+        // New journal trades (and maybe a new contract, e.g. BTCUSDT): refresh what the journal shows.
+        for (const key of ['trades', 'contracts', 'accounts']) void qc.invalidateQueries({ queryKey: [key] });
+        void qc.invalidateQueries({ queryKey: ['backtest', 'sessions'] });
+      }
+      onJournal?.(r);
+    },
+    [qc, onJournal],
+  );
+  return useSavedDoc<SimAccount | null, JournalResult>('sim', sessionId, 'practice account', handle) as [SimAccount | null | undefined, (account: SimAccount) => void, string | null];
 }

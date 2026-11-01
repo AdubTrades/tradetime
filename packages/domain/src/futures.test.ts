@@ -23,7 +23,7 @@ describe('futures catalogue', () => {
     expect(searchFutures('gc')[0]!.symbol).toBe('GC');
     expect(searchFutures('gold').map((s) => s.symbol)).toEqual(['GC', 'MGC']);
     expect(searchFutures('nasdaq').map((s) => s.symbol)).toEqual(['NQ', 'MNQ']);
-    expect(searchFutures('crypto').map((s) => s.symbol)).toEqual(['BTC', 'MBT', 'ETH', 'MET']);
+    expect(searchFutures('crypto').map((s) => s.symbol)).toEqual(['BTC', 'MBT', 'ETH', 'MET', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT']);
     expect(searchFutures('')).toHaveLength(FUTURES_CATALOGUE.length);
   });
 

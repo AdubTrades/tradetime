@@ -2,13 +2,14 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { findInstrument, TIMEFRAMES } from '@tc/domain';
+import { TIMEFRAMES, type Timeframe } from '@tc/domain';
 import { storage } from '../config';
 import { body } from '../http';
 import { getState, setState } from '../settings';
 import { AppError } from '../errors';
 import type { AuthUser } from '../auth';
 import { canBacktest, isMarketPath, localMarketFile, marketFileLink } from '../marketData';
+import { createSession, deleteSession, getSession, listSessions, saveSim, updateSession } from '../backtestSessions';
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/, 'Invalid colour');
 const lineStyle = z.object({ color, width: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), dash: z.enum(['solid', 'dashed', 'dotted']), priceLabel: z.boolean() });
@@ -55,6 +56,7 @@ const simSchema = z.object({
         openedAt: z.number().int(),
         bracket,
         initialStop: num.nullable(),
+        initialTarget: num.nullable().optional(),
         fills: z.array(fill).max(500),
         realised: num,
         maxQty: num,
@@ -77,6 +79,7 @@ const simSchema = z.object({
         fees: num,
         net: num,
         initialStop: num.nullable(),
+        initialTarget: num.nullable().optional(),
         riskPoints: num.nullable(),
         r: num.nullable(),
         exitReason: z.enum(['entry', 'manual', 'stop', 'target']),
@@ -88,10 +91,19 @@ const simSchema = z.object({
   fees: z.object({ cryptoRate: num.min(0).max(0.05) }),
 });
 
-const instrumentParam = (id: string) => {
-  if (!findInstrument(id)) throw new AppError(404, 'Unknown instrument');
-  return id;
-};
+const timeframe = z.enum(TIMEFRAMES as [Timeframe, ...Timeframe[]]);
+const sessionCreate = z.object({
+  name: z.string().trim().min(1, 'Name the session').max(60),
+  instrument: z.string().min(1).max(20),
+  accountId: z.string().min(1).nullable().optional(),
+  startBalance: num.min(0).max(1e9),
+  cursor: z.number().int().nullable(),
+  tf: timeframe,
+});
+const sessionPatch = z.object({ name: z.string().trim().min(1).max(60).optional(), tf: timeframe.optional(), cursor: z.number().int().nullable().optional(), accountId: z.string().min(1).optional() });
+
+/** A session id in the URL: it must be one of the user's sessions. */
+const sessionParam = async (id: string) => (await getSession(id)).id;
 
 /** The backtesting page: price history, and the owner's drawings and line templates. Owner only (see `canBacktest`). */
 export const backtestRoutes = new Hono<{ Variables: { user: AuthUser } }>()
@@ -117,10 +129,18 @@ export const backtestRoutes = new Hono<{ Variables: { user: AuthUser } }>()
     c.header('Cache-Control', 'private, max-age=300');
     return c.body(Readable.toWeb(createReadStream(file)) as ReadableStream);
   })
-  /** Lines drawn on an instrument's chart. */
-  .get('/drawings/:instrument', async (c) => c.json((await getState(`backtest.drawings.${instrumentParam(c.req.param('instrument'))}`)) ?? { lines: [] }))
-  .put('/drawings/:instrument', async (c) => {
-    const id = instrumentParam(c.req.param('instrument'));
+  /** Backtesting sessions. */
+  .get('/sessions', async (c) => c.json(await listSessions()))
+  .post('/sessions', async (c) => c.json(await createSession(await body(c.req, sessionCreate)), 201))
+  .patch('/sessions/:id', async (c) => c.json(await updateSession(c.req.param('id'), await body(c.req, sessionPatch))))
+  .delete('/sessions/:id', async (c) => {
+    await deleteSession(c.req.param('id'));
+    return c.body(null, 204);
+  })
+  /** Lines drawn in a session. */
+  .get('/drawings/:id', async (c) => c.json((await getState(`backtest.drawings.${await sessionParam(c.req.param('id'))}`)) ?? { lines: [] }))
+  .put('/drawings/:id', async (c) => {
+    const id = await sessionParam(c.req.param('id'));
     const data = await body(c.req, drawingsSchema);
     await setState(`backtest.drawings.${id}`, data);
     return c.json(data);
@@ -132,11 +152,9 @@ export const backtestRoutes = new Hono<{ Variables: { user: AuthUser } }>()
     await setState('backtest.lineTools', data);
     return c.json(data);
   })
-  /** The simulated trading account on an instrument (balance, orders, positions, closed trades). */
-  .get('/sim/:instrument', async (c) => c.json((await getState(`backtest.sim.${instrumentParam(c.req.param('instrument'))}`)) ?? null))
-  .put('/sim/:instrument', async (c) => {
-    const id = instrumentParam(c.req.param('instrument'));
-    const data = await body(c.req, simSchema);
-    await setState(`backtest.sim.${id}`, data);
-    return c.json(data);
+  /** A session's practice account (balance, orders, positions, closed trades). Saving also journals new trades. */
+  .get('/sim/:id', async (c) => c.json((await getState(`backtest.sim.${await sessionParam(c.req.param('id'))}`)) ?? null))
+  .put('/sim/:id', async (c) => {
+    const result = await saveSim(c.req.param('id'), await body(c.req, simSchema));
+    return c.json({ journaled: result.journaled, failed: result.failed });
   });

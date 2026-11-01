@@ -22,10 +22,14 @@ import {
   type Timeframe,
   type SimAccount,
 } from '@tc/domain';
+import { Link } from '@tanstack/react-router';
+import { Dialog } from '../../components/Dialog';
+import { MenuButton } from '../../components/Menu';
 import { Select } from '../../components/Select';
+import { useAccounts } from '../../lib/expenses';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
-import { useLines, useLineTools, useSimAccount } from '../../lib/drawings';
+import { useCreateSession, useDeleteSession, useLines, useLineTools, useSessions, useSimAccount, useUpdateSession, type BacktestSession } from '../../lib/drawings';
 import { ReplayChart, type ChartMarker, type ChartPriceLine, type LevelRef } from './ReplayChart';
 import { DEFAULT_START_BALANCE, OrderTicket, SimPanel, useSimSpecs } from './SimTrading';
 
@@ -45,33 +49,39 @@ const STEPS: { value: number; label: string }[] = [
   { value: 900, label: '15m' },
   { value: 3600, label: '1h' },
 ];
-const STATE_KEY = 'tc-backtest';
+const PREFS_KEY = 'tc-backtest-prefs';
+const NEW = '__new__';
+const SESSION_KEY = 'tc-backtest-session';
 
-interface Saved {
-  instrument: string;
-  tf: Timeframe;
-  cursor: number | null;
+/** Replay speed and step, remembered in this browser. */
+interface Prefs {
   speed: number;
   step: number;
 }
 
-function loadSaved(): Saved {
-  const fallback: Saved = {
-    instrument: 'NQ',
-    tf: '5m',
-    cursor: null,
-    speed: 5,
-    step: 60,
-  };
+function loadPrefs(): Prefs {
+  const fallback: Prefs = { speed: 5, step: 60 };
   try {
-    return {
-      ...fallback,
-      ...(JSON.parse(localStorage.getItem(STATE_KEY) ?? '{}') as Partial<Saved>),
-    };
+    return { ...fallback, ...(JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') as Partial<Prefs>) };
   } catch {
     return fallback;
   }
 }
+
+const readLocal = (key: string) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const writeLocal = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Only a convenience.
+  }
+};
 
 /** Trading dates with data, from the instrument's daily file (labelled midnight UTC of each date). */
 const datesOf = (daily: Bar[] | null | undefined) => (daily ?? []).map((b) => new Date(b.t * 1000).toISOString().slice(0, 10));
@@ -101,44 +111,85 @@ export function BacktestPage() {
   const { data: me, isLoading } = useMe();
   if (isLoading) return null;
   if (!me?.backtest) return <PageHeader title="Backtesting" description="This page isn’t available on your account." />;
-  return <Backtester />;
+  return <Sessions />;
 }
 
-function Backtester() {
-  const [saved] = useState(loadSaved);
-  const [instrumentId, setInstrumentId] = useState(findInstrument(saved.instrument) ? saved.instrument : 'NQ');
+/** Pick (or start) a session, then replay it. */
+function Sessions() {
+  const { data: sessions, error } = useSessions();
+  const [currentId, setCurrentId] = useState(() => readLocal(SESSION_KEY));
+  const [creating, setCreating] = useState(false);
+  const choose = (id: string) => {
+    setCurrentId(id);
+    writeLocal(SESSION_KEY, id);
+  };
+  if (error) return <p className="text-sm text-loss">Couldn’t load your sessions: {error.message}</p>;
+  if (!sessions) return null;
+  const current = sessions.find((s) => s.id === currentId) ?? [...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  return (
+    <>
+      {current ? (
+        <Backtester key={current.id} session={current} sessions={sessions} onSwitch={choose} onNew={() => setCreating(true)} />
+      ) : (
+        <div className="mx-auto mt-10 max-w-md">
+          <PageHeader
+            title="Backtesting"
+            description="Replay the charts bar by bar and practise trades. Each session has its own instrument, balance, replay time and lines, and its trades go to your journal."
+          />
+          <div className="hidden md:block">
+            <NewSessionForm onCreated={(s) => choose(s.id)} />
+          </div>
+          <p className="text-sm text-muted md:hidden">Backtesting needs a bigger screen. Open TradeTime on a computer to replay the charts.</p>
+        </div>
+      )}
+      <Dialog open={creating} onClose={() => setCreating(false)} title="New backtesting session">
+        <NewSessionForm
+          onCreated={(s) => {
+            setCreating(false);
+            choose(s.id);
+          }}
+        />
+      </Dialog>
+    </>
+  );
+}
+
+function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestSession; sessions: BacktestSession[]; onSwitch: (id: string) => void; onNew: () => void }) {
+  const [prefs] = useState(loadPrefs);
+  const instrumentId = session.instrument;
   const inst = findInstrument(instrumentId)!;
   const tfs = timeframesFor(inst);
-  const [tfPicked, setTf] = useState<Timeframe>(saved.tf);
+  const [tfPicked, setTf] = useState<Timeframe>(session.tf);
   const tf = tfs.includes(tfPicked) ? tfPicked : '1m';
-  const [cursor, setCursor] = useState<number | null>(saved.cursor);
+  const [cursor, setCursor] = useState<number | null>(session.cursor);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(saved.speed);
-  const [stepPicked, setStep] = useState(saved.step);
+  const [speed, setSpeed] = useState(prefs.speed);
+  const [stepPicked, setStep] = useState(prefs.step);
+  const updateSession = useUpdateSession();
+  const deleteSession = useDeleteSession();
+  const [notice, setNotice] = useState<{ text: string; bad: boolean } | null>(null);
+  const { data: accounts } = useAccounts();
+  const journalName = accounts?.find((a) => a.id === session.accountId)?.name ?? 'Backtesting';
   const step = Math.max(stepPicked, inst.baseSeconds);
   const [version, setVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<Bar[] | null | undefined>(undefined);
-  const [lines, setLines, linesError] = useLines(instrumentId);
+  const [lines, setLines, linesError] = useLines(session.id);
   const { tools, saveTools } = useLineTools();
-  const [savedAccount, setAccount, simError] = useSimAccount(instrumentId);
+  const [savedAccount, setAccount, simError] = useSimAccount(session.id, (r) => {
+    if (r.failed.length) setNotice({ text: `Couldn’t save ${r.failed.length === 1 ? 'a trade' : `${r.failed.length} trades`} to the journal: ${r.failed[0]!.message}`, bad: true });
+    else if (r.journaled) setNotice({ text: `Saved ${r.journaled === 1 ? 'the trade' : `${r.journaled} trades`} to your journal (${journalName}, needs review).`, bad: false });
+  });
 
+  useEffect(() => writeLocal(PREFS_KEY, JSON.stringify({ speed, step: stepPicked } satisfies Prefs)), [speed, stepPicked]);
+
+  // The session keeps its replay time and timeframe (saved once the replay settles).
+  const mutateSession = updateSession.mutate;
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        STATE_KEY,
-        JSON.stringify({
-          instrument: instrumentId,
-          tf,
-          cursor,
-          speed,
-          step: stepPicked,
-        } satisfies Saved),
-      );
-    } catch {
-      // Only a convenience.
-    }
-  }, [instrumentId, tf, cursor, speed, stepPicked]);
+    if (cursor === session.cursor && tf === session.tf) return;
+    const id = setTimeout(() => mutateSession({ id: session.id, cursor, tf }), 1500);
+    return () => clearTimeout(id);
+  }, [cursor, tf, session.id, session.cursor, session.tf, mutateSession]);
 
   // Which dates have data.
   useEffect(() => {
@@ -366,13 +417,46 @@ function Backtester() {
       </div>
       <div className="hidden flex-wrap items-center gap-3 md:flex">
         <h1 className="mr-2 text-xl font-semibold tracking-tight">Backtesting</h1>
-        <Select aria-label="Instrument" value={instrumentId} onChange={(e) => (setPlaying(false), setInstrumentId(e.target.value))} size="sm" className="w-64">
-          {BACKTEST_INSTRUMENTS.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.label}
-            </option>
-          ))}
+        <Select
+          aria-label="Session"
+          value={session.id}
+          onChange={(e) => {
+            setPlaying(false);
+            if (e.target.value === NEW) onNew();
+            else onSwitch(e.target.value);
+          }}
+          size="sm"
+          className="w-64"
+        >
+          {[...sessions]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} · {s.instrument}
+              </option>
+            ))}
+          <option value={NEW}>+ New session…</option>
         </Select>
+        <MenuButton
+          icon
+          label="Session options"
+          items={[
+            {
+              label: 'Rename…',
+              onSelect: () => {
+                const name = window.prompt('Session name', session.name)?.trim();
+                if (name && name !== session.name) updateSession.mutate({ id: session.id, name }, { onError: (err) => setNotice({ text: err.message, bad: true }) });
+              },
+            },
+            {
+              label: 'Delete session…',
+              danger: true,
+              onSelect: () => {
+                if (window.confirm(`Delete “${session.name}”? Its practice account and lines go too. Trades already saved to your journal stay there.`)) deleteSession.mutate(session.id);
+              },
+            },
+          ]}
+        />
         <div role="tablist" aria-label="Timeframe" className="inline-flex rounded-md bg-tabs-track p-[3px]">
           {tfs.map((t) => (
             <button
@@ -473,6 +557,16 @@ function Backtester() {
         />
         {!flat && <p className="text-[12px] text-muted">Going back is off while you have a position or order open.</p>}
         {(linesError || simError) && <p className="text-[13px] text-loss">{linesError ?? simError}</p>}
+        {notice && (
+          <p className={cn('text-[13px]', notice.bad ? 'text-loss' : 'text-secondary')}>
+            {notice.text}{' '}
+            {!notice.bad && (
+              <Link to="/journal" className="link-ember">
+                Open journal
+              </Link>
+            )}
+          </p>
+        )}
         <div className="ml-auto text-right font-mono text-[13px] text-secondary">
           {local ? local.toFormat('ccc d LLL yyyy · HH:mm:ss') : '–'}
           <span className="ml-2 font-sans text-muted">{zoneLabel()}</span>
@@ -503,6 +597,93 @@ function JumpTo({ initial, min, max, disabled, onJump }: { initial: DateTime | n
       <Button type="submit" variant="secondary" size="sm" disabled={disabled}>
         Go
       </Button>
+    </form>
+  );
+}
+
+/** Name, instrument, start time, balance and journal account for a new session. */
+function NewSessionForm({ onCreated }: { onCreated: (s: BacktestSession) => void }) {
+  const create = useCreateSession();
+  const { data: accounts } = useAccounts();
+  const [instrument, setInstrument] = useState('NQ');
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('09:00');
+  const [balance, setBalance] = useState('50000');
+  const existing = accounts?.find((a) => a.name.toLowerCase() === 'backtesting');
+  const [accountId, setAccountId] = useState<string>('');
+  const inst = findInstrument(instrument)!;
+  const submit = () => {
+    const zone = currentZone();
+    create.mutate(
+      {
+        name: name.trim() || `${inst.id} practice`,
+        instrument,
+        accountId: accountId || existing?.id || null,
+        startBalance: Math.max(0, Number(balance) || 0),
+        cursor: date ? DateTime.fromISO(`${date}T${time}`, { zone }).toSeconds() : null,
+        tf: inst.kind === 'futures' ? '1m' : '5m',
+      },
+      { onSuccess: onCreated },
+    );
+  };
+  const field = 'h-10 w-full rounded-md border border-border bg-card px-3 text-sm';
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+    >
+      <label className="block space-y-1.5">
+        <span className="text-[13px] font-medium">Name</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={`${inst.id} practice`} maxLength={60} className={field} />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-[13px] font-medium">Instrument</span>
+        <Select aria-label="Instrument" value={instrument} onChange={(e) => setInstrument(e.target.value)} className="w-full">
+          {BACKTEST_INSTRUMENTS.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.label}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block space-y-1.5">
+          <span className="text-[13px] font-medium">Start date</span>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-[13px] font-medium">Time ({zoneLabel()})</span>
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={cn(field, 'font-mono')} />
+        </label>
+      </div>
+      <p className="-mt-2 text-[12px] text-muted">Leave the date empty to start a few days before the latest data.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block space-y-1.5">
+          <span className="text-[13px] font-medium">Starting balance ($)</span>
+          <input type="number" min={0} value={balance} onChange={(e) => setBalance(e.target.value)} className={cn(field, 'font-mono')} />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-[13px] font-medium">Journal account</span>
+          <Select aria-label="Journal account" value={accountId || existing?.id || ''} onChange={(e) => setAccountId(e.target.value)} className="w-full">
+            {!existing && <option value="">Backtesting (new)</option>}
+            {(accounts ?? []).map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </Select>
+        </label>
+      </div>
+      {create.error && <p className="text-[13px] text-loss">{create.error.message}</p>}
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary" disabled={create.isPending}>
+          Start session
+        </Button>
+      </div>
     </form>
   );
 }

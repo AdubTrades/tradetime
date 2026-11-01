@@ -10,6 +10,7 @@ import {
   replicateFills,
   riskPlan,
   rMultiple,
+  fractionalSizes,
   type Fill,
   type GradeRule,
 } from '@tc/domain';
@@ -46,7 +47,7 @@ export interface TradeInput {
   fills: InputFill[];
   /** `fills` on an account: its actual fills (imported copy trades can fill at slightly different prices). */
   accounts: { accountId: string; multiplier: number; feesCents?: number | null; fills?: InputFill[] }[];
-  source?: 'manual' | 'import';
+  source?: 'manual' | 'import' | 'backtest';
   needsReview?: boolean;
   /** On update: keep each account's existing fills (used when reviewing an imported trade). */
   keepFills?: boolean;
@@ -74,9 +75,11 @@ async function build(input: TradeInput, tradeId: string) {
   for (const id of input.mistakeIds ?? []) await assertListItem('mistake', id);
   if (input.confidence != null && (input.confidence < 1 || input.confidence > 5)) throw new AppError(422, 'Confidence is 1 to 5');
 
+  // Spot crypto is sized in coins (0.05 BTC); everything else in whole contracts or units.
+  const fractional = fractionalSizes(c.symbol);
   let base;
   try {
-    base = pnlFromFills(input.fills, c.pointValueCents);
+    base = pnlFromFills(input.fills, c.pointValueCents, { fractional });
   } catch (err) {
     if (err instanceof FillError) throw new AppError(422, err.message);
     throw err;
@@ -111,7 +114,7 @@ async function build(input: TradeInput, tradeId: string) {
     const fills: InputFill[] = a.fills ?? replicateFills(input.fills, a.multiplier);
     let r;
     try {
-      r = pnlFromFills(fills, pointValue);
+      r = pnlFromFills(fills, pointValue, { fractional });
     } catch (err) {
       if (err instanceof FillError) throw new AppError(422, err.message);
       throw err;

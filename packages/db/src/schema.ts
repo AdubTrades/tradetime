@@ -390,7 +390,7 @@ export const trade = app.table(
     stateReadingId: text('state_reading_id'),
     stateOverridden: boolean('state_overridden').notNull().default(false),
     /** How the trade's fills got here: typed in, or imported from a broker export. */
-    source: text('source', { enum: ['manual', 'import'] }).notNull().default('manual'),
+    source: text('source', { enum: ['manual', 'import', 'backtest'] }).notNull().default('manual'),
     /** Imported trades start here until you add the Play, checklist and notes. */
     needsReview: boolean('needs_review').notNull().default(false),
     /** Cached from fills across accounts. */
@@ -454,7 +454,7 @@ export const tradeAccount = app.table(
     pointValueCents: doublePrecision('point_value_cents').notNull(),
     tickSize: doublePrecision('tick_size').notNull(),
     // Cached results, recalculated from fills on every save.
-    maxQty: integer('max_qty').notNull(),
+    maxQty: doublePrecision('max_qty').notNull(),
     avgEntry: doublePrecision('avg_entry').notNull(),
     avgExit: doublePrecision('avg_exit').notNull(),
     grossCents: integer('gross_cents').notNull(),
@@ -478,7 +478,7 @@ export const fill = app.table(
     tradeAccountId: text('trade_account_id').notNull(),
     at: text('at').notNull(),
     side: text('side', { enum: ['buy', 'sell'] }).notNull(),
-    qty: integer('qty').notNull(),
+    qty: doublePrecision('qty').notNull(),
     price: doublePrecision('price').notNull(),
     /** Broker's execution id for imported fills, so re-importing the same export skips them. */
     externalId: text('external_id'),

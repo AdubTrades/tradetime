@@ -28,16 +28,18 @@ export interface FillResult {
 export class FillError extends Error {}
 
 const round = (n: number, dp = 8) => Math.round(n * 10 ** dp) / 10 ** dp;
+/** Below this a fractional size counts as zero (spot crypto sizes are floats). */
+const EPS = 1e-9;
 
 /**
  * Realised P&L of a round trip built from fills, matching exits to entries first-in-first-out.
  * Supports scaling in and out. The position must start and end flat and may not reverse through zero.
  */
-export function pnlFromFills(fills: readonly Fill[], pointValueCents: Cents): FillResult {
+export function pnlFromFills(fills: readonly Fill[], pointValueCents: Cents, opts: { fractional?: boolean } = {}): FillResult {
   if (fills.length < 2) throw new FillError('A trade needs at least an entry and an exit');
   const ordered = fills.map((f, i) => ({ ...f, i })).sort((a, b) => a.at.localeCompare(b.at) || a.i - b.i);
   for (const f of ordered) {
-    if (!Number.isInteger(f.qty) || f.qty <= 0) throw new FillError('Fill quantities must be whole numbers above zero');
+    if (!Number.isFinite(f.qty) || f.qty <= 0 || (!opts.fractional && !Number.isInteger(f.qty))) throw new FillError('Fill quantities must be whole numbers above zero');
     if (!Number.isFinite(f.price) || f.price <= 0) throw new FillError('Fill prices must be above zero');
   }
 
@@ -55,7 +57,7 @@ export function pnlFromFills(fills: readonly Fill[], pointValueCents: Cents): Fi
   for (const f of ordered) {
     const opening = (f.side === 'buy') === (direction === 'long');
     if (opening) {
-      if (position === 0 && entryQty > 0) throw new FillError('The position went flat and re-opened. Log that as a separate trade.');
+      if (position <= EPS && entryQty > 0) throw new FillError('The position went flat and re-opened. Log that as a separate trade.');
       lots.push({ qty: f.qty, price: f.price });
       position += f.qty;
       entryQty += f.qty;
@@ -63,17 +65,19 @@ export function pnlFromFills(fills: readonly Fill[], pointValueCents: Cents): Fi
       maxQty = Math.max(maxQty, position);
       continue;
     }
-    if (f.qty > position) throw new FillError('An exit is larger than the open position (a reversal). Log the reversal as a separate trade.');
+    if (f.qty > position + EPS) throw new FillError('An exit is larger than the open position (a reversal). Log the reversal as a separate trade.');
     let remaining = f.qty;
-    while (remaining > 0) {
-      const lot = lots[0]!;
+    while (remaining > EPS) {
+      const lot = lots[0];
+      if (!lot) break;
       const matched = Math.min(lot.qty, remaining);
       grossPoints += (f.price - lot.price) * matched * sign;
       lot.qty -= matched;
       remaining -= matched;
-      if (lot.qty === 0) lots.shift();
+      if (lot.qty <= EPS) lots.shift();
     }
-    position -= f.qty;
+    position = Math.max(0, position - f.qty);
+    if (position <= EPS) position = 0;
     exitQty += f.qty;
     exitNotional += f.qty * f.price;
   }

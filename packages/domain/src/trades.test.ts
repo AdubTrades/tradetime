@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isOnTick, pnlFromFills, replicateFills, riskPlan, rMultiple, simpleFills, type Fill } from './trades';
+import { FillError, isOnTick, pnlFromFills, replicateFills, riskPlan, rMultiple, simpleFills, type Fill } from './trades';
 
 const f = (at: string, side: 'buy' | 'sell', qty: number, price: number): Fill => ({ at: `2026-10-06T13:${at}:00Z`, side, qty, price });
 
@@ -59,5 +59,21 @@ describe('helpers', () => {
     expect(riskPlan(5000, 1, 5000, { riskPoints: 3 })).toEqual({ riskPoints: 3, riskCents: 15000, plannedRR: null });
     expect(riskPlan(5000, 1, 5000, {})).toEqual({ riskPoints: null, riskCents: null, plannedRR: null });
     expect(rMultiple(100, null)).toBeNull();
+  });
+});
+
+describe('fractional sizes (spot crypto)', () => {
+  const fills = [
+    { at: '2026-10-01T00:00:00Z', side: 'buy' as const, qty: 0.05, price: 80_000 },
+    { at: '2026-10-01T00:05:00Z', side: 'buy' as const, qty: 0.03, price: 80_100 },
+    { at: '2026-10-01T01:00:00Z', side: 'sell' as const, qty: 0.08, price: 81_000 },
+  ];
+  it('are refused unless the contract allows them', () => {
+    expect(() => pnlFromFills(fills, 100)).toThrow(FillError);
+  });
+  it('net to flat despite floating-point sizes', () => {
+    const r = pnlFromFills(fills, 100, { fractional: true });
+    expect(r.maxQty).toBeCloseTo(0.08);
+    expect(r.grossCents).toBe(Math.round((0.05 * 1000 + 0.03 * 900) * 100));
   });
 });

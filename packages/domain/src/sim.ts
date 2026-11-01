@@ -63,6 +63,8 @@ export interface SimPosition {
   bracket: Bracket;
   /** The stop when the position opened, for R. */
   initialStop: number | null;
+  /** The target when the position opened (the plan, for the journal). */
+  initialTarget?: number | null;
   fills: SimFill[];
   /** Gross P&L already taken by partial exits. */
   realised: number;
@@ -84,6 +86,7 @@ export interface SimTrade {
   fees: number;
   net: number;
   initialStop: number | null;
+  initialTarget?: number | null;
   /** Points between the average entry and the first stop. */
   riskPoints: number | null;
   /** Gross P&L over the planned risk. */
@@ -133,6 +136,7 @@ function finish(acc: SimAccount, pos: SimPosition, spec: SimSpec, time: number, 
     fees,
     net: pos.realised - fees,
     initialStop: pos.initialStop,
+    initialTarget: pos.initialTarget ?? null,
     riskPoints,
     r: riskPoints ? pos.realised / (riskPoints * pos.maxQty * spec.pointValue) : null,
     exitReason: reason,
@@ -155,6 +159,7 @@ function applyFill(acc: SimAccount, spec: SimSpec, side: OrderSide, qty: number,
       openedAt: time,
       bracket: bracket ?? { stop: null, target: null },
       initialStop: bracket?.stop ?? null,
+      initialTarget: bracket?.target ?? null,
       fills: [{ time, side, qty: q, price, fee: feeFor(spec, q, price), reason }],
       realised: 0,
       maxQty: q,
@@ -202,8 +207,14 @@ export function cancelOrder(account: SimAccount, id: string): SimAccount {
   return { ...account, orders: account.orders.filter((o) => o.id !== id) };
 }
 
+/** Change a position's stop and target. A first stop or target added after entry becomes the plan (for R). */
 export function setBracket(account: SimAccount, positionId: string, bracket: Bracket): SimAccount {
-  return { ...account, positions: account.positions.map((p) => (p.id === positionId ? { ...p, bracket } : p)) };
+  return {
+    ...account,
+    positions: account.positions.map((p) =>
+      p.id === positionId ? { ...p, bracket, initialStop: p.initialStop ?? bracket.stop, initialTarget: p.initialTarget ?? bracket.target } : p,
+    ),
+  };
 }
 
 /** Move a working order to a new price; its stop and target move with it, keeping their distances. */

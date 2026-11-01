@@ -90,7 +90,7 @@ export function OrderTicket({
 
   const spec = specs[symbol];
   const dp = decimals(inst.tickSize);
-  const entry = kind === 'market' ? price : Number(orderPrice) || null;
+  const entry = kind === 'market' ? price : Number(orderPrice) ? roundTo(Number(orderPrice), inst.tickSize) : null;
   const dir = side === 'buy' ? 1 : -1;
   const stop = useStop && entry && Number(stopPts) > 0 ? roundTo(entry - dir * Number(stopPts), inst.tickSize) : null;
   const target = useTarget && entry && Number(targetPts) > 0 ? roundTo(entry + dir * Number(targetPts), inst.tickSize) : null;

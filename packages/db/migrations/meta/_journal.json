@@ -50,6 +50,13 @@
       "when": 1792422546623,
       "tag": "0006_trade_account_point_value_decimal",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793513707778,
+      "tag": "0007_fractional_sizes",
+      "breakpoints": true
     }
   ]
 }

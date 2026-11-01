@@ -7,12 +7,12 @@
  * futures.test.ts can check that tickSize × point value = tick value for every contract. Prices are in the units CME
  * quotes: grains and livestock in cents, Treasuries in decimal points (110'16 = 110.5), FX futures in USD per unit.
  */
-export type FuturesGroup = 'Equity index' | 'Energy' | 'Metals' | 'Grains' | 'Livestock' | 'Interest rates' | 'FX' | 'Crypto' | 'Forex';
+export type FuturesGroup = 'Equity index' | 'Energy' | 'Metals' | 'Grains' | 'Livestock' | 'Interest rates' | 'FX' | 'Crypto' | 'Forex' | 'Crypto spot';
 
 export interface FuturesSpec {
   symbol: string;
   name: string;
-  exchange: 'CME' | 'CBOT' | 'NYMEX' | 'COMEX' | 'FOREX.com';
+  exchange: 'CME' | 'CBOT' | 'NYMEX' | 'COMEX' | 'FOREX.com' | 'Binance';
   group: FuturesGroup;
   tickSize: number;
   /** Dollars (in cents) for a 1.0 move in the quoted price. */
@@ -43,6 +43,9 @@ const fx = (base: string, quote: string, name: string): FuturesSpec => {
   const tickSize = quote === 'JPY' ? 0.001 : 0.00001;
   return { symbol: `${base}${quote}`, name: `${base}/${quote} (${name})`, exchange: 'FOREX.com', group: 'Forex', tickSize, pointValueCents: 100, tickValueCents: tickSize * 100, currency: quote };
 };
+
+/** Spot crypto against USDT (Binance), sized in coins, so sizes can be fractional (0.05 BTC). USDT is treated as USD. */
+const spot = (base: string, name: string): FuturesSpec => ({ symbol: `${base}USDT`, name: `${base}/USDT (${name}, spot)`, exchange: 'Binance', group: 'Crypto spot', tickSize: 0.01, pointValueCents: 100, tickValueCents: 1, currency: 'USD' });
 
 export const FUTURES_CATALOGUE: FuturesSpec[] = [
   // Equity index
@@ -151,9 +154,17 @@ export const FUTURES_CATALOGUE: FuturesSpec[] = [
   fx('CAD', 'JPY', 'Canadian Dollar / Japanese Yen'),
   fx('CAD', 'CHF', 'Canadian Dollar / Swiss Franc'),
   fx('CHF', 'JPY', 'Swiss Franc / Japanese Yen'),
+
+  // Spot crypto (the backtesting page's crypto data)
+  spot('BTC', 'Bitcoin'),
+  spot('ETH', 'Ether'),
+  spot('SOL', 'Solana'),
 ];
 
-export const FUTURES_GROUPS: FuturesGroup[] = ['Equity index', 'Energy', 'Metals', 'Grains', 'Livestock', 'Interest rates', 'FX', 'Crypto', 'Forex'];
+export const FUTURES_GROUPS: FuturesGroup[] = ['Equity index', 'Energy', 'Metals', 'Grains', 'Livestock', 'Interest rates', 'FX', 'Crypto', 'Forex', 'Crypto spot'];
+
+/** Whether a contract trades in fractional sizes (spot crypto, by the coin). Everything else is whole contracts or units. */
+export const fractionalSizes = (symbol: string): boolean => findFutures(symbol)?.group === 'Crypto spot';
 
 /** Currency codes accepted as either side of a forex pair (FOREX.com's majors and the common minors). */
 const FOREX_CURRENCIES = new Set(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'SEK', 'NOK', 'DKK', 'SGD', 'HKD', 'MXN', 'ZAR', 'TRY', 'PLN', 'CZK', 'HUF', 'CNH']);
