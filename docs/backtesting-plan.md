@@ -1,0 +1,61 @@
+# Backtesting page: plan
+
+*Agreed 1 Nov 2026 (5 years, spot crypto at 1 minute).* A built-in bar-replay backtester like TradeZella's, so the TradeZella subscription can go. For the
+owner only, and desktop only. Simulated trades save to the journal under the **Backtesting** account.
+
+## Decisions
+| Topic | Decision |
+|---|---|
+| Users | Owner only (personal use keeps data licensing simple). The page is hidden for every other account. |
+| Instruments | CME futures NQ, MNQ, ES, MES and GC (MNQ, MES and MGC share NQ, ES and GC prices, so only NQ, ES and GC are stored). Spot crypto BTC, ETH and SOL. |
+| History | Rolling 5 years: a monthly job adds the latest month and drops anything older than 5 years. |
+| Replay | Futures: 30-second steps, timeframes 30s, 1m, 2m, 5m, 15m, 1h, 4h, 12h, 1D, 1W and 1M. Crypto: 1-minute steps, timeframes 1m, 5m, 15m, 1h, 4h, 12h, 1D, 1W and 1M. Adjustable speed. |
+| Chart | TradingView Lightweight Charts (open source, no approval needed), styled to feel like TradingView. |
+| Drawing tools | Horizontal lines with labels, rectangles with a midpoint line, and a long/short risk-reward (RR) tool. |
+| Orders | Market, limit, stop, brackets (target and stop loss), breakeven; sizing by contracts or by risk. |
+| Device | Desktop only. |
+
+## Data
+- **Futures source:** Databento, CME Globex MDP 3.0 dataset, `ohlcv-1s` schema. Front-month continuous symbols by volume
+  (`NQ.v.0`, `ES.v.0`, `GC.v.0`), so only the active contract is downloaded.
+- **Futures cost:** pay-as-you-go historical data, from $0.50/GB, billed on uncompressed size (1-second bar records are 56
+  bytes). Estimate for 5 years of NQ, ES and GC: about $5–10 one-off. Get the exact figure with Databento's free cost check
+  (`metadata.get_cost`) before buying. Monthly top-ups cost well under $1. Don't take the $199/month subscription.
+- **Crypto source:** Binance public data archive (data.binance.vision), free monthly 1-minute kline files for BTCUSDT,
+  ETHUSDT and SOLUSDT, with no key. Prices are in USDT (within cents of USD); label them as such. Coinbase (USD) is the
+  alternative if exact USD matters.
+- **Processing:** futures: 1-second bars become 30-second bars (UTC). Crypto stays as 1-minute bars. One compressed file
+  per instrument per day. Estimate for 5 years: about 150 MB for futures and about 110 MB for crypto, within Supabase's
+  free 1 GB.
+- **Higher timeframes:** the backfill also writes 1-hour bars (one file per instrument per year) and daily bars (one file
+  per instrument), so 12h, 1D, 1W and 1M charts load instantly. During replay, the bar still forming is built live from
+  the 30-second or 1-minute data up to the replay time.
+- **Bar boundaries (match TradingView):** CME futures use the exchange session: a day runs from 18:00 to 17:00 New York
+  time (Sunday evening counts toward Monday), weeks end Friday 17:00 New York, and 12h/4h bars count from the 18:00 open.
+  Crypto uses UTC: days, weeks (Monday) and months start at 00:00 UTC, and 12h bars at 00:00 and 12:00 UTC.
+- **Storage:** a private Supabase Storage bucket, `market-data/<symbol>/<yyyy>/<yyyy-mm-dd>.json.gz`. The page loads the
+  days it needs through signed links.
+- **Updates:** a monthly GitHub Action downloads last month, writes the files and drops days older than 5 years. It uses
+  `DATABENTO_API_KEY` and `SUPABASE_SECRET_KEY` as GitHub secrets; neither key is ever in the web app. The first
+  backfill runs from the owner's Mac.
+- **Rolls:** a volume-based continuous series switches contract at the roll, so there is a price gap on roll days. That's
+  fine for intraday replay. Show the active contract (e.g. NQZ26) on the chart.
+
+## Stages (each usable before the next)
+1. **Data and replay:** backfill script, storage, and the page with the chart. Pick a date and time, step 30s at a
+   time or play at 1×/2×/5×/10×, and switch timeframes. The higher-timeframe bar being built shows as it forms, like
+   TradingView's replay.
+2. **Simulated trading:** order panel (market/limit/stop, target and stop loss, breakeven, contracts or risk sizing) and
+   fills from 30-second bars. If a bar touches both stop and target, the fill depends on which side was nearer to the
+   bar's open, and the trade is flagged. Orders, open positions and closed positions tabs, with balance and realised
+   P&L.
+3. **Journal and sessions:** each closed trade saves to the Backtesting account (fills, times, fees, R from the stop,
+   needs review). Spot crypto needs decimal sizes (e.g. 0.05 BTC); the journal currently only takes whole-number
+   quantities, so this stage adds spot pairs (BTCUSDT, ETHUSDT, SOLUSDT) with fractional sizes. Named sessions (e.g. "FVGC Practice") each keep their own balance, replay time and drawings.
+4. **Drawing tools:** horizontal lines with labels, rectangles with a midpoint line, and the long/short RR tool, built as
+   Lightweight Charts plugins (it has no drawing tools of its own). Drawings are saved per session.
+
+## Owner steps
+1. Create a Databento account and an API key. Put the key in `apps/server/.env.local` as `DATABENTO_API_KEY`; never in
+   chat or the web app.
+2. Approve the backfill cost once the cost check gives the exact quote.
