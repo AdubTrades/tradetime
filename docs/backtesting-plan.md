@@ -55,7 +55,16 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
 4. **Drawing tools:** horizontal lines with labels, rectangles with a midpoint line, and the long/short RR tool, built as
    Lightweight Charts plugins (it has no drawing tools of its own). Drawings are saved per session.
 
+## Progress
+- **Stage 1 (crypto done, futures waiting on data):** bar maths `packages/domain/src/bars.ts`; files and owner check
+  `apps/server/src/marketData.ts`; route `GET /api/backtest/data/*`; backfill
+  `pnpm --filter @tc/server market-data crypto [--from YYYY-MM] [--upload]`; page `/backtesting`
+  (`apps/web/src/pages/backtest/`). Bucket SQL: `packages/db/supabase/market-data.sql`.
+
 ## Owner steps
-1. Create a Databento account and an API key. Put the key in `apps/server/.env.local` as `DATABENTO_API_KEY`; never in
-   chat or the web app.
+1. Futures data: a Databento account needs a card at sign-up (a Visa/Mastercard debit card should do). The other route
+   is exporting history from NinjaTrader. Put a Databento key in `apps/server/.env.local` as `DATABENTO_API_KEY`;
+   never in chat or the web app.
 2. Approve the backfill cost once the cost check gives the exact quote.
+3. For the live app: run `market-data.sql` in the Supabase SQL Editor, add `SUPABASE_SECRET_KEY` to
+   `apps/server/.env.local`, run the backfill with `--upload`, and set `BACKTEST_OWNER_IDS` on Vercel.

@@ -9,6 +9,7 @@
     "seed:demo": "TC_DATA_DIR=../../data-dev tsx --env-file-if-exists=.env.local src/scripts/seed-demo.ts",
     "vapid-keys": "tsx src/scripts/vapid-keys.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.local src/scripts/migrate.ts",
+    "market-data": "TC_DATA_DIR=${TC_DATA_DIR:-../../data-dev} tsx --env-file-if-exists=.env.local src/scripts/market-data.ts",
     "convert:mac": "TC_DATA_DIR=../../data-dev tsx src/scripts/convert-mac-data.ts"
   },
   "dependencies": {

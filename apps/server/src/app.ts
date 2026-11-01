@@ -19,6 +19,8 @@ import { accountRoutes, firmRoutes, listRoutes } from './routes/lists';
 import { sessionRoutes, sessionTypeRoutes } from './routes/sessions';
 import { settingsRoutes } from './routes/settings';
 import { pushRoutes } from './routes/push';
+import { backtestRoutes } from './routes/backtest';
+import { canBacktest } from './marketData';
 import { runTick } from './jobs';
 import { accountRoutes as accountDataRoutes } from './routes/account';
 import { demoAvailable, isDemoToken, startDemo, verifyDemoToken } from './demo/account';
@@ -140,7 +142,7 @@ app.use('/api/*', async (c, next) => {
     if (err !== c.error) throw err;
   }
 });
-app.get('/api/me', (c) => c.json({ demo: false, ...c.get('user'), auth: authEnabled }));
+app.get('/api/me', (c) => c.json({ demo: false, ...c.get('user'), auth: authEnabled, backtest: canBacktest(c.get('user').userId, !!c.get('user').demo) }));
 app.route('/api/account', accountDataRoutes);
 app.post('/api/feedback', async (c) => {
   const user = c.get('user');
@@ -169,6 +171,7 @@ app.route('/api/readings', readingRoutes);
 app.route('/api/check-ins', checkInRoutes);
 app.route('/api/calendar', calendarRoutes);
 app.route('/api/trade-import', tradeImportRoutes);
+app.route('/api/backtest', backtestRoutes);
 
 app.onError(async (err, c) => {
   if (err instanceof AppError) return c.json({ error: err.message, detail: err.detail }, err.status);

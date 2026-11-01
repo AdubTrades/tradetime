@@ -15,6 +15,7 @@ export const paths = {
   pgdata: path.join(dataDir, 'pgdata'),
   attachments: path.join(dataDir, 'attachments'),
   tmp: path.join(dataDir, 'tmp'),
+  marketData: path.join(dataDir, 'market-data'),
 };
 
 /** Without sign-in configured (local development), every request acts as this one local user. */
@@ -84,6 +85,16 @@ export const demo = {
 export const feedbackConfig = {
   webhookUrl: process.env.FEEDBACK_WEBHOOK_URL || null,
   supportEmail: process.env.SUPPORT_EMAIL || null,
+};
+
+/**
+ * The backtesting page (price history and bar replay) is for the owner only: BACKTEST_OWNER_IDS lists the Supabase
+ * user ids allowed (comma-separated). Locally without sign-in it's always on. DATABENTO_API_KEY is only for the
+ * futures backfill script, never the deployed app.
+ */
+export const backtest = {
+  ownerIds: (process.env.BACKTEST_OWNER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+  databentoKey: process.env.DATABENTO_API_KEY || null,
 };
 
 /** Economic events are fetched once for everyone with the server's FRED key (free from fred.stlouisfed.org). */

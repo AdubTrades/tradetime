@@ -1,4 +1,5 @@
 import { createRootRoute, createRoute, createRouter, Outlet, redirect, useParams } from '@tanstack/react-router';
+import { lazy, Suspense } from 'react';
 import { financialYearOf, localDate } from '@tc/domain';
 import { AppShell } from './components/AppShell';
 import { useSettings } from './lib/settings';
@@ -23,6 +24,9 @@ function Root() {
   if (error) return <p className="p-8 text-sm text-loss">Couldn’t load your settings: {error.message}</p>;
   return data ? <Outlet /> : null;
 }
+
+// The backtesting page brings the charting library, so it loads only when opened.
+const BacktestPage = lazy(() => import('./pages/backtest/BacktestPage').then((m) => ({ default: m.BacktestPage })));
 
 const rootRoute = createRootRoute({ component: Root });
 
@@ -63,6 +67,15 @@ const shellRoutes = [
       const { playId } = useParams({ strict: false }) as { playId: string };
       return <PlayDetailPage key={playId} playId={playId} />;
     },
+  }),
+  createRoute({
+    getParentRoute: () => shellRoute,
+    path: '/backtesting',
+    component: () => (
+      <Suspense fallback={null}>
+        <BacktestPage />
+      </Suspense>
+    ),
   }),
   createRoute({ getParentRoute: () => shellRoute, path: '/settings', component: SettingsPage }),
   ...(import.meta.env.DEV ? [createRoute({ getParentRoute: () => shellRoute, path: '/dev/attachments', component: DevAttachments })] : []),

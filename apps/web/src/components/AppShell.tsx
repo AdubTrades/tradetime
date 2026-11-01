@@ -2,6 +2,7 @@ import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import {
   BookOpen,
   CalendarDays,
+  CandlestickChart,
   House,
   Monitor,
   Moon,
@@ -22,6 +23,7 @@ import type { Theme } from '../lib/api';
 import { authEnabled, signOut } from '../lib/auth';
 import { useSettings, useUpdateSettings } from '../lib/settings';
 import { useThemeSync } from '../lib/theme';
+import { useMe } from '../lib/marketData';
 import { CheckInPrompt } from '../pages/checkins/CheckInPrompt';
 import { DemoBanner } from './DemoBanner';
 import { MiniTimer } from './MiniTimer';
@@ -84,8 +86,10 @@ export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  // The calendar grid gets a wider column than the other screens.
+  const { data: me } = useMe();
+  // The calendar grid gets a wider column than the other screens, and the backtesting chart the whole width.
   const wide = pathname.startsWith('/calendar');
+  const full = pathname.startsWith('/backtesting');
 
   return (
     <div className="min-h-screen md:flex">
@@ -112,6 +116,8 @@ export function AppShell() {
           {nav.map(({ to, label, icon }) => (
             <NavItem key={to} to={to} label={label} icon={icon} collapsed={collapsed} />
           ))}
+          {/* Owner only, and desktop only, so it's not in the phone tabs. */}
+          {me?.backtest && <NavItem to="/backtesting" label="Backtesting" icon={CandlestickChart} collapsed={collapsed} />}
         </nav>
         <div className="mt-auto flex flex-col gap-0.5">
           <NavItem to="/settings" label="Settings" icon={SettingsIcon} collapsed={collapsed} textOnly />
@@ -130,8 +136,8 @@ export function AppShell() {
       </aside>
       <div className="min-w-0 flex-1">
         <DemoBanner />
-        <main className="px-4 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))] sm:px-8 md:px-12 md:pt-8 md:pb-24">
-          <div className={cn('mx-auto', wide ? 'max-w-[1240px]' : 'max-w-[1120px]')}>
+        <main className={cn('px-4 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))] sm:px-8', full ? 'md:px-6 md:pt-5 md:pb-5' : 'md:px-12 md:pt-8 md:pb-24')}>
+          <div className={cn('mx-auto', full ? 'max-w-none' : wide ? 'max-w-[1240px]' : 'max-w-[1120px]')}>
             <ErrorBoundary resetKey={pathname}>
               <Outlet />
             </ErrorBoundary>
