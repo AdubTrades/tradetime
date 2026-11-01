@@ -60,6 +60,11 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   `apps/server/src/marketData.ts`; route `GET /api/backtest/data/*`; backfill
   `pnpm --filter @tc/server market-data crypto [--from YYYY-MM] [--upload]`; page `/backtesting`
   (`apps/web/src/pages/backtest/`). Bucket SQL: `packages/db/supabase/market-data.sql`.
+- **Horizontal lines (pulled forward from stage 4):** ray or full line, drawn from the left toolbar (Alt+J / Alt+H),
+  magnet to OHLC, drag to move (handle moves the start), double-click for settings (Style, Text, Coordinates,
+  Visibility, live preview, Cancel reverts), right-click for templates, Delete to remove. Templates ("Save as…",
+  "Apply defaults") and lines per instrument are saved to the account (`state.backtest.*` settings rows). New lines
+  take the last look used. Lines stay hidden while the replay is before their start bar.
 
 ## Owner steps
 1. Futures data: a Databento account needs a card at sign-up (a Visa/Mastercard debit card should do). The other route

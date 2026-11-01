@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregate, BACKTEST_INSTRUMENTS, bucketTime, mergeBars, replayView, sessionDate, sessionOpen, timeframesFor, type Bar } from './bars';
+import { aggregate, barStart, BACKTEST_INSTRUMENTS, bucketTime, mergeBars, replayView, sessionDate, sessionOpen, timeframesFor, type Bar } from './bars';
 
 const at = (iso: string) => Date.parse(iso) / 1000;
 const iso = (t: number) => new Date(t * 1000).toISOString().replace('.000', '');
@@ -135,6 +135,16 @@ describe('replayView on daily and up', () => {
       history: daily,
     });
     expect(day.at(-1)).toEqual(bar(at('2026-07-15T00:00:00Z'), 200, 210, 195, 205, 1));
+  });
+});
+
+describe('barStart', () => {
+  it('turns a date-labelled bar into the moment its session opens, so it maps back to the same bar', () => {
+    const label = at('2026-07-15T00:00:00Z');
+    expect(iso(barStart(label, '1D', 'futures'))).toBe('2026-07-14T22:00:00Z');
+    expect(bucketTime(barStart(label, '1D', 'futures'), '1D', 'futures')).toBe(label);
+    expect(barStart(label, '1D', 'crypto')).toBe(label);
+    expect(barStart(label + 300, '5m', 'futures')).toBe(label + 300);
   });
 });
 

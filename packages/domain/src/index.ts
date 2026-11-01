@@ -12,3 +12,4 @@ export * from './tradeImport';
 export * from './errorReport';
 export * from './futures';
 export * from './bars';
+export * from './drawings';

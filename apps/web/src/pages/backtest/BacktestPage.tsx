@@ -18,6 +18,7 @@ import {
 import { Select } from '../../components/Select';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
+import { useLines, useLineTools } from '../../lib/drawings';
 import { ReplayChart } from './ReplayChart';
 
 /** History shown behind the replay for short timeframes, in trading days of base bars. */
@@ -110,6 +111,8 @@ function Backtester() {
   const [version, setVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<Bar[] | null | undefined>(undefined);
+  const [lines, setLines, linesError] = useLines(instrumentId);
+  const { tools, saveTools } = useLineTools();
 
   useEffect(() => {
     try {
@@ -281,7 +284,7 @@ function Backtester() {
             </p>
           </div>
         ) : (
-          <ReplayChart bars={bars} tf={tf} inst={inst} />
+          <ReplayChart bars={bars} tf={tf} inst={inst} lines={lines} onLinesChange={setLines} tools={tools} onToolsChange={saveTools} />
         )}
       </div>
 
@@ -328,6 +331,7 @@ function Backtester() {
             setCursor(DateTime.fromISO(`${date}T${time}`, { zone }).toSeconds());
           }}
         />
+        {linesError && <p className="text-[13px] text-loss">{linesError}</p>}
         <div className="ml-auto text-right font-mono text-[13px] text-secondary">
           {local ? local.toFormat('ccc d LLL yyyy · HH:mm:ss') : '–'}
           <span className="ml-2 font-sans text-muted">{zoneLabel()}</span>

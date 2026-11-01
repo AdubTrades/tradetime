@@ -147,6 +147,15 @@ export function bucketTime(t: number, tf: Timeframe, kind: BacktestInstrument['k
   return date.startOf('month').toSeconds();
 }
 
+/**
+ * The real moment a chart bar starts. Intraday bars are already moments; daily and longer bars are labelled by date, so
+ * this gives when that trading date opens (18:00 New York the evening before for futures, midnight UTC for crypto).
+ */
+export function barStart(t: number, tf: Timeframe, kind: BacktestInstrument['kind']): number {
+  if (isIntraday(tf) || kind === 'crypto') return t;
+  return sessionOpen(new Date(t * 1000).toISOString().slice(0, 10));
+}
+
 // ---------- Combining ----------
 
 /** Combine bars (oldest first) into a timeframe. Bars must be no larger than the timeframe. */
