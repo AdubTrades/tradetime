@@ -37,6 +37,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
 import { useCreateSession, useDeleteSession, useDrawings, useLineTools, useSessions, useSimAccount, useUpdateSession, type BacktestSession } from '../../lib/drawings';
+import { DateTimePicker } from './DateTimePicker';
 import { ReplayChart, type ChartMarker, type ChartPriceLine, type LevelRef } from './ReplayChart';
 import { DEFAULT_START_BALANCE, OrderTicket, SimPanel, useSimSpecs } from './SimTrading';
 import { riskRewardSize } from './ShapeLayer';
@@ -286,6 +287,7 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
     };
   }, [instrumentId]);
   const dates = useMemo(() => datesOf(daily), [daily]);
+  const dateSet = useMemo(() => new Set(dates), [dates]);
 
   // Start a new instrument a few days before its latest data, or keep the time if it has data then.
   useEffect(() => {
@@ -802,13 +804,16 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
             ))}
           </Select>
         </label>
-        <JumpTo
-          key={`${cursor === null ? 'none' : 'set'}-${chartZone}`}
-          initial={local}
+        <DateTimePicker
+          label="Jump to a date and time"
+          openUp
+          className="w-56"
+          value={local ? { date: local.toISODate()!, time: local.toFormat('HH:mm') } : null}
           min={dates[0]}
           max={dates.at(-1)}
+          isEnabled={(d) => dateSet.has(d)}
           disabled={!flat}
-          onJump={(date, time) => {
+          onChange={({ date, time }) => {
             setPlaying(false);
             setCursor(DateTime.fromISO(`${date}T${time}`, { zone }).toSeconds());
           }}
@@ -861,27 +866,6 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
         )}
       </div>
     </div>
-  );
-}
-
-/** Pick a date and time (in the user's zone) to replay from. */
-function JumpTo({ initial, min, max, disabled, onJump }: { initial: DateTime | null; min?: string; max?: string; disabled?: boolean; onJump: (date: string, time: string) => void }) {
-  const [date, setDate] = useState(initial?.toISODate() ?? '');
-  const [time, setTime] = useState(initial?.toFormat('HH:mm') ?? '09:00');
-  return (
-    <form
-      className="flex items-center gap-1.5"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (date && time) onJump(date, time);
-      }}
-    >
-      <input type="date" aria-label="Replay date" value={date} min={min} max={max} onChange={(e) => setDate(e.target.value)} className="h-8 rounded-md border border-border bg-card px-2 text-[13px]" />
-      <input type="time" aria-label="Replay time" value={time} onChange={(e) => setTime(e.target.value)} className="h-8 rounded-md border border-border bg-card px-2 font-mono text-[13px]" />
-      <Button type="submit" variant="secondary" size="sm" disabled={disabled}>
-        Go
-      </Button>
-    </form>
   );
 }
 
@@ -939,17 +923,20 @@ function NewSessionForm({ onCreated }: { onCreated: (s: BacktestSession) => void
           ))}
         </Select>
       </label>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block space-y-1.5">
-          <span className="text-[13px] font-medium">Start date</span>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-[13px] font-medium">Time ({zoneLabel()})</span>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={cn(field, 'font-mono')} />
-        </label>
+      <div className="block space-y-1.5">
+        <span className="text-[13px] font-medium">Start ({zoneLabel()} time)</span>
+        <DateTimePicker
+          label="Start date and time"
+          className="[&>button]:h-10 [&>button]:text-sm"
+          value={date ? { date, time } : null}
+          placeholder="Latest data (a few days before the end)"
+          max={DateTime.now().toISODate()!}
+          onChange={(v) => {
+            setDate(v.date);
+            setTime(v.time);
+          }}
+        />
       </div>
-      <p className="-mt-2 text-[12px] text-muted">Leave the date empty to start a few days before the latest data.</p>
       <div className="grid grid-cols-2 gap-3">
         <label className="block space-y-1.5">
           <span className="text-[13px] font-medium">Starting balance ($)</span>
