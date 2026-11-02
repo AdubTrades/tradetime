@@ -68,7 +68,7 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
 
   /** Screen box of a shape (CSS pixels), or null when hidden. */
   box(s: Shape, c = this.coords()): { x1: number; x2: number; ys: Record<string, number> } | null {
-    if (!this.chart || !this.series || s.hiddenOn.includes(this.tf) || c.future(Math.min(s.t1, s.t2))) return null;
+    if (!this.chart || !this.series || s.hiddenOn.includes(this.tf) || c.future(s.drawnAt ?? Math.min(s.t1, s.t2))) return null;
     const ts = this.chart.timeScale();
     const x = (t: number) => ts.logicalToCoordinate(c.logicalOf(t) as never);
     const xa = x(s.t1);

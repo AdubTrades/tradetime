@@ -181,17 +181,23 @@ export function ShapeLayer({
     // A rectangle being drawn by clicking two corners.
     let pending: { id: string; kind: 'rect' | 'fib' | 'trend'; t1: number; p1: number } | null = null;
     /** A rectangle or Fib from two points, in the look of the last one. */
+    /** The replay's current bar: a new drawing is shown from now on, wherever its points are (even past the last bar). */
+    const drawnNow = () => {
+      const c = coords();
+      return c.timeAt(c.last);
+    };
     const twoPoint = (kind: 'rect' | 'fib' | 'trend', id: string, t1: number, p1: number, t2: number, p2: number): Shape => {
       const tools = st.current.tools;
+      const drawnAt = drawnNow();
       if (kind === 'trend') {
         const last = tools.trendLast;
-        return { id, kind, t1, p1, t2, p2, style: last?.style ?? DEFAULT_TREND_STYLE, label: { ...(last?.label ?? DEFAULT_TREND_LABEL), text: '' }, hiddenOn: [] };
+        return { id, kind, t1, p1, t2, p2, style: last?.style ?? DEFAULT_TREND_STYLE, label: { ...(last?.label ?? DEFAULT_TREND_LABEL), text: '' }, hiddenOn: [], drawnAt };
       }
       if (kind === 'fib') {
         const last = tools.fibLast;
-        return { id, kind, t1, p1, t2, p2, levels: last?.levels ?? DEFAULT_FIB_LEVELS, style: last?.style ?? DEFAULT_FIB_STYLE, text: '', hiddenOn: [] };
+        return { id, kind, t1, p1, t2, p2, levels: last?.levels ?? DEFAULT_FIB_LEVELS, style: last?.style ?? DEFAULT_FIB_STYLE, text: '', hiddenOn: [], drawnAt };
       }
-      return { id, kind, t1, p1, t2, p2, style: tools.rectLast ?? DEFAULT_RECT_STYLE, label: { ...DEFAULT_LINE_LABEL, align: 'left', place: 'above' }, hiddenOn: [] };
+      return { id, kind, t1, p1, t2, p2, style: tools.rectLast ?? DEFAULT_RECT_STYLE, label: { ...DEFAULT_LINE_LABEL, align: 'left', place: 'above' }, hiddenOn: [], drawnAt };
     };
 
     const follow = (onMove: (x: number, y: number) => Shape | null) => {
@@ -293,6 +299,7 @@ export function ShapeLayer({
           riskMode: s.tools.riskMode ?? 'usd',
           riskUsd: s.tools.riskUsd ?? 200,
           riskPct: s.tools.riskPct ?? 1,
+          drawnAt: drawnNow(),
           hiddenOn: [],
         };
         commit(rr);

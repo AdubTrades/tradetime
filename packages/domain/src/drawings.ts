@@ -103,6 +103,8 @@ export interface RectDrawing {
   p2: number;
   style: RectStyle;
   label: LineLabel;
+  /** The replay moment it was drawn at: hidden while the replay is before it (stepping back), shown otherwise. */
+  drawnAt?: number;
   hiddenOn: Timeframe[];
 }
 
@@ -124,6 +126,8 @@ export interface RiskRewardDrawing {
   riskMode?: 'usd' | 'percent';
   riskUsd: number;
   riskPct?: number;
+  /** The replay moment it was drawn at: hidden while the replay is before it (stepping back), shown otherwise. */
+  drawnAt?: number;
   hiddenOn: Timeframe[];
 }
 
@@ -172,6 +176,8 @@ export interface FibDrawing {
   style: FibStyle;
   /** Optional text on the middle of the tool. */
   text: string;
+  /** The replay moment it was drawn at: hidden while the replay is before it (stepping back), shown otherwise. */
+  drawnAt?: number;
   hiddenOn: Timeframe[];
 }
 
@@ -253,6 +259,8 @@ export interface TrendDrawing {
   p2: number;
   style: TrendStyle;
   label: LineLabel;
+  /** The replay moment it was drawn at: hidden while the replay is before it (stepping back), shown otherwise. */
+  drawnAt?: number;
   hiddenOn: Timeframe[];
 }
 

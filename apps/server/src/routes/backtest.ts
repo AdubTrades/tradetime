@@ -81,6 +81,7 @@ const shape = z.discriminatedUnion('kind', [
     style: trendStyle,
     label: lineLabel,
     hiddenOn: tfs,
+    drawnAt: z.number().int().optional(),
   }),
   z.object({
     id: z.string().min(1).max(40),
@@ -93,6 +94,7 @@ const shape = z.discriminatedUnion('kind', [
     style: fibStyle,
     text: z.string().max(200),
     hiddenOn: tfs,
+    drawnAt: z.number().int().optional(),
   }),
   z.object({
     id: z.string().min(1).max(40),
@@ -104,6 +106,7 @@ const shape = z.discriminatedUnion('kind', [
     style: rectStyle,
     label: lineLabel,
     hiddenOn: tfs,
+    drawnAt: z.number().int().optional(),
   }),
   z.object({
     id: z.string().min(1).max(40),
@@ -118,6 +121,7 @@ const shape = z.discriminatedUnion('kind', [
     riskUsd: z.number().min(0).max(1e9),
     riskPct: z.number().min(0).max(100).optional(),
     hiddenOn: tfs,
+    drawnAt: z.number().int().optional(),
   }),
 ]);
 const drawingsSchema = z.object({ lines: z.array(line).max(2000), shapes: z.array(shape).max(2000).optional() });
