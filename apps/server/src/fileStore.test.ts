@@ -37,6 +37,13 @@ describe('Supabase Storage client', () => {
     expect(await signedUrl(missing.cfg, 'user-jwt', 'u1/nope.png')).toBeNull();
   });
 
+  it('sends a new-style secret key in the apikey header only', async () => {
+    const { cfg, calls } = fakeStorage(() => new Response('{}'));
+    await putObject({ ...cfg, secretKey: 'sb_secret_test' }, null, 'NQ/daily.json.gz', new Uint8Array([1]), 'application/gzip');
+    expect(calls[0]!.init.headers).toMatchObject({ apikey: 'sb_secret_test' });
+    expect((calls[0]!.init.headers as Record<string, string>).Authorization).toBeUndefined();
+  });
+
   it('refuses to call storage with neither a user nor a secret key', async () => {
     const { cfg } = fakeStorage(() => new Response('{}'));
     await expect(putObject(cfg, null, 'u1/a.png', new Uint8Array([1]), 'image/png')).rejects.toThrow(/No signed-in user/);

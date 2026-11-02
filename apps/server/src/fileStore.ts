@@ -23,9 +23,11 @@ export const storeConfig = (): StoreConfig => ({
 });
 
 function headers(cfg: StoreConfig, token: string | null): Record<string, string> {
-  const bearer = token ?? cfg.secretKey;
-  if (!bearer) throw new Error('No signed-in user and no SUPABASE_SECRET_KEY: can’t reach file storage');
-  return { apikey: cfg.publishableKey, Authorization: `Bearer ${bearer}` };
+  if (token) return { apikey: cfg.publishableKey, Authorization: `Bearer ${token}` };
+  if (!cfg.secretKey) throw new Error('No signed-in user and no SUPABASE_SECRET_KEY: can’t reach file storage');
+  // New-style secret keys (sb_secret_…) aren't JWTs: they go in the apikey header on their own. Legacy JWT keys
+  // (service_role) also work as a bearer token.
+  return cfg.secretKey.startsWith('sb_secret_') ? { apikey: cfg.secretKey } : { apikey: cfg.secretKey, Authorization: `Bearer ${cfg.secretKey}` };
 }
 
 const objectUrl = (cfg: StoreConfig, kind: 'object' | 'object/sign', path: string) =>
