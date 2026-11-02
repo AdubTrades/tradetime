@@ -70,6 +70,8 @@ export interface SimPosition {
   realised: number;
   maxQty: number;
   ambiguous: boolean;
+  /** Chart snapshots (attachment ids) taken while the position was open; they go to the journal trade. */
+  snapshots?: string[];
 }
 
 export interface SimTrade {
@@ -94,6 +96,8 @@ export interface SimTrade {
   exitReason: FillReason;
   ambiguous: boolean;
   fills: SimFill[];
+  /** Chart snapshots (attachment ids), linked to the journal trade's screenshots. */
+  snapshots?: string[];
 }
 
 export interface SimAccount {
@@ -142,6 +146,7 @@ function finish(acc: SimAccount, pos: SimPosition, spec: SimSpec, time: number, 
     exitReason: reason,
     ambiguous: pos.ambiguous,
     fills: pos.fills,
+    snapshots: pos.snapshots ?? [],
   });
   acc.positions = acc.positions.filter((p) => p.id !== pos.id);
 }
@@ -211,9 +216,7 @@ export function cancelOrder(account: SimAccount, id: string): SimAccount {
 export function setBracket(account: SimAccount, positionId: string, bracket: Bracket): SimAccount {
   return {
     ...account,
-    positions: account.positions.map((p) =>
-      p.id === positionId ? { ...p, bracket, initialStop: p.initialStop ?? bracket.stop, initialTarget: p.initialTarget ?? bracket.target } : p,
-    ),
+    positions: account.positions.map((p) => (p.id === positionId ? { ...p, bracket, initialStop: p.initialStop ?? bracket.stop, initialTarget: p.initialTarget ?? bracket.target } : p)),
   };
 }
 
@@ -231,6 +234,20 @@ export function moveOrder(account: SimAccount, orderId: string, price: number): 
 
 export function setOrderBracket(account: SimAccount, orderId: string, bracket: Bracket): SimAccount {
   return { ...account, orders: account.orders.map((o) => (o.id === orderId ? { ...o, bracket } : o)) };
+}
+
+/**
+ * Add a chart snapshot (attachment id) to a position or a closed trade. Without a target: the open position if there
+ * is one, else the most recent closed trade. Returns null when there's nothing to add it to.
+ */
+export function addSnapshot(account: SimAccount, attachmentId: string, target?: { positionId?: string; tradeId?: string }): SimAccount | null {
+  const pos = target?.positionId ? account.positions.find((p) => p.id === target.positionId) : target?.tradeId ? undefined : account.positions[0];
+  if (pos) return { ...account, positions: account.positions.map((p) => (p.id === pos.id ? { ...p, snapshots: [...(p.snapshots ?? []), attachmentId] } : p)) };
+  // A position that has since closed is now a trade with the same id.
+  const tradeId = target?.tradeId ?? target?.positionId ?? account.trades.at(-1)?.id;
+  const trade = account.trades.find((t) => t.id === tradeId);
+  if (!trade) return null;
+  return { ...account, trades: account.trades.map((t) => (t.id === trade.id ? { ...t, snapshots: [...(t.snapshots ?? []), attachmentId] } : t)) };
 }
 
 /** Move the stop to the average entry. */

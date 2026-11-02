@@ -1,6 +1,6 @@
 import { SignJWT } from 'jose';
 import { afterEach, describe, expect, it } from 'vitest';
-import { closePosition, DEFAULT_LINE_LABEL, DEFAULT_LINE_STYLE, marketOrder, newSimAccount } from '@tc/domain';
+import { addSnapshot, closePosition, DEFAULT_LINE_LABEL, DEFAULT_LINE_STYLE, marketOrder, newSimAccount } from '@tc/domain';
 import { app } from './app';
 import { backtest } from './config';
 import { useTestDb } from './testing';
@@ -103,6 +103,28 @@ describe('backtesting routes', () => {
     expect(trades[0]!.playId).toBe(play.id);
     expect((await call('PATCH', `/api/backtest/sessions/${s.id}`, OWNER, { playId: 'nope' })).status).toBe(422);
     expect(await (await call('PATCH', `/api/backtest/sessions/${s.id}`, OWNER, { playId: null, description: '  ' })).json()).toMatchObject({ playId: null, description: null });
+  });
+
+  it('put chart snapshots on the journal trade, including ones taken after it was saved', async () => {
+    backtest.ownerIds.push(OWNER);
+    const upload = async () => {
+      const form = new FormData();
+      form.append('file', new File([new Uint8Array([0xff, 0xd8, 0xff, 0xd9, Math.random() * 255])], 'snap.jpg', { type: 'image/jpeg' }));
+      const res = await app.request('/api/attachments', { method: 'POST', headers: { host: 'tt.example.com', authorization: `Bearer ${await tokenFor(OWNER)}` }, body: form });
+      return ((await res.json()) as { attachment: { id: string } }[])[0]!.attachment.id;
+    };
+    const s = (await (await call('POST', '/api/backtest/sessions', OWNER, { name: 'Snaps', instrument: 'BTCUSDT', startBalance: 10_000, cursor: null, tf: '5m' })).json()) as { id: string };
+    const spec = { symbol: 'BTCUSDT', pointValue: 1, feePerSide: 0, feeRate: 0.001 };
+    let acc = marketOrder(newSimAccount(10_000), spec, 'buy', 0.05, 80_000, 1_790_000_000);
+    acc = addSnapshot(acc, await upload())!;
+    acc = closePosition(acc, spec, acc.positions[0]!.id, 81_000, 1_790_003_600);
+    await call('PUT', `/api/backtest/sim/${s.id}`, OWNER, acc);
+    acc = addSnapshot(acc, await upload())!; // after the trade was journaled
+    await call('PUT', `/api/backtest/sim/${s.id}`, OWNER, acc);
+    await call('PUT', `/api/backtest/sim/${s.id}`, OWNER, acc); // saving again links nothing twice
+    const [trade] = (await (await call('GET', '/api/trades?from=2000-01-01&to=2100-01-01', OWNER)).json()) as { id: string }[];
+    const shots = (await (await call('GET', `/api/attachments/for/trade/${trade!.id}`, OWNER)).json()) as unknown[];
+    expect(shots).toHaveLength(2);
   });
 
   it('refuse bad input and unknown sessions', async () => {

@@ -95,6 +95,10 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
 - **Session description and strategy:** sessions have a description and a Playbook Play (strategy, "Create new
   strategy" makes one from a name); every trade journaled from the session gets that Play. Editable later with
   "Edit session…".
+- **Chart snapshots:** camera button (top right, Alt+S) captures the chart with a caption band (session, replay time,
+  symbol, timeframe, OHLC) as a JPEG; it attaches to the open position (or the latest closed trade) and is linked to the
+  journal trade's Screenshots when the trade is saved, or straight away if it already was. Automatic snapshots at entry
+  and exit are on by default (toggle in the camera's ▾ menu, `autoSnapshots`). Snapshots count towards the storage cap.
 - **Data bought (1 Nov 2026):** NQ 1-second, Nov 2025 to Oct 2026, US$48.33 from Databento
   (`market-data futures --buy`; raw files cached in market-data/raw so they're never paid for twice). ES and GC were
   left out for now and removed from the instrument list. Crypto stays (free).

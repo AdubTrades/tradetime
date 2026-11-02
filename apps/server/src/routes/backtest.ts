@@ -129,6 +129,7 @@ const lineToolsSchema = z.object({
   riskMode: z.enum(['usd', 'percent']).nullable().optional(),
   riskPct: z.number().min(0).max(100).nullable().optional(),
   fibLast: z.object({ levels: fibLevels, style: fibStyle }).nullable().optional(),
+  autoSnapshots: z.boolean().optional(),
   trendTemplates: z
     .array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), style: trendStyle, label: lineLabel }))
     .max(200)
@@ -169,6 +170,7 @@ const simSchema = z.object({
         realised: num,
         maxQty: num,
         ambiguous: z.boolean(),
+        snapshots: z.array(z.string().min(1).max(40)).max(50).optional(),
       }),
     )
     .max(20),
@@ -193,6 +195,7 @@ const simSchema = z.object({
         exitReason: z.enum(['entry', 'manual', 'stop', 'target']),
         ambiguous: z.boolean(),
         fills: z.array(fill).max(500),
+        snapshots: z.array(z.string().min(1).max(40)).max(50).optional(),
       }),
     )
     .max(5000),

@@ -1,4 +1,4 @@
-import { ExternalLink, Maximize2, Minimize2, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { Camera, ChevronDown, ExternalLink, Maximize2, Minimize2, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
 import {
@@ -7,6 +7,7 @@ import {
   findInstrument,
   bucketTime,
   isIntraday,
+  addSnapshot,
   moveOrder,
   newSimAccount,
   placeOrder,
@@ -31,6 +32,7 @@ import { MenuButton } from '../../components/Menu';
 import { Select } from '../../components/Select';
 import { api } from '../../lib/api';
 import { usePlays } from '../../lib/journal';
+import { uploadFiles } from '../../lib/upload';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
@@ -451,6 +453,71 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
     [account, price, cursor, specs, inst, setAccount, balance],
   );
 
+  // ---------- Chart snapshots ----------
+  const snapshot = useRef<(() => Promise<Blob | null>) | null>(null);
+  const accountRef = useRef(account);
+  accountRef.current = account;
+  const autoSnapshots = tools.autoSnapshots ?? true;
+  const [snapshotMenu, setSnapshotMenu] = useState(false);
+  const [snapping, setSnapping] = useState(0);
+  /**
+   * Capture the chart and add it to a position or trade (default: the open position, else the latest closed trade).
+   * It reaches the journal trade's Screenshots when the trade is saved (or straight away if it already was).
+   */
+  const takeSnapshot = useCallback(
+    async (target?: { positionId?: string; tradeId?: string }, quiet = false) => {
+      const acc = accountRef.current;
+      if (!acc || !snapshot.current) return;
+      if (!target && !acc.positions.length && !acc.trades.length) {
+        if (!quiet) setNotice({ text: 'Snapshots go to a trade: open or close a trade in this session first.', bad: true });
+        return;
+      }
+      setSnapping((n) => n + 1);
+      try {
+        // Let the chart draw the latest fill and lines first.
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const blob = await snapshot.current();
+        if (!blob) throw new Error('the chart couldn’t be captured');
+        const stamp = DateTime.fromSeconds(cursor ?? Date.now() / 1000, { zone: currentZone() }).toFormat('yyyy-LL-dd HHmm');
+        const [up] = await uploadFiles([new File([blob], `${inst.id} ${stamp}.jpg`, { type: 'image/jpeg' })]);
+        const latest = accountRef.current;
+        const next = latest && up ? addSnapshot(latest, up.attachment.id, target) : null;
+        if (!next) throw new Error('there’s no trade to add it to');
+        setAccount(next);
+        const open = !!(target?.positionId ? next.positions.some((p) => p.id === target.positionId) : !target?.tradeId && next.positions.length);
+        if (!quiet) setNotice({ text: open ? 'Snapshot taken: it goes to the trade’s screenshots when the trade closes.' : 'Snapshot added to the trade’s screenshots.', bad: false, journal: !open });
+      } catch (err) {
+        setNotice({ text: `Couldn’t take the snapshot: ${(err as Error).message}`, bad: true });
+      } finally {
+        setSnapping((n) => n - 1);
+      }
+    },
+    [cursor, inst, setAccount],
+  );
+
+  // Automatic snapshots: one when a position opens, one when it closes.
+  const seen = useRef<{ positions: Set<string>; trades: number } | null>(null);
+  useEffect(() => {
+    if (!account) return;
+    const prev = seen.current;
+    seen.current = { positions: new Set(account.positions.map((p) => p.id)), trades: account.trades.length };
+    if (!prev || !autoSnapshots) return;
+    for (const p of account.positions) if (!prev.positions.has(p.id)) void takeSnapshot({ positionId: p.id }, true);
+    for (const t of account.trades.slice(prev.trades)) void takeSnapshot({ tradeId: t.id }, true);
+  }, [account, autoSnapshots, takeSnapshot]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.altKey && e.code === 'KeyS') {
+        e.preventDefault();
+        void takeSnapshot();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [takeSnapshot]);
+
   /** The next replay moment: one step on, skipping closed markets (nights, weekends) straight to the next bar. */
   const advance = useCallback(
     (c: number): number | 'wait' | 'end' => {
@@ -605,6 +672,38 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
             )}
           </div>
           <div className="ml-1 flex items-center">
+            <div className="relative flex items-center">
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label="Take a chart snapshot (Alt+S)"
+                title="Snapshot to the trade’s screenshots (Alt+S)"
+                onClick={() => void takeSnapshot()}
+                disabled={snapping > 0}
+              >
+                <Camera size={15} />
+              </Button>
+              <button
+                type="button"
+                aria-label="Snapshot options"
+                aria-expanded={snapshotMenu}
+                onClick={() => setSnapshotMenu((o) => !o)}
+                className="-ml-1.5 flex h-8 w-4 items-center justify-center rounded text-muted hover:text-text"
+              >
+                <ChevronDown size={12} />
+              </button>
+              {snapshotMenu && (
+                <div className="absolute top-full right-0 z-40 mt-1 w-64 rounded-md border border-border bg-card p-3 text-[13px] shadow-menu" onPointerLeave={() => setSnapshotMenu(false)}>
+                  <label className="flex cursor-pointer items-start gap-2">
+                    <input type="checkbox" checked={autoSnapshots} onChange={(e) => saveTools({ ...tools, autoSnapshots: e.target.checked })} className="mt-0.5 h-4 w-4 accent-[var(--text)]" />
+                    <span>
+                      Automatic snapshots
+                      <span className="block text-[12px] text-muted">One when a position opens and one when it closes, added to the trade’s screenshots.</span>
+                    </span>
+                  </label>
+                </div>
+              )}
+            </div>
             <Button size="sm" variant="ghost" aria-label={fullscreen ? 'Exit full screen' : 'Full screen'} title={fullscreen ? 'Exit full screen' : 'Full screen'} onClick={toggleFullscreen}>
               {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
             </Button>
@@ -644,6 +743,8 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
               onShapesChange={setShapes}
               specs={specs}
               onPlaceOrder={placeFromTool}
+              snapshotRef={snapshot}
+              snapshotCaption={`${session.name} · ${local ? local.toFormat('ccc d LLL yyyy HH:mm') : ''} ${zoneLabel()}`}
               balance={balance}
               onLinesChange={setLines}
               tools={tools}

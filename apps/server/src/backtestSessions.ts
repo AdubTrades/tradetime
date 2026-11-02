@@ -2,6 +2,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { schema } from '@tc/db';
 import { findInstrument, newId, newSimAccount, tradingDay, type SimAccount, type SimTrade, type Timeframe } from '@tc/domain';
 import { createAccount } from './accounts';
+import { linkAttachment } from './attachments';
 import { ensureContract } from './contracts';
 import { db } from './context';
 import { AppError } from './errors';
@@ -123,16 +124,20 @@ export async function deleteSession(id: string): Promise<void> {
     LIST,
     (await listSessions()).filter((s) => s.id !== id),
   );
-  await db.delete(schema.setting).where(sql`${schema.setting.key} in (${`state.backtest.sim.${id}`}, ${`state.backtest.drawings.${id}`}, ${`state.backtest.journaled.${id}`})`);
+  await db
+    .delete(schema.setting)
+    .where(
+      sql`${schema.setting.key} in (${`state.backtest.sim.${id}`}, ${`state.backtest.drawings.${id}`}, ${`state.backtest.journaled.${id}`}, ${`state.backtest.journalIds.${id}`}, ${`state.backtest.snapshotsLinked.${id}`})`,
+    );
 }
 
 const iso = (t: number) => new Date(t * 1000).toISOString().replace('.000Z', 'Z');
 
 /** One practice trade as a journal trade: same fills, fees and first stop/target, marked for review. */
-async function journalTrade(s: BacktestSession, t: SimTrade): Promise<void> {
+async function journalTrade(s: BacktestSession, t: SimTrade): Promise<string> {
   const contract = await ensureContract(t.symbol);
   if (!contract) throw new Error(`${t.symbol} isn’t a known contract`);
-  await createTrade({
+  const created = await createTrade({
     tradingDay: tradingDay(iso(t.openedAt), getSettings().rolloverTime),
     contractId: contract.id,
     fills: t.fills.map((f) => ({ at: iso(f.time), side: f.side, qty: f.qty, price: f.price })),
@@ -145,6 +150,7 @@ async function journalTrade(s: BacktestSession, t: SimTrade): Promise<void> {
     source: 'backtest',
     needsReview: true,
   });
+  return created.id;
 }
 
 /**
@@ -158,9 +164,12 @@ export async function saveSim(id: string, account: SimAccount): Promise<{ accoun
   const fresh = account.trades.filter((t) => !done.has(t.id));
   const failed: { id: string; message: string }[] = [];
   let journaled = 0;
+  // Which journal trade each practice trade became, and which snapshots are already linked to one.
+  const journalIds = (await getState<Record<string, string>>(`backtest.journalIds.${id}`)) ?? {};
+  const linked = new Set((await getState<string[]>(`backtest.snapshotsLinked.${id}`)) ?? []);
   for (const t of fresh) {
     try {
-      await db.transaction(() => journalTrade(s, t));
+      journalIds[t.id] = await db.transaction(() => journalTrade(s, t));
       journaled++;
     } catch (err) {
       failed.push({ id: t.id, message: (err as Error).message });
@@ -168,6 +177,24 @@ export async function saveSim(id: string, account: SimAccount): Promise<{ accoun
     done.add(t.id);
   }
   if (fresh.length) await setState(`backtest.journaled.${id}`, [...done]);
+  // Chart snapshots go to the journal trade's Screenshots, including ones taken after it was saved.
+  let newlyLinked = 0;
+  for (const t of account.trades) {
+    const tradeId = journalIds[t.id];
+    if (!tradeId) continue;
+    for (const attachmentId of t.snapshots ?? []) {
+      if (linked.has(attachmentId)) continue;
+      try {
+        await db.transaction(() => linkAttachment(attachmentId, 'trade', tradeId, 'chart'));
+      } catch {
+        // An attachment that no longer exists: skip it rather than retry forever.
+      }
+      linked.add(attachmentId);
+      newlyLinked++;
+    }
+  }
+  if (fresh.length) await setState(`backtest.journalIds.${id}`, journalIds);
+  if (newlyLinked) await setState(`backtest.snapshotsLinked.${id}`, [...linked]);
   await saveSession({ ...s, trades: account.trades.length, net: account.trades.reduce((sum, t) => sum + t.net, 0), updatedAt: new Date().toISOString() });
   return { account, journaled, failed };
 }

@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import type { Bar } from './bars';
-import { breakeven, cancelOrder, moveOrder, setOrderBracket, closePosition, marketOrder, newSimAccount, placeOrder, replayTo, sizeForRisk, stepBar, summariseSim, type SimSpec } from './sim';
+import {
+  addSnapshot,
+  breakeven,
+  cancelOrder,
+  moveOrder,
+  setOrderBracket,
+  closePosition,
+  marketOrder,
+  newSimAccount,
+  placeOrder,
+  replayTo,
+  sizeForRisk,
+  stepBar,
+  summariseSim,
+  type SimSpec,
+} from './sim';
 
 const MNQ: SimSpec = { symbol: 'MNQ', pointValue: 2, feePerSide: 0.5, feeRate: 0 };
 const BTC: SimSpec = { symbol: 'BTCUSDT', pointValue: 1, feePerSide: 0, feeRate: 0.001 };
@@ -115,5 +130,21 @@ describe('summary and sizing', () => {
     expect(sizeForRisk(200, 21_000, 20_980, 2, 1)).toBe(5); // 20 points × $2 = $40 per contract
     expect(sizeForRisk(30, 21_000, 20_980, 2, 1)).toBe(0);
     expect(sizeForRisk(100, 80_000, 79_500, 1, 0.0001)).toBe(0.2);
+  });
+});
+
+describe('snapshots', () => {
+  it('go to the open position, then travel with it into the closed trade', () => {
+    let acc = marketOrder(newSimAccount(0), MNQ, 'buy', 1, 100, T);
+    acc = addSnapshot(acc, 'att-entry')!;
+    acc = closePosition(acc, MNQ, acc.positions[0]!.id, 110, T + 30);
+    expect(acc.trades[0]!.snapshots).toEqual(['att-entry']);
+    // Flat: the latest closed trade; or a named position that has since closed.
+    acc = addSnapshot(acc, 'att-after')!;
+    acc = addSnapshot(acc, 'att-exit', { positionId: acc.trades[0]!.id })!;
+    expect(acc.trades[0]!.snapshots).toEqual(['att-entry', 'att-after', 'att-exit']);
+  });
+  it('have nowhere to go before the first trade', () => {
+    expect(addSnapshot(newSimAccount(0), 'x')).toBeNull();
   });
 });

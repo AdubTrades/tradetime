@@ -93,6 +93,8 @@ export function ReplayChart({
   specs,
   onPlaceOrder,
   balance,
+  snapshotRef,
+  snapshotCaption = '',
   priceLines = [],
   markers = [],
   onLevelMove,
@@ -112,6 +114,10 @@ export function ReplayChart({
   onPlaceOrder?: (rr: RiskRewardDrawing) => void;
   /** Practice account balance, for long/short tools sized as a % of it. */
   balance: number;
+  /** Filled with a function that captures the chart (with a caption band) as a JPEG. */
+  snapshotRef?: React.MutableRefObject<(() => Promise<Blob | null>) | null>;
+  /** The caption's first part, e.g. "NQ practice · Mon 27 Oct 2026 14:30". */
+  snapshotCaption?: string;
   priceLines?: ChartPriceLine[];
   markers?: ChartMarker[];
   /** A level was dragged to a new price. */
@@ -408,6 +414,49 @@ export function ReplayChart({
 
   const show = legend ?? bars?.at(-1) ?? null;
   const dp = decimals(inst.tickSize);
+
+  // Snapshot: the chart as drawn (candles, volume, axes, drawings, trade lines) under a caption band with the session,
+  // replay time, symbol, timeframe and the latest bar's prices.
+  const captionRef = useRef('');
+  const lastBar = bars?.at(-1);
+  captionRef.current = [snapshotCaption, `${inst.id} · ${tf}`, lastBar ? `O ${lastBar.o.toFixed(dp)}  H ${lastBar.h.toFixed(dp)}  L ${lastBar.l.toFixed(dp)}  C ${lastBar.c.toFixed(dp)}` : '']
+    .filter(Boolean)
+    .join('   ·   ');
+  useEffect(() => {
+    if (!snapshotRef) return;
+    snapshotRef.current = async () => {
+      const api = chart.current;
+      if (!api) return null;
+      const shot = api.takeScreenshot();
+      // At most 1600px wide: sharp enough to read, and about half the storage of a full Retina capture.
+      const scale = Math.min(1, 1600 / shot.width);
+      const w = Math.round(shot.width * scale);
+      const h = Math.round(shot.height * scale);
+      const ratio = w / Math.max(1, el.current?.clientWidth ?? w);
+      const band = Math.round(30 * ratio);
+      const out = document.createElement('canvas');
+      out.width = w;
+      out.height = h + band;
+      const ctx = out.getContext('2d')!;
+      const p = palette();
+      ctx.fillStyle = p.bg;
+      ctx.fillRect(0, 0, out.width, out.height);
+      ctx.fillStyle = css('--text');
+      ctx.font = `500 ${Math.round(12 * ratio)}px Geist, system-ui, sans-serif`;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(captionRef.current, Math.round(10 * ratio), band / 2);
+      ctx.strokeStyle = p.border;
+      ctx.beginPath();
+      ctx.moveTo(0, band - 0.5);
+      ctx.lineTo(out.width, band - 0.5);
+      ctx.stroke();
+      ctx.drawImage(shot, 0, band, w, h);
+      return new Promise<Blob | null>((resolve) => out.toBlob(resolve, 'image/jpeg', 0.88));
+    };
+    return () => {
+      snapshotRef.current = null;
+    };
+  }, [snapshotRef]);
   const up = show ? show.c >= show.o : true;
   const toggleMagnet = () =>
     setMagnet((m) => {
