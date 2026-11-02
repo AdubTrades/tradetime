@@ -56,6 +56,8 @@ export interface LineTools {
   /** How the last long/short tool was sized, so the next one starts the same. */
   riskMode?: 'usd' | 'percent' | null;
   riskPct?: number | null;
+  /** Rectangle templates (kept apart from the line templates). */
+  rectTemplates?: RectTemplate[];
   /** The levels and look of the next Fib retracement (the last one set). */
   fibLast?: { levels: FibLevel[]; style: FibStyle } | null;
 }
@@ -67,7 +69,7 @@ export const DEFAULT_LINE_LABEL: LineLabel = { text: '', color: null, size: 12, 
 export const LINE_COLORS = ['#f23645', '#ff9800', '#ffeb3b', '#4caf50', '#089981', '#00bcd4', '#2962ff', '#673ab7', '#9c27b0', '#e91e63', '#787b86', '#131722', '#ffffff'];
 
 /** Templates sorted by name, the way the template menu lists them. */
-export const sortTemplates = (list: readonly LineTemplate[]) => [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+export const sortTemplates = <T extends { name: string }>(list: readonly T[]) => [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
 // ---------- Rectangles and the risk-reward tool ----------
 
@@ -203,5 +205,15 @@ export interface Drawings {
   lines: HorizontalLine[];
   shapes?: Shape[];
 }
+
+/** A rectangle's look and label saved under a name ("H1 FVG"). */
+export interface RectTemplate {
+  id: string;
+  name: string;
+  style: RectStyle;
+  label: LineLabel;
+}
+
+export const DEFAULT_RECT_LABEL: LineLabel = { text: '', color: null, size: 12, bold: false, align: 'left', place: 'above' };
 
 export const DEFAULT_RECT_STYLE: RectStyle = { border: '#2962ff', borderWidth: 1, fill: '#2962ff', fillOpacity: 0.15, midline: true, midDash: 'dashed', extendRight: false };

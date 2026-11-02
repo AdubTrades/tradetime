@@ -252,6 +252,7 @@ export function LineSettings({
       <footer className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
         <TemplateMenu
           templates={templates}
+          swatch={(t) => t.style.color}
           onApply={(t) => set({ style: t.style, label: t.label })}
           onDefaults={() => set({ style: DEFAULT_LINE_STYLE, label: DEFAULT_LINE_LABEL })}
           onSave={onSaveTemplate}
@@ -310,15 +311,18 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (c: 
 }
 
 /** Save as… / Apply defaults / the saved templates (each with a remove button). Opens upwards, like TradingView's. */
-export function TemplateMenu({
+export function TemplateMenu<T extends { id: string; name: string }>({
   templates,
+  swatch,
   onApply,
   onDefaults,
   onSave,
   onDelete,
 }: {
-  templates: LineTemplate[];
-  onApply: (t: LineTemplate) => void;
+  templates: T[];
+  /** The colour shown beside each template's name. */
+  swatch: (t: T) => string;
+  onApply: (t: T) => void;
   onDefaults: () => void;
   onSave: (name: string) => void;
   onDelete: (id: string) => void;
@@ -395,7 +399,7 @@ export function TemplateMenu({
                 }}
                 className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left"
               >
-                <span className="h-0.5 w-3 shrink-0 rounded-full" style={{ background: t.style.color }} />
+                <span className="h-0.5 w-3 shrink-0 rounded-full" style={{ background: swatch(t) }} />
                 <span className="truncate">{t.name}</span>
               </button>
               <button

@@ -1,10 +1,23 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { riskDollars, type BacktestInstrument, type FibDrawing, type LineDash, type RectDrawing, type RiskRewardDrawing, type Shape, type SimSpec, type Timeframe } from '@tc/domain';
+import {
+  DEFAULT_RECT_LABEL,
+  DEFAULT_RECT_STYLE,
+  riskDollars,
+  type BacktestInstrument,
+  type RectTemplate,
+  type FibDrawing,
+  type LineDash,
+  type RectDrawing,
+  type RiskRewardDrawing,
+  type Shape,
+  type SimSpec,
+  type Timeframe,
+} from '@tc/domain';
 import { Select } from '../../components/Select';
 import { Button, cn, SegmentedTabs } from '../../components/ui';
-import { ColorPicker } from './LineSettings';
+import { ColorPicker, TemplateMenu } from './LineSettings';
 import { formatR, riskRewardSize } from './ShapeLayer';
 
 type Tab = 'style' | 'text' | 'inputs' | 'visibility';
@@ -20,6 +33,9 @@ export function ShapeSettings({
   onOk,
   onCancel,
   onPlaceOrder,
+  rectTemplates = [],
+  onSaveRectTemplate,
+  onDeleteRectTemplate,
 }: {
   shape: Shape;
   inst: BacktestInstrument;
@@ -30,6 +46,10 @@ export function ShapeSettings({
   onOk: () => void;
   onCancel: () => void;
   onPlaceOrder?: () => void;
+  /** Rectangle templates, and saving / removing one (rectangles only). */
+  rectTemplates?: RectTemplate[];
+  onSaveRectTemplate?: (name: string) => void;
+  onDeleteRectTemplate?: (id: string) => void;
 }) {
   const rect = shape.kind === 'rect';
   const fib = shape.kind === 'fib';
@@ -120,6 +140,16 @@ export function ShapeSettings({
       </div>
       <footer className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
         <div>
+          {shape.kind === 'rect' && onSaveRectTemplate && onDeleteRectTemplate && (
+            <TemplateMenu
+              templates={rectTemplates}
+              swatch={(t) => t.style.border}
+              onApply={(t) => onChange({ ...shape, style: t.style, label: t.label })}
+              onDefaults={() => onChange({ ...shape, style: DEFAULT_RECT_STYLE, label: DEFAULT_RECT_LABEL })}
+              onSave={onSaveRectTemplate}
+              onDelete={onDeleteRectTemplate}
+            />
+          )}
           {onPlaceOrder && (
             <Button size="sm" onClick={onPlaceOrder} title="A limit or stop order at the entry, with this stop and target">
               Place order

@@ -6,6 +6,7 @@ import {
   DEFAULT_FIB_STYLE,
   DEFAULT_RECT_STYLE,
   newId,
+  sortTemplates,
   riskDollars,
   sizeForRisk,
   timeframesFor,
@@ -426,10 +427,33 @@ export function ShapeLayer({
       {menu && menuShape && (
         <div
           role="menu"
-          className="absolute z-30 w-52 rounded-md border border-border bg-card py-1 text-[13px] shadow-menu"
-          style={{ left: Math.min(menu.x, host.clientWidth - 220), top: Math.min(menu.y, host.clientHeight - 140) }}
+          className="absolute z-30 max-h-[70%] w-52 overflow-y-auto rounded-md border border-border bg-card py-1 text-[13px] shadow-menu"
+          style={{
+            left: Math.min(menu.x, host.clientWidth - 220),
+            top: Math.min(menu.y, Math.max(0, host.clientHeight - 140 - (menuShape.kind === 'rect' ? (tools.rectTemplates?.length ?? 0) * 30 : 0))),
+          }}
           onPointerDown={(e) => e.stopPropagation()}
         >
+          {/* Rectangle templates, one click to apply (like the line templates). */}
+          {menuShape.kind === 'rect' &&
+            sortTemplates(tools.rectTemplates ?? []).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  const next = { ...menuShape, style: t.style, label: t.label };
+                  update(next);
+                  onToolsChange({ ...tools, rectLast: t.style });
+                  setMenu(null);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
+              >
+                <span className="h-2.5 w-3 shrink-0 rounded-[3px] border" style={{ borderColor: t.style.border, background: `${t.style.fill.slice(0, 7)}55` }} />
+                <span className="truncate">{t.name}</span>
+              </button>
+            ))}
+          {menuShape.kind === 'rect' && (tools.rectTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
           {(menuShape.kind === 'long' || menuShape.kind === 'short') && onPlaceOrder && (
             <button
               type="button"
@@ -488,6 +512,14 @@ export function ShapeLayer({
             setEditing(null);
           }}
           onPlaceOrder={(current.kind === 'long' || current.kind === 'short') && onPlaceOrder ? () => onPlaceOrder(current) : undefined}
+          rectTemplates={tools.rectTemplates ?? []}
+          onSaveRectTemplate={(name) => {
+            if (current.kind !== 'rect') return;
+            // Saving under an existing name replaces that template.
+            const others = (tools.rectTemplates ?? []).filter((t) => t.name.toLowerCase() !== name.toLowerCase());
+            onToolsChange({ ...tools, rectTemplates: [...others, { id: newId(), name, style: current.style, label: current.label }] });
+          }}
+          onDeleteRectTemplate={(id) => onToolsChange({ ...tools, rectTemplates: (tools.rectTemplates ?? []).filter((t) => t.id !== id) })}
         />
       )}
     </>

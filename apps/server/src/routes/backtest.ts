@@ -94,6 +94,7 @@ const lineToolsSchema = z.object({
   riskMode: z.enum(['usd', 'percent']).nullable().optional(),
   riskPct: z.number().min(0).max(100).nullable().optional(),
   fibLast: z.object({ levels: fibLevels, style: fibStyle }).nullable().optional(),
+  rectTemplates: z.array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), style: rectStyle, label: lineLabel })).max(200).optional(),
 });
 
 const num = z.number().finite();
