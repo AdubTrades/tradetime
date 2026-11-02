@@ -134,6 +134,7 @@ const lineToolsSchema = z.object({
   riskPct: z.number().min(0).max(100).nullable().optional(),
   fibLast: z.object({ levels: fibLevels, style: fibStyle }).nullable().optional(),
   autoSnapshots: z.boolean().optional(),
+  chartZone: z.string().max(64).nullable().optional(),
   trendTemplates: z
     .array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), style: trendStyle, label: lineLabel }))
     .max(200)

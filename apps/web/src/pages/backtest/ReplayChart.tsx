@@ -95,6 +95,7 @@ export function ReplayChart({
   balance,
   snapshotRef,
   snapshotCaption = '',
+  zone = currentZone(),
   priceLines = [],
   markers = [],
   onLevelMove,
@@ -118,6 +119,8 @@ export function ReplayChart({
   snapshotRef?: React.MutableRefObject<(() => Promise<Blob | null>) | null>;
   /** The caption's first part, e.g. "NQ practice · Mon 27 Oct 2026 14:30". */
   snapshotCaption?: string;
+  /** Time zone for the time axis and crosshair (the user's own, or e.g. New York). */
+  zone?: string;
   priceLines?: ChartPriceLine[];
   markers?: ChartMarker[];
   /** A level was dragged to a new price. */
@@ -150,14 +153,15 @@ export function ReplayChart({
   const intraday = isIntraday(tf);
   const intradayRef = useRef(intraday);
   intradayRef.current = intraday;
+  const zoneRef = useRef(zone);
+  zoneRef.current = zone;
 
   useEffect(() => {
     const c = palette();
-    const zone = currentZone();
-    // Intraday bars are real moments (shown in the user's zone); daily and up are labelled by their UTC date.
+    // Intraday bars are real moments (shown in the chart's time zone); daily and up are labelled by their UTC date.
     const fmt = (t: Time, f: string) =>
       DateTime.fromSeconds(t as number, {
-        zone: intradayRef.current ? zone : 'utc',
+        zone: intradayRef.current ? zoneRef.current : 'utc',
       }).toFormat(f);
     const api = createChart(el.current!, {
       autoSize: true,
@@ -257,6 +261,12 @@ export function ReplayChart({
       chart.current = null;
     };
   }, []);
+
+  // A new time zone: nudge the chart to redraw its time labels (the formatters read the zone when they run).
+  useEffect(() => {
+    chart.current?.timeScale().applyOptions({ visible: true });
+    chart.current?.applyOptions({ crosshair: {} });
+  }, [zone]);
 
   useEffect(() => {
     candles.current?.applyOptions({

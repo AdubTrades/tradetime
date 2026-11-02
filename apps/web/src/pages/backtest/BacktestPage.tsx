@@ -58,6 +58,13 @@ const STEPS: { value: number; label: string }[] = [
   { value: 3600, label: '1h' },
 ];
 const PREFS_KEY = 'tc-backtest-prefs';
+/** Time zones offered for the chart besides the user's own. */
+const CHART_ZONES = [
+  { zone: 'America/New_York', label: 'New York' },
+  { zone: 'Europe/London', label: 'London' },
+  { zone: 'UTC', label: 'UTC' },
+];
+const isValidZone = (zone: string) => DateTime.local().setZone(zone).isValid;
 const PANEL_KEY = 'tc-backtest-panel-height';
 const PANEL_COLLAPSED_KEY = 'tc-backtest-panel-collapsed';
 /** Opened with "Open in its own window": no sidebar, the whole window is the backtester. */
@@ -249,6 +256,9 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
   const [daily, setDaily] = useState<Bar[] | null | undefined>(undefined);
   const { lines, shapes, setLines, setShapes, error: linesError } = useDrawings(session.id);
   const { tools, saveTools } = useLineTools();
+  // The chart's time zone: your own (from Settings) unless you pick another here, e.g. New York for US sessions.
+  const ownZone = currentZone();
+  const chartZone = tools.chartZone && isValidZone(tools.chartZone) ? tools.chartZone : ownZone;
   const [savedAccount, setAccount, simError] = useSimAccount(session.id, (r) => {
     if (r.failed.length) setNotice({ text: `Couldn’t save ${r.failed.length === 1 ? 'a trade' : `${r.failed.length} trades`} to the journal: ${r.failed[0]!.message}`, bad: true });
     else if (r.journaled) setNotice({ text: `Saved ${r.journaled === 1 ? 'the trade' : `${r.journaled} trades`} to your journal (${journalName}, needs review).`, bad: false, journal: true });
@@ -478,7 +488,7 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         const blob = await snapshot.current();
         if (!blob) throw new Error('the chart couldn’t be captured');
-        const stamp = DateTime.fromSeconds(cursor ?? Date.now() / 1000, { zone: currentZone() }).toFormat('yyyy-LL-dd HHmm');
+        const stamp = DateTime.fromSeconds(cursor ?? Date.now() / 1000, { zone: chartZone }).toFormat('yyyy-LL-dd HHmm');
         const [up] = await uploadFiles([new File([blob], `${inst.id} ${stamp}.jpg`, { type: 'image/jpeg' })]);
         const latest = accountRef.current;
         const next = latest && up ? addSnapshot(latest, up.attachment.id, target) : null;
@@ -492,7 +502,7 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
         setSnapping((n) => n - 1);
       }
     },
-    [cursor, inst, setAccount],
+    [cursor, inst, setAccount, chartZone],
   );
 
   // Automatic snapshots: one when a position opens, one when it closes.
@@ -566,7 +576,7 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
     return () => window.removeEventListener('keydown', onKey);
   }, [stepForward]);
 
-  const zone = currentZone();
+  const zone = chartZone;
   const local = cursor !== null ? DateTime.fromSeconds(cursor, { zone }) : null;
 
   return (
@@ -744,7 +754,8 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
               specs={specs}
               onPlaceOrder={placeFromTool}
               snapshotRef={snapshot}
-              snapshotCaption={`${session.name} · ${local ? local.toFormat('ccc d LLL yyyy HH:mm') : ''} ${zoneLabel()}`}
+              snapshotCaption={`${session.name} · ${local ? local.toFormat('ccc d LLL yyyy HH:mm') : ''} ${zoneLabel(chartZone)}`}
+              zone={chartZone}
               balance={balance}
               onLinesChange={setLines}
               tools={tools}
@@ -792,7 +803,7 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
           </Select>
         </label>
         <JumpTo
-          key={cursor === null ? 'none' : 'set'}
+          key={`${cursor === null ? 'none' : 'set'}-${chartZone}`}
           initial={local}
           min={dates[0]}
           max={dates.at(-1)}
@@ -816,7 +827,20 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
         )}
         <div className="ml-auto text-right font-mono text-[13px] text-secondary">
           {local ? local.toFormat('ccc d LLL yyyy · HH:mm:ss') : '–'}
-          <span className="ml-2 font-sans text-muted">{zoneLabel()}</span>
+          <Select
+            aria-label="Chart time zone"
+            size="sm"
+            value={chartZone}
+            onChange={(e) => saveTools({ ...tools, chartZone: e.target.value === ownZone ? null : e.target.value })}
+            className="ml-2 inline-flex w-40 font-sans"
+          >
+            {[...new Set([ownZone, ...CHART_ZONES.map((z) => z.zone)])].map((z) => (
+              <option key={z} value={z}>
+                {CHART_ZONES.find((c) => c.zone === z)?.label ?? zoneLabel(z)}
+                {z === ownZone ? ' (yours)' : ''}
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
 
