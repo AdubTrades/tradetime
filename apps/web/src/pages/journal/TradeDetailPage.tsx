@@ -113,7 +113,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Checklist (ticked before entry)">
           {t.checks.length === 0 ? (
-            <p className="text-sm text-muted">No Play selected.</p>
+            <p className="text-sm text-muted">{t.playId ? 'This Play had no checklist when the trade was saved. Add criteria in the Playbook, then Edit the trade to tick them.' : 'No Play selected.'}</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {t.checks.map((c) => (
@@ -201,33 +201,42 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
         </div>
       </Card>
 
-      <Card title="Behaviour">
-        <dl className="grid gap-y-1 text-sm sm:grid-cols-[10rem_1fr]">
-          <dt className="text-muted">Followed plan</dt>
-          <dd className="capitalize">{t.followedPlan ?? '—'}</dd>
-          <dt className="text-muted">Emotional state</dt>
-          <dd>{moods.find((m) => m.id === t.emotionId)?.name ?? '—'}</dd>
-          <dt className="text-muted">Confidence</dt>
-          <dd>{t.confidence ? `${t.confidence} / 5` : '—'}</dd>
-          <dt className="text-muted">State at entry</dt>
-          <dd>
-            {t.state ? (
-              <>
-                <span className="mr-2 text-xs text-muted">
-                  {t.state.kind === 'start' ? 'Session start' : 'Check-in'} {formatLocal(t.state.at, 'HH:mm')}
-                  {t.stateOverridden ? ' (chosen)' : ''}
-                </span>
-                <ReadingChips answers={t.state.answers} />
-              </>
-            ) : (
-              <span className="text-muted">None</span>
-            )}
-          </dd>
-          <dt className="text-muted">Mistakes</dt>
-          <dd>{t.mistakeIds.length ? t.mistakeIds.map((id) => mistakes.find((m) => m.id === id)?.name).join(', ') : 'None'}</dd>
-        </dl>
-        {t.notes && <p className="mt-3 text-sm whitespace-pre-wrap">{t.notes}</p>}
-      </Card>
+      {/* Behaviour beside what you wrote about the trade (stacked on narrower screens). */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <Card title="Behaviour">
+          <dl className="grid gap-y-1 text-sm sm:grid-cols-[10rem_1fr]">
+            <dt className="text-muted">Followed plan</dt>
+            <dd className="capitalize">{t.followedPlan ?? '—'}</dd>
+            <dt className="text-muted">Emotional state</dt>
+            <dd>{moods.find((m) => m.id === t.emotionId)?.name ?? '—'}</dd>
+            <dt className="text-muted">Confidence</dt>
+            <dd>{t.confidence ? `${t.confidence} / 5` : '—'}</dd>
+            <dt className="text-muted">State at entry</dt>
+            <dd>
+              {t.state ? (
+                <>
+                  <span className="mr-2 text-xs text-muted">
+                    {t.state.kind === 'start' ? 'Session start' : 'Check-in'} {formatLocal(t.state.at, 'HH:mm')}
+                    {t.stateOverridden ? ' (chosen)' : ''}
+                  </span>
+                  <ReadingChips answers={t.state.answers} />
+                </>
+              ) : (
+                <span className="text-muted">None</span>
+              )}
+            </dd>
+            <dt className="text-muted">Mistakes</dt>
+            <dd>{t.mistakeIds.length ? t.mistakeIds.map((id) => mistakes.find((m) => m.id === id)?.name).join(', ') : 'None'}</dd>
+          </dl>
+        </Card>
+        <Card title="Notes / thoughts / feelings / why">
+          {t.notes ? (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{t.notes}</p>
+          ) : (
+            <p className="text-sm text-muted">Nothing written yet. Use Edit (or Review trade) to add why you took it and how you felt.</p>
+          )}
+        </Card>
+      </div>
 
       <Card title="Screenshots" description={play && t.grade ? `“Send to Playbook” adds a screenshot to ${play.title}'s ${t.grade} shelf.` : undefined}>
         <AttachmentDropzone

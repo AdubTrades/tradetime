@@ -632,13 +632,14 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
 
         <StatePicker day={form.tradingDay} value={form.state} onChange={(v) => set('state', v)} entryAt={fills ? [...fills].sort((a, b) => a.at.localeCompare(b.at))[0]!.at : null} />
 
-        <section className="grid gap-4 sm:grid-cols-2">
-          <Field label="Notes">
+        <section className="grid gap-4">
+          <Field label="Notes / thoughts / feelings / why">
             <textarea
-              rows={5}
+              rows={10}
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
-              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-card"
+              placeholder="Why you took it, what you saw, how you felt before, during and after, and what you’d do differently."
+              className="min-h-[12rem] w-full resize-y rounded-md border border-border bg-card px-3 py-2 text-sm leading-relaxed shadow-card"
             />
           </Field>
           <div>
