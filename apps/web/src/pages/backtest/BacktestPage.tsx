@@ -837,7 +837,6 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
             {[...new Set([ownZone, ...CHART_ZONES.map((z) => z.zone)])].map((z) => (
               <option key={z} value={z}>
                 {CHART_ZONES.find((c) => c.zone === z)?.label ?? zoneLabel(z)}
-                {z === ownZone ? ' (yours)' : ''}
               </option>
             ))}
           </Select>
