@@ -109,7 +109,8 @@ export function Select({ value, onChange, children, className, disabled, id, dar
 
   useLayoutEffect(() => {
     if (!open) return;
-    setPortalTarget(triggerRef.current?.closest('dialog') ?? document.body);
+    // In full screen only the full-screen element is shown, so the list has to open inside it.
+    setPortalTarget(triggerRef.current?.closest('dialog') ?? document.fullscreenElement ?? document.body);
     place();
   }, [open]);
 
