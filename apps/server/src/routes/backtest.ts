@@ -202,13 +202,20 @@ const simSchema = z.object({
 const timeframe = z.enum(TIMEFRAMES as [Timeframe, ...Timeframe[]]);
 const sessionCreate = z.object({
   name: z.string().trim().min(1, 'Name the session').max(60),
+  description: z.string().max(1000).nullable().optional(),
+  playId: z.string().min(1).max(40).nullable().optional(),
   instrument: z.string().min(1).max(20),
-  accountId: z.string().min(1).nullable().optional(),
   startBalance: num.min(0).max(1e9),
   cursor: z.number().int().nullable(),
   tf: timeframe,
 });
-const sessionPatch = z.object({ name: z.string().trim().min(1).max(60).optional(), tf: timeframe.optional(), cursor: z.number().int().nullable().optional(), accountId: z.string().min(1).optional() });
+const sessionPatch = z.object({
+  description: z.string().max(1000).nullable().optional(),
+  playId: z.string().min(1).max(40).nullable().optional(),
+  name: z.string().trim().min(1).max(60).optional(),
+  tf: timeframe.optional(),
+  cursor: z.number().int().nullable().optional(),
+});
 
 /** A session id in the URL: it must be one of the user's sessions. */
 const sessionParam = async (id: string) => (await getSession(id)).id;

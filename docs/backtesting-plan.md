@@ -73,7 +73,7 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
 - **Draggable levels:** a position's SL/TP, a working order (its SL/TP move with it) and an order's own SL/TP can be
   dragged on the chart; labels show the dollar result at that price (e.g. "SL −$300.00").
 - **Stage 3 (journal and sessions):** named sessions (`apps/server/src/backtestSessions.ts`), each with one
-  instrument, a journal account (Backtesting by default, created if missing), its own practice account, replay time,
+  instrument (trades always go to the Backtesting account, created if missing), its own practice account, replay time,
   timeframe and lines. Saving the practice account journals each newly closed trade once (`source: 'backtest'`,
   needs review, fees and first stop/target carried over, note "Backtest: <session>"); `backtest.journaled.<id>`
   remembers which, so deleting one in the journal doesn't bring it back. Spot pairs (BTCUSDT, ETHUSDT, SOLUSDT) are in
@@ -92,6 +92,9 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   line, templates (Alt+T). TradingView's "Distance" stat is left out (it overlaps bars and date/time range).
 - **Templates:** lines, rectangles, Fibs and trend lines each have their own (Save as / Apply defaults / remove in
   settings, one-click apply from the right-click menu), stored in the line-tools document.
+- **Session description and strategy:** sessions have a description and a Playbook Play (strategy, "Create new
+  strategy" makes one from a name); every trade journaled from the session gets that Play. Editable later with
+  "Edit session…".
 - **Data bought (1 Nov 2026):** NQ 1-second, Nov 2025 to Oct 2026, US$48.33 from Databento
   (`market-data futures --buy`; raw files cached in market-data/raw so they're never paid for twice). ES and GC were
   left out for now and removed from the instrument list. Crypto stays (free).

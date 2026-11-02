@@ -81,6 +81,30 @@ describe('backtesting routes', () => {
     expect(((await (await call('GET', '/api/backtest/sessions', OWNER)).json()) as { trades: number; net: number }[])[0]).toMatchObject({ trades: 1 });
   });
 
+  it('give journaled trades the session’s strategy (Playbook Play)', async () => {
+    backtest.ownerIds.push(OWNER);
+    const play = (await (await call('POST', '/api/plays', OWNER, { title: 'FVG continuation' })).json()) as { id: string };
+    const res = await call('POST', '/api/backtest/sessions', OWNER, {
+      name: 'FVG',
+      description: 'London open only',
+      playId: play.id,
+      instrument: 'BTCUSDT',
+      startBalance: 10_000,
+      cursor: null,
+      tf: '5m',
+    });
+    const s = (await res.json()) as { id: string; description: string; playId: string };
+    expect(s).toMatchObject({ description: 'London open only', playId: play.id });
+    const spec = { symbol: 'BTCUSDT', pointValue: 1, feePerSide: 0, feeRate: 0.001 };
+    let acc = marketOrder(newSimAccount(10_000), spec, 'buy', 0.05, 80_000, 1_790_000_000);
+    acc = closePosition(acc, spec, acc.positions[0]!.id, 81_000, 1_790_003_600);
+    await call('PUT', `/api/backtest/sim/${s.id}`, OWNER, acc);
+    const trades = (await (await call('GET', '/api/trades?from=2000-01-01&to=2100-01-01', OWNER)).json()) as { playId: string | null }[];
+    expect(trades[0]!.playId).toBe(play.id);
+    expect((await call('PATCH', `/api/backtest/sessions/${s.id}`, OWNER, { playId: 'nope' })).status).toBe(422);
+    expect(await (await call('PATCH', `/api/backtest/sessions/${s.id}`, OWNER, { playId: null, description: '  ' })).json()).toMatchObject({ playId: null, description: null });
+  });
+
   it('refuse bad input and unknown sessions', async () => {
     backtest.ownerIds.push(OWNER);
     const s = (await (await call('POST', '/api/backtest/sessions', OWNER, { name: 'X', instrument: 'NQ', startBalance: 1, cursor: null, tf: '1m' })).json()) as { id: string };

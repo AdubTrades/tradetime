@@ -21,6 +21,9 @@ export function useLineTools() {
 export interface BacktestSession {
   id: string;
   name: string;
+  description?: string | null;
+  /** The Playbook Play being practised; journaled trades get it. */
+  playId?: string | null;
   instrument: string;
   accountId: string;
   tf: Timeframe;
@@ -38,8 +41,15 @@ export function useSessions() {
 export function useCreateSession() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; instrument: string; accountId: string | null; startBalance: number; cursor: number | null; tf: Timeframe }) =>
-      api.post<BacktestSession>('/backtest/sessions', input),
+    mutationFn: (input: {
+      name: string;
+      description: string | null;
+      playId: string | null;
+      instrument: string;
+      startBalance: number;
+      cursor: number | null;
+      tf: Timeframe;
+    }) => api.post<BacktestSession>('/backtest/sessions', input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['backtest', 'sessions'] });
       // The first session may have created the Backtesting account.
@@ -51,7 +61,8 @@ export function useCreateSession() {
 export function useUpdateSession() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...patch }: { id: string; name?: string; tf?: Timeframe; cursor?: number | null; accountId?: string }) => api.patch<BacktestSession>(`/backtest/sessions/${id}`, patch),
+    mutationFn: ({ id, ...patch }: { id: string; name?: string; description?: string | null; playId?: string | null; tf?: Timeframe; cursor?: number | null}) =>
+      api.patch<BacktestSession>(`/backtest/sessions/${id}`, patch),
     onSuccess: (s) => qc.setQueryData<BacktestSession[]>(['backtest', 'sessions'], (list) => list?.map((x) => (x.id === s.id ? s : x))),
   });
 }

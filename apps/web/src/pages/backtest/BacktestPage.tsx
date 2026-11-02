@@ -29,7 +29,9 @@ import { Link } from '@tanstack/react-router';
 import { Dialog } from '../../components/Dialog';
 import { MenuButton } from '../../components/Menu';
 import { Select } from '../../components/Select';
-import { useAccounts } from '../../lib/expenses';
+import { api } from '../../lib/api';
+import { usePlays } from '../../lib/journal';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
 import { useCreateSession, useDeleteSession, useDrawings, useLineTools, useSessions, useSimAccount, useUpdateSession, type BacktestSession } from '../../lib/drawings';
@@ -127,6 +129,7 @@ function Sessions() {
   const { data: sessions, error } = useSessions();
   const [currentId, setCurrentId] = useState(() => readLocal(SESSION_KEY));
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(false);
   const choose = (id: string) => {
     setCurrentId(id);
     writeLocal(SESSION_KEY, id);
@@ -137,7 +140,7 @@ function Sessions() {
   return (
     <>
       {current ? (
-        <Backtester key={current.id} session={current} sessions={sessions} onSwitch={choose} onNew={() => setCreating(true)} />
+        <Backtester key={current.id} session={current} sessions={sessions} onSwitch={choose} onNew={() => setCreating(true)} onEdit={() => setEditing(true)} />
       ) : (
         <div className="mx-auto mt-10 max-w-md">
           <PageHeader
@@ -150,6 +153,9 @@ function Sessions() {
           <p className="text-sm text-muted md:hidden">Backtesting needs a bigger screen. Open TradeTime on a computer to replay the charts.</p>
         </div>
       )}
+      <Dialog open={editing && !!current} onClose={() => setEditing(false)} title="Edit session">
+        {current && <EditSessionForm session={current} onDone={() => setEditing(false)} />}
+      </Dialog>
       <Dialog open={creating} onClose={() => setCreating(false)} title="New backtesting session">
         <NewSessionForm
           onCreated={(s) => {
@@ -162,7 +168,9 @@ function Sessions() {
   );
 }
 
-function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestSession; sessions: BacktestSession[]; onSwitch: (id: string) => void; onNew: () => void }) {
+function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: BacktestSession; sessions: BacktestSession[]; onSwitch: (id: string) => void; onNew: () => void; onEdit: () => void }) {
+  const { data: plays } = usePlays();
+  const strategy = plays?.find((p) => p.id === session.playId);
   const [prefs] = useState(loadPrefs);
   const instrumentId = session.instrument;
   const inst = findInstrument(instrumentId)!;
@@ -176,7 +184,6 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
   const updateSession = useUpdateSession();
   const deleteSession = useDeleteSession();
   const [notice, setNotice] = useState<{ text: string; bad: boolean; journal?: boolean } | null>(null);
-  const { data: accounts } = useAccounts();
   const dp = Math.max(0, (String(inst.tickSize).split('.')[1] ?? '').length);
 
   // ---------- Layout: order ticket, panel size, full screen, own window ----------
@@ -233,7 +240,7 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
   const openWindow = () => {
     window.open(`${window.location.origin}/backtesting?window=1`, 'tradetime-backtesting', 'popup,width=1440,height=900');
   };
-  const journalName = accounts?.find((a) => a.id === session.accountId)?.name ?? 'Backtesting';
+  const journalName = 'Backtesting';
   const step = Math.max(stepPicked, inst.baseSeconds);
   const [version, setVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -526,13 +533,7 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
           icon
           label="Session options"
           items={[
-            {
-              label: 'Rename…',
-              onSelect: () => {
-                const name = window.prompt('Session name', session.name)?.trim();
-                if (name && name !== session.name) updateSession.mutate({ id: session.id, name }, { onError: (err) => setNotice({ text: err.message, bad: true }) });
-              },
-            },
+            { label: 'Edit session…', onSelect: onEdit },
             {
               label: 'Delete session…',
               danger: true,
@@ -542,6 +543,16 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
             },
           ]}
         />
+        {(strategy || session.description) && (
+          <span className="flex max-w-[260px] items-center gap-1.5 truncate text-[12px] text-muted" title={session.description ?? undefined}>
+            {strategy ? (
+              <Link to="/playbook/$playId" params={{ playId: strategy.id }} className="truncate rounded-full border border-border px-2 py-0.5 text-secondary hover:bg-hover">
+                {strategy.title}
+              </Link>
+            ) : null}
+            {session.description && <span className="truncate">{session.description}</span>}
+          </span>
+        )}
         <div role="tablist" aria-label="Timeframe" className="inline-flex rounded-md bg-tabs-track p-[3px]">
           {tfs.map((t) => (
             <button
@@ -753,22 +764,22 @@ function JumpTo({ initial, min, max, disabled, onJump }: { initial: DateTime | n
 /** Name, instrument, start time, balance and journal account for a new session. */
 function NewSessionForm({ onCreated }: { onCreated: (s: BacktestSession) => void }) {
   const create = useCreateSession();
-  const { data: accounts } = useAccounts();
   const [instrument, setInstrument] = useState('NQ');
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [playId, setPlayId] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('09:00');
   const [balance, setBalance] = useState('50000');
-  const existing = accounts?.find((a) => a.name.toLowerCase() === 'backtesting');
-  const [accountId, setAccountId] = useState<string>('');
   const inst = findInstrument(instrument)!;
   const submit = () => {
     const zone = currentZone();
     create.mutate(
       {
         name: name.trim() || `${inst.id} practice`,
+        description: description.trim() || null,
+        playId: playId || null,
         instrument,
-        accountId: accountId || existing?.id || null,
         startBalance: Math.max(0, Number(balance) || 0),
         cursor: date ? DateTime.fromISO(`${date}T${time}`, { zone }).toSeconds() : null,
         tf: inst.kind === 'futures' ? '1m' : '5m',
@@ -789,6 +800,11 @@ function NewSessionForm({ onCreated }: { onCreated: (s: BacktestSession) => void
         <span className="text-[13px] font-medium">Name</span>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={`${inst.id} practice`} maxLength={60} className={field} />
       </label>
+      <label className="block space-y-1.5">
+        <span className="text-[13px] font-medium">Description</span>
+        <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} placeholder="e.g. London open FVGs, A+ setups only" className={field} />
+      </label>
+      <StrategyField value={playId} onChange={setPlayId} />
       <label className="block space-y-1.5">
         <span className="text-[13px] font-medium">Instrument</span>
         <Select aria-label="Instrument" value={instrument} onChange={(e) => setInstrument(e.target.value)} className="w-full">
@@ -815,22 +831,124 @@ function NewSessionForm({ onCreated }: { onCreated: (s: BacktestSession) => void
           <span className="text-[13px] font-medium">Starting balance ($)</span>
           <input type="number" min={0} value={balance} onChange={(e) => setBalance(e.target.value)} className={cn(field, 'font-mono')} />
         </label>
-        <label className="block space-y-1.5">
-          <span className="text-[13px] font-medium">Journal account</span>
-          <Select aria-label="Journal account" value={accountId || existing?.id || ''} onChange={(e) => setAccountId(e.target.value)} className="w-full">
-            {!existing && <option value="">Backtesting (new)</option>}
-            {(accounts ?? []).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
-        </label>
       </div>
       {create.error && <p className="text-[13px] text-loss">{create.error.message}</p>}
       <div className="flex justify-end">
         <Button type="submit" variant="primary" disabled={create.isPending}>
           Start session
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Pick the Playbook Play (strategy) the session practises, or create one by name without leaving the form. */
+function StrategyField({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const { data: plays } = usePlays();
+  const qc = useQueryClient();
+  const [creating, setCreating] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const live = (plays ?? []).filter((p) => !p.archived || p.id === value);
+  const add = async () => {
+    const title = creating?.trim();
+    if (!title) return;
+    try {
+      const play = await api.post<{ id: string }>('/plays', { title });
+      await qc.invalidateQueries({ queryKey: ['plays'] });
+      onChange(play.id);
+      setCreating(null);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[13px] font-medium">Strategy</span>
+        {creating === null && (
+          <button type="button" onClick={() => setCreating('')} className="link-ember text-[13px]">
+            Create new strategy
+          </button>
+        )}
+      </div>
+      {creating !== null ? (
+        <div className="flex gap-2">
+          <input
+            autoFocus
+            value={creating}
+            onChange={(e) => setCreating(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void add();
+              }
+            }}
+            maxLength={120}
+            placeholder="Name, e.g. FVG continuation"
+            aria-label="New strategy name"
+            className="h-10 min-w-0 flex-1 rounded-md border border-border bg-card px-3 text-sm"
+          />
+          <Button variant="primary" onClick={() => void add()} disabled={!creating.trim()}>
+            Add
+          </Button>
+          <Button onClick={() => setCreating(null)}>Cancel</Button>
+        </div>
+      ) : (
+        <Select aria-label="Strategy" value={value} onChange={(e) => onChange(e.target.value)} className="w-full">
+          <option value="">None</option>
+          {live.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </Select>
+      )}
+      {error && <p className="text-[12px] text-loss">{error}</p>}
+      <p className="text-[12px] text-muted">
+        {value ? (
+          'Trades from this session go to your journal under this Play, so they count towards its stats. Add its criteria in the Playbook.'
+        ) : (
+          <>
+            <span className="font-medium text-secondary">No strategy selected</span> · Add one to track consistency and improve results
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/** Change a session's name, description and strategy (its instrument and account are fixed). */
+function EditSessionForm({ session, onDone }: { session: BacktestSession; onDone: () => void }) {
+  const update = useUpdateSession();
+  const [name, setName] = useState(session.name);
+  const [description, setDescription] = useState(session.description ?? '');
+  const [playId, setPlayId] = useState(session.playId ?? '');
+  const field = 'h-10 w-full rounded-md border border-border bg-card px-3 text-sm';
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        update.mutate({ id: session.id, name: name.trim(), description: description.trim() || null, playId: playId || null }, { onSuccess: onDone });
+      }}
+    >
+      <label className="block space-y-1.5">
+        <span className="text-[13px] font-medium">Name</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className={field} />
+      </label>
+      <label className="block space-y-1.5">
+        <span className="text-[13px] font-medium">Description</span>
+        <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} placeholder="e.g. London open FVGs, A+ setups only" className={field} />
+      </label>
+      <StrategyField value={playId} onChange={setPlayId} />
+      <p className="text-[12px] text-muted">A new strategy applies to trades saved from now on; trades already in the journal keep theirs.</p>
+      {update.error && <p className="text-[13px] text-loss">{update.error.message}</p>}
+      <div className="flex justify-end gap-2">
+        <Button onClick={onDone}>Cancel</Button>
+        <Button type="submit" variant="primary" disabled={update.isPending || !name.trim()}>
+          Save
         </Button>
       </div>
     </form>
