@@ -39,6 +39,14 @@ const decimals = (tick: number) => Math.max(0, (String(tick).split('.')[1] ?? ''
 
 const MAGNET_KEY = 'tc-backtest-magnet';
 
+/** Fib retracement icon (lucide has none): three levels and the diagonal between the two points. */
+const FibIcon = (({ size = 16, strokeWidth = 1.75 }: { size?: number; strokeWidth?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" aria-hidden>
+    <path d="M3 5h18M3 12h18M3 19h18" />
+    <path d="M5 19 19 5" strokeDasharray="2 3" />
+  </svg>
+)) as unknown as LucideIcon;
+
 /** A trading level on the chart: a position's entry, stop or target, or a working order. */
 export interface ChartPriceLine {
   price: number;
@@ -409,6 +417,7 @@ export function ReplayChart({
         <ToolButton icon={ArrowRightFromLine} label="Horizontal ray (Alt+J)" active={tool === 'hray'} onClick={() => setTool(tool === 'hray' ? 'cursor' : 'hray')} />
         <ToolButton icon={Minus} label="Horizontal line (Alt+H)" active={tool === 'hline'} onClick={() => setTool(tool === 'hline' ? 'cursor' : 'hline')} />
         <ToolButton icon={RectangleHorizontal} label="Rectangle (Alt+Shift+R)" active={tool === 'rect'} onClick={() => setTool(tool === 'rect' ? 'cursor' : 'rect')} />
+        <ToolButton icon={FibIcon} label="Fib retracement" active={tool === 'fib'} onClick={() => setTool(tool === 'fib' ? 'cursor' : 'fib')} />
         <ToolButton icon={TrendingUp} label="Long position" active={tool === 'long'} onClick={() => setTool(tool === 'long' ? 'cursor' : 'long')} />
         <ToolButton icon={TrendingDown} label="Short position" active={tool === 'short'} onClick={() => setTool(tool === 'short' ? 'cursor' : 'short')} />
         <div className="my-1 w-6 border-t border-border" />

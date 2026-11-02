@@ -84,6 +84,9 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   width handles; size from a dollar risk on the chosen contract; shows "Target hit"/"Stop hit" as the replay reaches
   them; right-click "Place order from this" puts a limit or stop order with that bracket). Saved with the session's
   lines (`shapes` in the drawings doc). Rectangle look and RR risk carry over to the next one.
+- **Fib retracement:** TradingView-style (level 1 at the first point, 0 at the second; 24 levels with value, colour
+  and on/off; trend line, level line, extend, one colour, background, reverse, prices, levels as values or %, label
+  position, text, font size). New Fibs take the last levels and look (`fibLast`).
 - **Data bought (1 Nov 2026):** NQ 1-second, Nov 2025 to Oct 2026, US$48.33 from Databento
   (`market-data futures --buy`; raw files cached in market-data/raw so they're never paid for twice). ES and GC were
   left out for now and removed from the instrument list. Crypto stays (free).

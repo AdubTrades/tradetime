@@ -56,6 +56,8 @@ export interface LineTools {
   /** How the last long/short tool was sized, so the next one starts the same. */
   riskMode?: 'usd' | 'percent' | null;
   riskPct?: number | null;
+  /** The levels and look of the next Fib retracement (the last one set). */
+  fibLast?: { levels: FibLevel[]; style: FibStyle } | null;
 }
 
 export const DEFAULT_LINE_STYLE: LineStyle = { color: '#2962ff', width: 1, dash: 'solid', priceLabel: true };
@@ -120,7 +122,82 @@ export interface RiskRewardDrawing {
 export const riskDollars = (rr: Pick<RiskRewardDrawing, 'riskMode' | 'riskUsd' | 'riskPct'>, balance: number) =>
   rr.riskMode === 'percent' ? (balance * (rr.riskPct ?? 1)) / 100 : rr.riskUsd;
 
-export type Shape = RectDrawing | RiskRewardDrawing;
+// ---------- Fib retracement ----------
+
+export interface FibLevel {
+  value: number;
+  color: string;
+  on: boolean;
+}
+
+export interface FibStyle {
+  /** The diagonal from the first point to the second. */
+  trendLine: boolean;
+  trendColor: string;
+  lineWidth: 1 | 2 | 3 | 4;
+  lineDash: LineDash;
+  extend: 'none' | 'left' | 'right' | 'both';
+  /** One colour for every level (null: each level's own). */
+  oneColor: string | null;
+  /** Shade between neighbouring levels. */
+  background: boolean;
+  bgOpacity: number;
+  /** Swap the ends: 0 at the first point instead of the second. */
+  reverse: boolean;
+  showPrices: boolean;
+  /** Level labels as values (0.5) or percentages (50%), or hidden. */
+  showLevels: 'values' | 'percent' | null;
+  labelAlign: 'left' | 'right';
+  labelPlace: 'top' | 'middle' | 'bottom';
+  fontSize: number;
+}
+
+/** TradingView's Fib retracement: level 1 at the first point, 0 at the second (unless reversed). */
+export interface FibDrawing {
+  id: string;
+  kind: 'fib';
+  t1: number;
+  t2: number;
+  p1: number;
+  p2: number;
+  levels: FibLevel[];
+  style: FibStyle;
+  /** Optional text on the middle of the tool. */
+  text: string;
+  hiddenOn: Timeframe[];
+}
+
+/** Price of a level: 0 at the second point and 1 at the first (the other way round when reversed). */
+export const fibPrice = (f: Pick<FibDrawing, 'p1' | 'p2' | 'style'>, value: number) => {
+  const [zero, one] = f.style.reverse ? [f.p1, f.p2] : [f.p2, f.p1];
+  return zero + (one - zero) * value;
+};
+
+/** TradingView's 24 levels; 0, 0.5 and 1 on to start with. */
+export const DEFAULT_FIB_LEVELS: FibLevel[] = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618, 2.618, 3.618, 4.236, 1.272, 1.414, 2.272, 2.414, 2, 3, 3.272, 3.414, 4, 4.272, 4.414, 4.618, 4.764].map((value) => ({
+  value,
+  color: value === 0.5 ? '#f23645' : value === 0 || value === 1 ? '#2962ff' : '#787b86',
+  on: value === 0 || value === 0.5 || value === 1,
+}));
+
+export const DEFAULT_FIB_STYLE: FibStyle = {
+  trendLine: false,
+  trendColor: '#787b86',
+  lineWidth: 1,
+  lineDash: 'solid',
+  extend: 'none',
+  oneColor: null,
+  background: false,
+  bgOpacity: 0.12,
+  reverse: false,
+  showPrices: false,
+  showLevels: 'values',
+  labelAlign: 'left',
+  labelPlace: 'middle',
+  fontSize: 12,
+};
+
+export type Shape = RectDrawing | RiskRewardDrawing | FibDrawing;
 
 export interface Drawings {
   lines: HorizontalLine[];

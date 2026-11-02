@@ -72,8 +72,8 @@ export function LineSettings({
       ref={panel}
       role="dialog"
       aria-label="Line settings"
-      className="fixed z-50 flex max-h-[calc(100vh-24px)] w-[380px] flex-col rounded-lg border border-border bg-card text-text shadow-menu"
-      style={pos ? { left: pos.x, top: pos.y } : { left: 'calc(50% - 190px)', top: 96 }}
+      className="fixed z-50 flex w-[380px] flex-col rounded-lg border border-border bg-card text-text shadow-menu"
+      style={{ left: pos ? pos.x : 'calc(50% - 190px)', top: pos ? pos.y : 96, maxHeight: `calc(100vh - ${(pos ? pos.y : 96) + 12}px)` }}
       onKeyDown={(e) => e.stopPropagation()}
     >
       <header className="flex cursor-move items-center justify-between border-b border-border px-4 py-3 select-none" onPointerDown={startDrag}>
@@ -101,7 +101,7 @@ export function LineSettings({
           ]}
         />
       </div>
-      <div className="min-h-[200px] space-y-4 px-4 py-4 text-[13px] overflow-y-auto">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 text-[13px]">
         {tab === 'style' && (
           <>
             <Row label="Line">

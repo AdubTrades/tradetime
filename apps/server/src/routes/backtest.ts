@@ -40,7 +40,25 @@ const rectStyle = z.object({
   extendRight: z.boolean(),
 });
 const tfs = z.array(z.enum(TIMEFRAMES as [string, ...string[]]));
+const fibLevels = z.array(z.object({ value: z.number().finite().min(-100).max(100), color, on: z.boolean() })).max(40);
+const fibStyle = z.object({
+  trendLine: z.boolean(),
+  trendColor: color,
+  lineWidth: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  lineDash: z.enum(['solid', 'dashed', 'dotted']),
+  extend: z.enum(['none', 'left', 'right', 'both']),
+  oneColor: color.nullable(),
+  background: z.boolean(),
+  bgOpacity: z.number().min(0).max(1),
+  reverse: z.boolean(),
+  showPrices: z.boolean(),
+  showLevels: z.enum(['values', 'percent']).nullable(),
+  labelAlign: z.enum(['left', 'right']),
+  labelPlace: z.enum(['top', 'middle', 'bottom']),
+  fontSize: z.number().int().min(8).max(32),
+});
 const shape = z.discriminatedUnion('kind', [
+  z.object({ id: z.string().min(1).max(40), kind: z.literal('fib'), t1: z.number().int(), t2: z.number().int(), p1: z.number().finite(), p2: z.number().finite(), levels: fibLevels, style: fibStyle, text: z.string().max(200), hiddenOn: tfs }),
   z.object({
     id: z.string().min(1).max(40),
     kind: z.literal('rect'),
@@ -75,6 +93,7 @@ const lineToolsSchema = z.object({
   riskUsd: z.number().min(0).max(1e9).nullable().optional(),
   riskMode: z.enum(['usd', 'percent']).nullable().optional(),
   riskPct: z.number().min(0).max(100).nullable().optional(),
+  fibLast: z.object({ levels: fibLevels, style: fibStyle }).nullable().optional(),
 });
 
 const num = z.number().finite();

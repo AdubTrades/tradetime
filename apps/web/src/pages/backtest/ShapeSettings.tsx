@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { riskDollars, type BacktestInstrument, type LineDash, type RectDrawing, type RiskRewardDrawing, type Shape, type SimSpec, type Timeframe } from '@tc/domain';
+import { riskDollars, type BacktestInstrument, type FibDrawing, type LineDash, type RectDrawing, type RiskRewardDrawing, type Shape, type SimSpec, type Timeframe } from '@tc/domain';
 import { Select } from '../../components/Select';
 import { Button, cn, SegmentedTabs } from '../../components/ui';
 import { ColorPicker } from './LineSettings';
@@ -32,7 +32,8 @@ export function ShapeSettings({
   onPlaceOrder?: () => void;
 }) {
   const rect = shape.kind === 'rect';
-  const [tab, setTab] = useState<Tab>(rect ? 'style' : 'inputs');
+  const fib = shape.kind === 'fib';
+  const [tab, setTab] = useState<Tab>(rect || fib ? 'style' : 'inputs');
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const panel = useRef<HTMLDivElement>(null);
 
@@ -55,17 +56,23 @@ export function ShapeSettings({
     window.addEventListener('pointerup', up);
   };
 
-  const tabs: { value: Tab; label: string }[] = rect
+  const tabs: { value: Tab; label: string }[] = fib
     ? [
         { value: 'style', label: 'Style' },
-        { value: 'text', label: 'Text' },
         { value: 'inputs', label: 'Coordinates' },
         { value: 'visibility', label: 'Visibility' },
       ]
-    : [
-        { value: 'inputs', label: 'Inputs' },
-        { value: 'visibility', label: 'Visibility' },
-      ];
+    : rect
+      ? [
+          { value: 'style', label: 'Style' },
+          { value: 'text', label: 'Text' },
+          { value: 'inputs', label: 'Coordinates' },
+          { value: 'visibility', label: 'Visibility' },
+        ]
+      : [
+          { value: 'inputs', label: 'Inputs' },
+          { value: 'visibility', label: 'Visibility' },
+        ];
 
   // Floats over the whole page (on screen, not inside the chart frame), so nothing can cover or clip it. In full
   // screen, only the full-screen element is visible, so it goes in there.
@@ -74,12 +81,12 @@ export function ShapeSettings({
       ref={panel}
       role="dialog"
       aria-label="Drawing settings"
-      className="fixed z-50 flex max-h-[calc(100vh-24px)] w-[380px] flex-col rounded-lg border border-border bg-card text-text shadow-menu"
-      style={pos ? { left: pos.x, top: pos.y } : { left: 'calc(50% - 190px)', top: 96 }}
+      className="fixed z-50 flex w-[380px] flex-col rounded-lg border border-border bg-card text-text shadow-menu"
+      style={{ left: pos ? pos.x : 'calc(50% - 190px)', top: pos ? pos.y : 96, maxHeight: `calc(100vh - ${(pos ? pos.y : 96) + 12}px)` }}
       onKeyDown={(e) => e.stopPropagation()}
     >
       <header className="flex cursor-move items-center justify-between border-b border-border px-4 py-3 select-none" onPointerDown={startDrag}>
-        <h2 className="text-[15px] font-semibold">{rect ? 'Rectangle' : shape.kind === 'long' ? 'Long position' : 'Short position'}</h2>
+        <h2 className="text-[15px] font-semibold">{rect ? 'Rectangle' : fib ? 'Fib retracement' : shape.kind === 'long' ? 'Long position' : 'Short position'}</h2>
         <button
           type="button"
           onClick={onCancel}
@@ -93,8 +100,10 @@ export function ShapeSettings({
       <div className="px-4 pt-3">
         <SegmentedTabs label="Drawing settings" value={tab} onChange={setTab} options={tabs} />
       </div>
-      <div className="min-h-[180px] space-y-4 px-4 py-4 text-[13px] overflow-y-auto">
-        {rect ? (
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 text-[13px]">
+        {shape.kind === 'fib' ? (
+          <FibFields shape={shape} tab={tab} tick={inst.tickSize} onChange={onChange} />
+        ) : shape.kind === 'rect' ? (
           <RectFields shape={shape} tab={tab} tick={inst.tickSize} onChange={onChange} />
         ) : (
           tab === 'inputs' && <RiskRewardFields shape={shape} inst={inst} specs={specs} balance={balance} onChange={onChange} />
@@ -356,6 +365,159 @@ function RiskRewardFields({
         {mode === 'percent' && `${shape.riskPct ?? 1}% of ${usd(balance)} = ${usd(riskDollars(shape, balance))} · `}
         Size {qty} · {risk > 0 ? formatR(reward / risk) : '–'}
       </p>
+    </>
+  );
+}
+
+/** A small colour swatch that opens the system colour picker. */
+function Swatch({ value, label, onChange }: { value: string; label: string; onChange: (c: string) => void }) {
+  return (
+    <label className="relative inline-flex h-7 w-7 shrink-0 cursor-pointer overflow-hidden rounded-md border border-border" style={{ background: value }} title={label}>
+      <input type="color" aria-label={label} value={value.slice(0, 7)} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" />
+    </label>
+  );
+}
+
+function FibFields({ shape, tab, tick, onChange }: { shape: FibDrawing; tab: Tab; tick: number; onChange: (s: Shape) => void }) {
+  const st = shape.style;
+  const style = (patch: Partial<FibDrawing['style']>) => onChange({ ...shape, style: { ...st, ...patch } });
+  const level = (i: number, patch: Partial<FibDrawing['levels'][number]>) => onChange({ ...shape, levels: shape.levels.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
+  const input = 'h-8 rounded-md border border-border bg-card px-2 font-mono text-[13px]';
+  if (tab === 'inputs')
+    return (
+      <>
+        <Row label="Point 1">
+          <PriceInput label="First point price" tick={tick} value={shape.p1} onChange={(p1) => onChange({ ...shape, p1 })} />
+        </Row>
+        <Row label="Point 2">
+          <PriceInput label="Second point price" tick={tick} value={shape.p2} onChange={(p2) => onChange({ ...shape, p2 })} />
+        </Row>
+        <p className="text-[12px] text-muted">Level 1 is at point 1 and 0 at point 2{st.reverse ? ' (reversed: the other way round)' : ''}.</p>
+      </>
+    );
+  if (tab !== 'style') return null;
+  return (
+    <>
+      <Row label="Trend line">
+        <Check checked={st.trendLine} onChange={(trendLine) => style({ trendLine })}>
+          {''}
+        </Check>
+        <Swatch value={st.trendColor} label="Trend line colour" onChange={(trendColor) => style({ trendColor })} />
+      </Row>
+      <Row label="Levels line">
+        <div className="flex gap-1">
+          {([1, 2, 3, 4] as const).map((w) => (
+            <button
+              key={w}
+              type="button"
+              aria-label={`${w}px`}
+              aria-pressed={st.lineWidth === w}
+              onClick={() => style({ lineWidth: w })}
+              className={cn('flex h-8 w-9 items-center justify-center rounded-md border', st.lineWidth === w ? 'border-text' : 'border-border hover:bg-hover')}
+            >
+              <span className="w-4 rounded-full bg-text" style={{ height: w }} />
+            </button>
+          ))}
+        </div>
+        <Select size="sm" aria-label="Level line style" value={st.lineDash} onChange={(e) => style({ lineDash: e.target.value as LineDash })} className="w-24">
+          <option value="solid">Solid</option>
+          <option value="dashed">Dashed</option>
+          <option value="dotted">Dotted</option>
+        </Select>
+      </Row>
+      <Row label="Extend">
+        <Select size="sm" aria-label="Extend" value={st.extend} onChange={(e) => style({ extend: e.target.value as FibDrawing['style']['extend'] })} className="w-36">
+          <option value="none">Don’t extend</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+          <option value="both">Both</option>
+        </Select>
+      </Row>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+        {shape.levels.map((l, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <input type="checkbox" aria-label={`Show level ${l.value}`} checked={l.on} onChange={(e) => level(i, { on: e.target.checked })} className="h-4 w-4 accent-[var(--text)]" />
+            <input
+              type="number"
+              aria-label="Level value"
+              step={0.001}
+              value={l.value}
+              onChange={(e) => e.target.value !== '' && Number.isFinite(Number(e.target.value)) && level(i, { value: Number(e.target.value) })}
+              className={cn(input, 'w-20 min-w-0', !l.on && 'text-muted')}
+            />
+            <Swatch value={l.color} label={`Level ${l.value} colour`} onChange={(color) => level(i, { color })} />
+          </div>
+        ))}
+      </div>
+      <Row label="One colour">
+        <Check checked={st.oneColor !== null} onChange={(on) => style({ oneColor: on ? (shape.levels.find((l) => l.on)?.color ?? '#2962ff') : null })}>
+          {''}
+        </Check>
+        {st.oneColor !== null && <Swatch value={st.oneColor} label="Colour for every level" onChange={(oneColor) => style({ oneColor })} />}
+      </Row>
+      <Row label="Background">
+        <Check checked={st.background} onChange={(background) => style({ background })}>
+          {''}
+        </Check>
+        {st.background && (
+          <input
+            type="range"
+            min={0}
+            max={60}
+            value={Math.round(st.bgOpacity * 100)}
+            onChange={(e) => style({ bgOpacity: Number(e.target.value) / 100 })}
+            aria-label="Background opacity"
+            className="flex-1"
+          />
+        )}
+      </Row>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        <Check checked={st.reverse} onChange={(reverse) => style({ reverse })}>
+          Reverse
+        </Check>
+        <Check checked={st.showPrices} onChange={(showPrices) => style({ showPrices })}>
+          Prices
+        </Check>
+      </div>
+      <Row label="Levels">
+        <Check checked={st.showLevels !== null} onChange={(on) => style({ showLevels: on ? 'values' : null })}>
+          {''}
+        </Check>
+        <Select
+          size="sm"
+          aria-label="Show levels as"
+          value={st.showLevels ?? 'values'}
+          onChange={(e) => style({ showLevels: e.target.value as 'values' | 'percent' })}
+          className="w-28"
+          disabled={st.showLevels === null}
+        >
+          <option value="values">Values</option>
+          <option value="percent">Percent</option>
+        </Select>
+      </Row>
+      <Row label="Labels">
+        <Select size="sm" aria-label="Label side" value={st.labelAlign} onChange={(e) => style({ labelAlign: e.target.value as 'left' | 'right' })} className="w-24">
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+        </Select>
+        <Select size="sm" aria-label="Label position" value={st.labelPlace} onChange={(e) => style({ labelPlace: e.target.value as 'top' | 'middle' | 'bottom' })} className="w-24">
+          <option value="top">Top</option>
+          <option value="middle">Middle</option>
+          <option value="bottom">Bottom</option>
+        </Select>
+      </Row>
+      <Row label="Text">
+        <input value={shape.text} onChange={(e) => onChange({ ...shape, text: e.target.value })} placeholder="Add text" aria-label="Text" maxLength={200} className={cn(input, 'flex-1 font-sans')} />
+      </Row>
+      <Row label="Font size">
+        <Select size="sm" aria-label="Font size" value={String(st.fontSize)} onChange={(e) => style({ fontSize: Number(e.target.value) })} className="w-20">
+          {[10, 11, 12, 14, 16, 20, 24].map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </Select>
+      </Row>
     </>
   );
 }

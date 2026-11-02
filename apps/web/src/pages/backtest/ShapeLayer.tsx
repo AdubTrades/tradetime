@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { IChartApi, ISeriesApi } from 'lightweight-charts';
 import {
   DEFAULT_LINE_LABEL,
+  DEFAULT_FIB_LEVELS,
+  DEFAULT_FIB_STYLE,
   DEFAULT_RECT_STYLE,
   newId,
   riskDollars,
@@ -173,7 +175,16 @@ export function ShapeLayer({
       st.current.onShapesChange(list.some((s) => s.id === shape.id) ? list.map((s) => (s.id === shape.id ? shape : s)) : [...list, shape]);
     };
     // A rectangle being drawn by clicking two corners.
-    let pending: { id: string; t1: number; p1: number } | null = null;
+    let pending: { id: string; kind: 'rect' | 'fib'; t1: number; p1: number } | null = null;
+    /** A rectangle or Fib from two points, in the look of the last one. */
+    const twoPoint = (kind: 'rect' | 'fib', id: string, t1: number, p1: number, t2: number, p2: number): Shape => {
+      const tools = st.current.tools;
+      if (kind === 'fib') {
+        const last = tools.fibLast;
+        return { id, kind, t1, p1, t2, p2, levels: last?.levels ?? DEFAULT_FIB_LEVELS, style: last?.style ?? DEFAULT_FIB_STYLE, text: '', hiddenOn: [] };
+      }
+      return { id, kind, t1, p1, t2, p2, style: tools.rectLast ?? DEFAULT_RECT_STYLE, label: { ...DEFAULT_LINE_LABEL, align: 'left', place: 'above' }, hiddenOn: [] };
+    };
 
     const follow = (onMove: (x: number, y: number) => Shape | null) => {
       let latest: Shape | null = null;
@@ -206,38 +217,21 @@ export function ShapeLayer({
       const s = st.current;
       const c = coords();
 
-      if (s.tool === 'rect' || pending) {
+      if (s.tool === 'rect' || s.tool === 'fib' || pending) {
         const price = priceAt(x, y);
         if (price === null) return;
         stop(e);
         const time = c.timeAt(logicalAt(x));
         if (pending) {
-          commit({
-            id: pending.id,
-            kind: 'rect',
-            t1: pending.t1,
-            p1: pending.p1,
-            t2: time,
-            p2: price,
-            style: s.tools.rectLast ?? DEFAULT_RECT_STYLE,
-            label: { ...DEFAULT_LINE_LABEL, align: 'left', place: 'above' },
-            hiddenOn: [],
-          });
+          commit(twoPoint(pending.kind, pending.id, pending.t1, pending.p1, time, price));
           s.setSelected(pending.id);
           pending = null;
           s.setTool('cursor');
           return;
         }
         const id = newId();
-        const base = {
-          id,
-          kind: 'rect' as const,
-          t1: time,
-          p1: price,
-          style: s.tools.rectLast ?? DEFAULT_RECT_STYLE,
-          label: { ...DEFAULT_LINE_LABEL, align: 'left' as const, place: 'above' as const },
-          hiddenOn: [] as Timeframe[],
-        };
+        const kind = s.tool === 'fib' ? 'fib' : 'rect';
+        const base = { id, t1: time, p1: price };
         let moved = false;
         drawing.current = true;
         const startX = x;
@@ -248,7 +242,7 @@ export function ShapeLayer({
           if (Math.hypot(p.x - startX, p.y - startY) > 4) moved = true;
           const p2 = priceAt(p.x, p.y);
           if (p2 === null) return;
-          prim.preview = { ...base, t2: coords().timeAt(logicalAt(p.x)), p2 };
+          prim.preview = twoPoint(kind, id, base.t1, base.p1, coords().timeAt(logicalAt(p.x)), p2);
           prim.update();
         };
         const up = (ev: PointerEvent) => {
@@ -258,12 +252,12 @@ export function ShapeLayer({
           const p = local(ev);
           const p2 = priceAt(p.x, p.y);
           if (moved && p2 !== null) {
-            commit({ ...base, t2: coords().timeAt(logicalAt(p.x)), p2 });
+            commit(twoPoint(kind, id, base.t1, base.p1, coords().timeAt(logicalAt(p.x)), p2));
             st.current.setSelected(id);
             st.current.setTool('cursor');
           } else {
             // A click without dragging: the next click places the opposite corner.
-            pending = { id, t1: base.t1, p1: base.p1 };
+            pending = { id, kind, t1: base.t1, p1: base.p1 };
           }
         };
         window.addEventListener('pointermove', move);
@@ -321,7 +315,7 @@ export function ShapeLayer({
       const at = priceAt(mx, my);
       const shift = (p: number) => round(p + dpx);
       const t = (l: number) => c.timeAt(l);
-      if (s0.kind === 'rect') {
+      if (s0.kind === 'rect' || s0.kind === 'fib') {
         if (part === 'body') return { ...s0, t1: t(lt1 + dl), t2: t(lt2 + dl), p1: shift(s0.p1), p2: shift(s0.p2) };
         if (at === null) return null;
         const tm = t(logicalAt(mx));
@@ -353,17 +347,7 @@ export function ShapeLayer({
         const p2 = priceAt(x, y);
         if (p2 !== null) {
           const s = st.current;
-          prim.preview = {
-            id: pending.id,
-            kind: 'rect',
-            t1: pending.t1,
-            p1: pending.p1,
-            t2: coords().timeAt(logicalAt(x)),
-            p2,
-            style: s.tools.rectLast ?? DEFAULT_RECT_STYLE,
-            label: DEFAULT_LINE_LABEL,
-            hiddenOn: [],
-          };
+          prim.preview = twoPoint(pending.kind, pending.id, pending.t1, pending.p1, coords().timeAt(logicalAt(x)), p2);
           prim.update();
         }
         return;
@@ -446,7 +430,7 @@ export function ShapeLayer({
           style={{ left: Math.min(menu.x, host.clientWidth - 220), top: Math.min(menu.y, host.clientHeight - 140) }}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          {menuShape.kind !== 'rect' && onPlaceOrder && (
+          {(menuShape.kind === 'long' || menuShape.kind === 'short') && onPlaceOrder && (
             <button
               type="button"
               role="menuitem"
@@ -495,6 +479,7 @@ export function ShapeLayer({
           onChange={update}
           onOk={() => {
             if (current.kind === 'rect') onToolsChange({ ...tools, rectLast: current.style });
+            else if (current.kind === 'fib') onToolsChange({ ...tools, fibLast: { levels: current.levels, style: current.style } });
             else onToolsChange({ ...tools, riskMode: current.riskMode ?? 'usd', riskUsd: current.riskUsd, riskPct: current.riskPct ?? 1 });
             setEditing(null);
           }}
@@ -502,7 +487,7 @@ export function ShapeLayer({
             update(editing);
             setEditing(null);
           }}
-          onPlaceOrder={current.kind !== 'rect' && onPlaceOrder ? () => onPlaceOrder(current) : undefined}
+          onPlaceOrder={(current.kind === 'long' || current.kind === 'short') && onPlaceOrder ? () => onPlaceOrder(current) : undefined}
         />
       )}
     </>

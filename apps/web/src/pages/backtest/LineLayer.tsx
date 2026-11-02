@@ -17,7 +17,7 @@ import { LinesPrimitive } from './linesPrimitive';
 import { LineSettings } from './LineSettings';
 import { claim } from './ShapeLayer';
 
-export type DrawTool = 'cursor' | 'hray' | 'hline' | 'rect' | 'long' | 'short';
+export type DrawTool = 'cursor' | 'hray' | 'hline' | 'rect' | 'fib' | 'long' | 'short';
 
 const MAGNET_PX = 30;
 const decimals = (tick: number) => Math.max(0, (String(tick).split('.')[1] ?? '').length);

@@ -1,5 +1,5 @@
 import type { IChartApi, IPrimitivePaneRenderer, IPrimitivePaneView, ISeriesApi, ISeriesPrimitive, ISeriesPrimitiveAxisView, SeriesAttachedParameter, Time } from 'lightweight-charts';
-import type { Bar, RectDrawing, RiskRewardDrawing, Shape, Timeframe } from '@tc/domain';
+import { fibPrice, type Bar, type FibDrawing, type RectDrawing, type RiskRewardDrawing, type Shape, type Timeframe } from '@tc/domain';
 import { chartCoords, type ChartCoords } from './chartCoords';
 
 type DrawTarget = Parameters<IPrimitivePaneRenderer['draw']>[0];
@@ -73,15 +73,22 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
     const xb = x(s.t2);
     if (xa === null || xb === null) return null;
     const y = (p: number) => this.series!.priceToCoordinate(p);
-    const prices: Record<string, number> = s.kind === 'rect' ? { p1: s.p1, p2: s.p2 } : { entry: s.entry, stop: s.stop, target: s.target };
+    const fibOn = s.kind === 'fib' ? s.levels.filter((l) => l.on).map((l) => fibPrice(s, l.value)) : [];
+    const prices: Record<string, number> =
+      s.kind === 'rect'
+        ? { p1: s.p1, p2: s.p2 }
+        : s.kind === 'fib'
+          ? { p1: s.p1, p2: s.p2, lo: Math.min(s.p1, s.p2, ...fibOn), hi: Math.max(s.p1, s.p2, ...fibOn) }
+          : { entry: s.entry, stop: s.stop, target: s.target };
     const ys: Record<string, number> = {};
     for (const [k, p] of Object.entries(prices)) {
       const v = y(p);
       if (v === null) return null;
       ys[k] = v;
     }
-    const extend = s.kind === 'rect' && s.style.extendRight;
-    return { x1: Math.min(xa, xb), x2: extend ? ts.width() : Math.max(xa, xb), ys };
+    const extendRight = (s.kind === 'rect' && s.style.extendRight) || (s.kind === 'fib' && (s.style.extend === 'right' || s.style.extend === 'both'));
+    const extendLeft = s.kind === 'fib' && (s.style.extend === 'left' || s.style.extend === 'both');
+    return { x1: extendLeft ? 0 : Math.min(xa, xb), x2: extendRight ? ts.width() : Math.max(xa, xb), ys };
   }
 
   /** The shape and handle under a point, topmost first. */
@@ -94,7 +101,14 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
       const ts = this.chart!.timeScale();
       const xt1 = ts.logicalToCoordinate(c.logicalOf(s.t1) as never)!;
       const xt2 = ts.logicalToCoordinate(c.logicalOf(s.t2) as never)!;
-      if (s.kind === 'rect') {
+      if (s.kind === 'fib') {
+        if (s.id === this.selected) {
+          if (near(xt1, b.ys.p1!)) return { shape: s, part: 'a' };
+          if (near(xt2, b.ys.p2!)) return { shape: s, part: 'b' };
+        }
+        // Screen y grows downwards: "hi" (the highest price) is the top.
+        if (x >= Math.min(xt1, xt2) - 3 && x <= Math.max(xt1, xt2) + 3 && y >= b.ys.hi! - 3 && y <= b.ys.lo! + 3) return { shape: s, part: 'body' };
+      } else if (s.kind === 'rect') {
         const corners: [ShapePart, number, number][] = [
           ['a', xt1, b.ys.p1!],
           ['b', xt2, b.ys.p2!],
@@ -133,7 +147,9 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
       visible: () => true,
       tickVisible: () => true,
     });
-    return this.list.filter((s): s is RiskRewardDrawing => s.kind !== 'rect' && !!this.box(s, c)).flatMap((s) => [tag(s.stop, this.colours.loss), tag(s.target, this.colours.profit)]);
+    return this.list
+      .filter((s): s is RiskRewardDrawing => (s.kind === 'long' || s.kind === 'short') && !!this.box(s, c))
+      .flatMap((s) => [tag(s.stop, this.colours.loss), tag(s.target, this.colours.profit)]);
   }
 
   paneViews(): readonly IPrimitivePaneView[] {
@@ -168,9 +184,13 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
         const xt1 = ts.logicalToCoordinate(c.logicalOf(s.t1) as never)!;
         const xt2 = ts.logicalToCoordinate(c.logicalOf(s.t2) as never)!;
         if (s.kind === 'rect') this.drawRect(ctx, s, b, hr, vr, text);
+        else if (s.kind === 'fib') this.drawFib(ctx, s, b, xt1, xt2, hr, vr, text);
         else this.drawRiskReward(ctx, s, b, hr, vr, text);
         if (s.id === this.selected) {
-          if (s.kind === 'rect') {
+          if (s.kind === 'fib') {
+            handle(xt1, b.ys.p1!, '#2962ff');
+            handle(xt2, b.ys.p2!, '#2962ff');
+          } else if (s.kind === 'rect') {
             for (const [hx, hy] of [
               [xt1, b.ys.p1!],
               [xt2, b.ys.p2!],
@@ -236,6 +256,71 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
         baseline: s.label.place === 'above' ? 'bottom' : s.label.place === 'below' ? 'top' : 'middle',
       });
     }
+  }
+
+  private drawFib(
+    ctx: CanvasRenderingContext2D,
+    s: FibDrawing,
+    b: { x1: number; x2: number; ys: Record<string, number> },
+    xt1: number,
+    xt2: number,
+    hr: number,
+    vr: number,
+    text: (str: string, x: number, y: number, colour: string, opts?: { size?: number; bold?: boolean; align?: CanvasTextAlign; baseline?: CanvasTextBaseline }) => void,
+  ) {
+    const series = this.series!;
+    const st = s.style;
+    const levels = s.levels
+      .filter((l) => l.on)
+      .map((l) => ({ ...l, price: fibPrice(s, l.value), y: series.priceToCoordinate(fibPrice(s, l.value)) }))
+      .filter((l): l is typeof l & { y: number } => l.y !== null)
+      .sort((a, b2) => a.value - b2.value);
+    const colourOf = (l: { color: string }) => st.oneColor ?? l.color;
+    const x = Math.round(b.x1 * hr);
+    const w = Math.round((b.x2 - b.x1) * hr);
+    // Shading between neighbouring levels, in the colour of the further one.
+    if (st.background)
+      for (let i = 1; i < levels.length; i++) {
+        const a = levels[i - 1]!;
+        const l = levels[i]!;
+        ctx.fillStyle = alpha(colourOf(l), st.bgOpacity);
+        ctx.fillRect(x, Math.round(Math.min(a.y, l.y) * vr), w, Math.round(Math.abs(l.y - a.y) * vr));
+      }
+    const lw = Math.max(1, Math.round(st.lineWidth * hr));
+    for (const l of levels) {
+      const y = Math.round(l.y * vr) + (lw % 2 ? 0.5 : 0);
+      ctx.strokeStyle = colourOf(l);
+      ctx.lineWidth = lw;
+      ctx.setLineDash(st.lineDash === 'dashed' ? [6 * hr, 4 * hr] : st.lineDash === 'dotted' ? [lw, 3 * hr] : []);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y);
+      ctx.stroke();
+      const parts = [
+        st.showLevels === 'values' ? String(l.value) : st.showLevels === 'percent' ? `${Number((l.value * 100).toFixed(1))}%` : '',
+        st.showPrices ? `(${series.priceFormatter().format(l.price)})` : '',
+      ].filter(Boolean);
+      if (parts.length) {
+        const left = st.labelAlign === 'left';
+        text(parts.join(' '), left ? b.x1 - 4 : b.x2 + 4, st.labelPlace === 'top' ? l.y - 2 : st.labelPlace === 'bottom' ? l.y + 2 : l.y, colourOf(l), {
+          size: st.fontSize,
+          align: left ? 'right' : 'left',
+          baseline: st.labelPlace === 'top' ? 'bottom' : st.labelPlace === 'bottom' ? 'top' : 'middle',
+        });
+      }
+    }
+    ctx.setLineDash([]);
+    if (st.trendLine) {
+      ctx.strokeStyle = st.trendColor;
+      ctx.lineWidth = Math.max(1, Math.round(hr));
+      ctx.setLineDash([4 * hr, 4 * hr]);
+      ctx.beginPath();
+      ctx.moveTo(xt1 * hr, b.ys.p1! * vr);
+      ctx.lineTo(xt2 * hr, b.ys.p2! * vr);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (s.text.trim()) text(s.text.trim(), (Math.min(xt1, xt2) + Math.max(xt1, xt2)) / 2, (b.ys.p1! + b.ys.p2!) / 2, this.colours.text, { size: st.fontSize, align: 'center' });
   }
 
   private drawRiskReward(
