@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { BacktestInstrument, LineDash, RectDrawing, RiskRewardDrawing, Shape, SimSpec, Timeframe } from '@tc/domain';
 import { Select } from '../../components/Select';
 import { Button, cn, SegmentedTabs } from '../../components/ui';
@@ -41,10 +42,9 @@ export function ShapeSettings({
 
   const startDrag = (e: React.PointerEvent) => {
     const box = panel.current!.getBoundingClientRect();
-    const parent = panel.current!.offsetParent!.getBoundingClientRect();
     const dx = e.clientX - box.left;
     const dy = e.clientY - box.top;
-    const move = (ev: PointerEvent) => setPos({ x: ev.clientX - parent.left - dx, y: Math.max(0, ev.clientY - parent.top - dy) });
+    const move = (ev: PointerEvent) => setPos({ x: Math.min(window.innerWidth - 80, Math.max(-300, ev.clientX - dx)), y: Math.min(window.innerHeight - 48, Math.max(0, ev.clientY - dy)) });
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
@@ -65,13 +65,15 @@ export function ShapeSettings({
         { value: 'visibility', label: 'Visibility' },
       ];
 
-  return (
+  // Floats over the whole page (on screen, not inside the chart frame), so nothing can cover or clip it. In full
+  // screen, only the full-screen element is visible, so it goes in there.
+  return createPortal(
     <div
       ref={panel}
       role="dialog"
       aria-label="Drawing settings"
-      className="absolute z-30 w-[380px] rounded-lg border border-border bg-card text-text shadow-menu"
-      style={pos ? { left: pos.x, top: pos.y } : { left: 'calc(50% - 190px)', top: 48 }}
+      className="fixed z-50 flex max-h-[calc(100vh-24px)] w-[380px] flex-col rounded-lg border border-border bg-card text-text shadow-menu"
+      style={pos ? { left: pos.x, top: pos.y } : { left: 'calc(50% - 190px)', top: 96 }}
       onKeyDown={(e) => e.stopPropagation()}
     >
       <header className="flex cursor-move items-center justify-between border-b border-border px-4 py-3 select-none" onPointerDown={startDrag}>
@@ -89,7 +91,7 @@ export function ShapeSettings({
       <div className="px-4 pt-3">
         <SegmentedTabs label="Drawing settings" value={tab} onChange={setTab} options={tabs} />
       </div>
-      <div className="min-h-[180px] space-y-4 px-4 py-4 text-[13px]">
+      <div className="min-h-[180px] space-y-4 px-4 py-4 text-[13px] overflow-y-auto">
         {rect ? <RectFields shape={shape} tab={tab} tick={inst.tickSize} onChange={onChange} /> : tab === 'inputs' && <RiskRewardFields shape={shape} inst={inst} specs={specs} onChange={onChange} />}
         {tab === 'visibility' && (
           <div className="grid grid-cols-3 gap-2">
@@ -118,7 +120,8 @@ export function ShapeSettings({
           </Button>
         </div>
       </footer>
-    </div>
+    </div>,
+    document.fullscreenElement ?? document.body,
   );
 }
 

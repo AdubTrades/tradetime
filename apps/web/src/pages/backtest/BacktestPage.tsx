@@ -1,5 +1,5 @@
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ExternalLink, Maximize2, Minimize2, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
 import {
   BACKTEST_INSTRUMENTS,
@@ -23,6 +23,7 @@ import {
   type Timeframe,
   type SimAccount,
   type RiskRewardDrawing,
+  type OrderSide,
 } from '@tc/domain';
 import { Link } from '@tanstack/react-router';
 import { Dialog } from '../../components/Dialog';
@@ -53,6 +54,10 @@ const STEPS: { value: number; label: string }[] = [
   { value: 3600, label: '1h' },
 ];
 const PREFS_KEY = 'tc-backtest-prefs';
+const PANEL_KEY = 'tc-backtest-panel-height';
+const PANEL_COLLAPSED_KEY = 'tc-backtest-panel-collapsed';
+/** Opened with "Open in its own window": no sidebar, the whole window is the backtester. */
+export const isPopout = () => new URLSearchParams(window.location.search).get('window') === '1';
 const NEW = '__new__';
 const SESSION_KEY = 'tc-backtest-session';
 
@@ -172,6 +177,62 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
   const deleteSession = useDeleteSession();
   const [notice, setNotice] = useState<{ text: string; bad: boolean; journal?: boolean } | null>(null);
   const { data: accounts } = useAccounts();
+  const dp = Math.max(0, (String(inst.tickSize).split('.')[1] ?? '').length);
+
+  // ---------- Layout: order ticket, panel size, full screen, own window ----------
+  const root = useRef<HTMLDivElement>(null);
+  const ticketBox = useRef<HTMLDivElement>(null);
+  const [ticket, setTicket] = useState<OrderSide | null>(null);
+  const [ticketSide, setTicketSide] = useState<OrderSide>('buy');
+  const openTicket = (side: OrderSide) => {
+    setTicketSide(side);
+    setTicket((t) => (t === side ? null : side));
+  };
+  useEffect(() => {
+    if (!ticket) return;
+    const onDown = (e: PointerEvent) => !ticketBox.current?.contains(e.target as Node) && !(e.target as Element).closest?.('[role="listbox"]') && setTicket(null);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setTicket(null);
+    document.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [ticket]);
+
+  const [panelHeight, setPanelHeight] = useState(() => Math.min(600, Math.max(120, Number(readLocal(PANEL_KEY)) || 224)));
+  const [panelCollapsed, setPanelCollapsed] = useState(() => readLocal(PANEL_COLLAPSED_KEY) === '1');
+  useEffect(() => writeLocal(PANEL_KEY, String(Math.round(panelHeight))), [panelHeight]);
+  useEffect(() => writeLocal(PANEL_COLLAPSED_KEY, panelCollapsed ? '1' : '0'), [panelCollapsed]);
+  /** Drag the bar above the trading panel to give the chart or the panel more room. */
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = panelHeight;
+    const max = Math.max(160, window.innerHeight * 0.65);
+    const move = (ev: PointerEvent) => setPanelHeight(Math.min(max, Math.max(110, startH + startY - ev.clientY)));
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === root.current);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void root.current?.requestFullscreen();
+  };
+  const popout = isPopout();
+  const openWindow = () => {
+    window.open(`${window.location.origin}/backtesting?window=1`, 'tradetime-backtesting', 'popup,width=1440,height=900');
+  };
   const journalName = accounts?.find((a) => a.id === session.accountId)?.name ?? 'Backtesting';
   const step = Math.max(stepPicked, inst.baseSeconds);
   const [version, setVersion] = useState(0);
@@ -432,7 +493,7 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
   const local = cursor !== null ? DateTime.fromSeconds(cursor, { zone }) : null;
 
   return (
-    <div className="flex h-[calc(100vh-40px)] min-h-[560px] flex-col gap-3">
+    <div ref={root} className="flex h-[calc(100vh-40px)] min-h-[560px] flex-col gap-3 [&:fullscreen]:h-screen [&:fullscreen]:bg-page [&:fullscreen]:p-4">
       <div className="md:hidden">
         <PageHeader title="Backtesting" description="Backtesting needs a bigger screen. Open TradeTime on a computer to replay the charts." />
       </div>
@@ -492,6 +553,54 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
             </button>
           ))}
         </div>
+        <div ref={ticketBox} className="relative ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            aria-expanded={ticket === 'buy'}
+            onClick={() => openTicket('buy')}
+            className="h-8 rounded-md bg-profit px-4 text-[13px] font-semibold text-white transition hover:opacity-90"
+          >
+            Buy{price !== null && <span className="ml-1.5 font-mono font-normal opacity-90">{price.toFixed(dp)}</span>}
+          </button>
+          <button
+            type="button"
+            aria-expanded={ticket === 'sell'}
+            onClick={() => openTicket('sell')}
+            className="h-8 rounded-md bg-loss px-4 text-[13px] font-semibold text-white transition hover:opacity-90"
+          >
+            Sell{price !== null && <span className="ml-1.5 font-mono font-normal opacity-90">{price.toFixed(dp)}</span>}
+          </button>
+          {/* The ticket stays mounted while closed, so what you typed (size, stop, target) is still there next time. */}
+          <div
+            role="dialog"
+            aria-label="New order"
+            className={cn('absolute top-full right-0 z-40 mt-2 max-h-[calc(100vh-120px)] w-80 overflow-y-auto rounded-lg border border-border bg-card shadow-menu', !ticket && 'hidden')}
+          >
+            {account && (
+              <OrderTicket
+                inst={inst}
+                account={account}
+                specs={specs}
+                price={price}
+                time={cursor}
+                onChange={setAccount}
+                side={ticket ?? ticketSide}
+                onSideChange={(side) => (setTicketSide(side), setTicket(side))}
+                onPlaced={() => setTicket(null)}
+              />
+            )}
+          </div>
+          <div className="ml-1 flex items-center">
+            <Button size="sm" variant="ghost" aria-label={fullscreen ? 'Exit full screen' : 'Full screen'} title={fullscreen ? 'Exit full screen' : 'Full screen'} onClick={toggleFullscreen}>
+              {fullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            </Button>
+            {!popout && (
+              <Button size="sm" variant="ghost" aria-label="Open in its own window" title="Open in its own window" onClick={openWindow}>
+                <ExternalLink size={15} />
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="hidden min-h-0 flex-1 gap-3 md:flex">
@@ -531,9 +640,6 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
             />
           )}
         </div>
-        <aside aria-label="Order ticket" className="w-72 shrink-0 overflow-y-auto rounded-lg border border-border bg-card">
-          {account ? <OrderTicket inst={inst} account={account} specs={specs} price={price} time={cursor} onChange={setAccount} /> : <p className="p-3 text-[13px] text-muted">Loading…</p>}
-        </aside>
       </div>
 
       <div className="hidden flex-wrap items-center gap-3 md:flex">
@@ -598,8 +704,22 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
         </div>
       </div>
 
-      <div className="hidden h-56 shrink-0 overflow-hidden rounded-lg border border-border bg-card md:block">
-        {account && <SimPanel inst={inst} account={account} specs={specs} price={price} time={cursor} onChange={setAccount} />}
+      {!panelCollapsed && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Drag to resize the trading panel"
+          title="Drag to resize"
+          onPointerDown={startResize}
+          className="group -my-2 hidden h-3 shrink-0 cursor-row-resize items-center justify-center md:flex"
+        >
+          <span className="h-1 w-10 rounded-full bg-border transition group-hover:bg-border-strong" />
+        </div>
+      )}
+      <div className="hidden shrink-0 overflow-hidden rounded-lg border border-border bg-card md:block" style={{ height: panelCollapsed ? undefined : panelHeight }}>
+        {account && (
+          <SimPanel inst={inst} account={account} specs={specs} price={price} time={cursor} onChange={setAccount} collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />
+        )}
       </div>
     </div>
   );

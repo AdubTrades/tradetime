@@ -77,6 +77,8 @@ export function ShapeLayer({
   onPlaceOrder?: (rr: RiskRewardDrawing) => void;
 }) {
   const [prim] = useState(() => new ShapesPrimitive());
+  /** True while a shape is being drawn or dragged. */
+  const drawing = useRef(false);
   const [editing, setEditing] = useState<Shape | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
   const dp = decimals(inst.tickSize);
@@ -120,6 +122,9 @@ export function ShapeLayer({
 
   useEffect(() => {
     prim.shapes = shapes;
+    // Once the saved list has caught up with a finished drag, drop the preview (no flash of the old version).
+    const pv = prim.preview;
+    if (pv && !drawing.current && JSON.stringify(shapes.find((x) => x.id === pv.id)) === JSON.stringify(pv)) prim.preview = null;
     prim.bars = bars;
     prim.tf = tf;
     prim.kind = inst.kind;
@@ -132,7 +137,8 @@ export function ShapeLayer({
   useEffect(() => {
     setEditing(null);
     setMenu(null);
-  }, [inst.id]);
+    prim.preview = null;
+  }, [inst.id, prim]);
 
   useEffect(() => {
     const tick = inst.tickSize;
@@ -167,6 +173,8 @@ export function ShapeLayer({
       swallowMouse = true;
     };
     const commit = (shape: Shape) => {
+      prim.preview = shape; // shown until the saved list includes it
+      drawing.current = false;
       const list = st.current.shapes;
       st.current.onShapesChange(list.some((s) => s.id === shape.id) ? list.map((s) => (s.id === shape.id ? shape : s)) : [...list, shape]);
     };
@@ -175,19 +183,21 @@ export function ShapeLayer({
 
     const follow = (onMove: (x: number, y: number) => Shape | null) => {
       let latest: Shape | null = null;
+      drawing.current = true;
       chart.applyOptions({ handleScroll: false, handleScale: false });
       const move = (ev: PointerEvent) => {
         const p = local(ev);
         const next = onMove(p.x, p.y);
         if (!next) return;
         latest = next;
-        prim.shapes = [...st.current.shapes.filter((s) => s.id !== next.id), next];
+        prim.preview = next;
         prim.update();
       };
       const up = () => {
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
         chart.applyOptions({ handleScroll: true, handleScale: true });
+        drawing.current = false;
         if (latest) commit(latest);
       };
       window.addEventListener('pointermove', move);
@@ -235,6 +245,7 @@ export function ShapeLayer({
           hiddenOn: [] as Timeframe[],
         };
         let moved = false;
+        drawing.current = true;
         const startX = x;
         const startY = y;
         chart.applyOptions({ handleScroll: false, handleScale: false });
@@ -243,7 +254,7 @@ export function ShapeLayer({
           if (Math.hypot(p.x - startX, p.y - startY) > 4) moved = true;
           const p2 = priceAt(p.x, p.y);
           if (p2 === null) return;
-          prim.shapes = [...st.current.shapes, { ...base, t2: coords().timeAt(logicalAt(p.x)), p2 }];
+          prim.preview = { ...base, t2: coords().timeAt(logicalAt(p.x)), p2 };
           prim.update();
         };
         const up = (ev: PointerEvent) => {
@@ -346,20 +357,17 @@ export function ShapeLayer({
         const p2 = priceAt(x, y);
         if (p2 !== null) {
           const s = st.current;
-          prim.shapes = [
-            ...s.shapes,
-            {
-              id: pending.id,
-              kind: 'rect',
-              t1: pending.t1,
-              p1: pending.p1,
-              t2: coords().timeAt(logicalAt(x)),
-              p2,
-              style: s.tools.rectLast ?? DEFAULT_RECT_STYLE,
-              label: DEFAULT_LINE_LABEL,
-              hiddenOn: [],
-            },
-          ];
+          prim.preview = {
+            id: pending.id,
+            kind: 'rect',
+            t1: pending.t1,
+            p1: pending.p1,
+            t2: coords().timeAt(logicalAt(x)),
+            p2,
+            style: s.tools.rectLast ?? DEFAULT_RECT_STYLE,
+            label: DEFAULT_LINE_LABEL,
+            hiddenOn: [],
+          };
           prim.update();
         }
         return;
@@ -419,6 +427,7 @@ export function ShapeLayer({
         s.setTool('rect');
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && s.selected && !s.editing && s.shapes.some((sh) => sh.id === s.selected)) {
         e.preventDefault();
+        prim.preview = null;
         s.onShapesChange(s.shapes.filter((sh) => sh.id !== s.selected));
         s.setSelected(null);
       }
@@ -470,6 +479,7 @@ export function ShapeLayer({
             role="menuitem"
             className={`${item} text-loss`}
             onClick={() => {
+              prim.preview = null;
               onShapesChange(shapes.filter((s) => s.id !== menuShape.id));
               setSelected(null);
               setMenu(null);

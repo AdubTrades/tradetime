@@ -90,15 +90,18 @@ export function AppShell() {
   // The calendar grid gets a wider column than the other screens, and the backtesting chart the whole width.
   const wide = pathname.startsWith('/calendar');
   const full = pathname.startsWith('/backtesting');
+  // Backtesting opened in its own window: just the page, no sidebar or tabs.
+  const bare = full && new URLSearchParams(window.location.search).get('window') === '1';
 
   return (
     <div className="min-h-screen md:flex">
-      <PhoneTopBar />
+      {!bare && <PhoneTopBar />}
       <aside
         className={cn(
           // Tablets and up: a sticky sidebar. Phones use the top bar and bottom tabs instead.
           'hidden shrink-0 flex-col border-r border-border bg-sidebar py-7 transition-[width] duration-200 md:sticky md:top-0 md:flex md:h-screen',
           collapsed ? 'w-[76px] px-3' : 'w-[232px] px-4',
+          bare && 'md:hidden',
         )}
       >
         <Link
@@ -147,7 +150,7 @@ export function AppShell() {
       <MiniTimer />
       <CheckInPrompt />
       {settings && <Onboarding settings={settings} />}
-      <PhoneTabBar themeLabel={theme.label} onTheme={() => updateSettings.mutate({ theme: theme.next })} onFeedback={() => setFeedbackOpen(true)} />
+      {!bare && <PhoneTabBar themeLabel={theme.label} onTheme={() => updateSettings.mutate({ theme: theme.next })} onFeedback={() => setFeedbackOpen(true)} />}
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );

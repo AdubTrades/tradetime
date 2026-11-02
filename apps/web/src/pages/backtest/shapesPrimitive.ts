@@ -29,6 +29,17 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
   private series: ISeriesApi<'Candlestick'> | null = null;
   private requestUpdate: () => void = () => {};
   shapes: Shape[] = [];
+  /**
+   * The shape being drawn or dragged, shown in place of its saved version. Kept apart from `shapes` so a re-render
+   * mid-drag (the price readout updates on every mouse move) can't swap the old version back in.
+   */
+  preview: Shape | null = null;
+
+  /** What's on screen: the saved shapes with the preview in place of (or added to) its saved version. */
+  private get list(): Shape[] {
+    const p = this.preview;
+    return p ? [...this.shapes.filter((s) => s.id !== p.id), p] : this.shapes;
+  }
   bars: Bar[] = [];
   tf: Timeframe = '1m';
   kind: 'futures' | 'crypto' = 'crypto';
@@ -78,7 +89,7 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
   shapeAt(x: number, y: number): { shape: Shape; part: ShapePart } | null {
     const c = this.coords();
     const near = (hx: number, hy: number) => Math.hypot(x - hx, y - hy) <= HANDLE + 3;
-    for (const s of [...this.shapes].reverse()) {
+    for (const s of [...this.list].reverse()) {
       const b = this.box(s, c);
       if (!b) continue;
       const ts = this.chart!.timeScale();
@@ -134,7 +145,7 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
         ctx.textBaseline = opts.baseline ?? 'middle';
         ctx.fillText(str, x * hr, y * vr);
       };
-      for (const s of this.shapes) {
+      for (const s of this.list) {
         const b = this.box(s, c);
         if (!b) continue;
         const active = s.id === this.selected || s.id === this.hovered;

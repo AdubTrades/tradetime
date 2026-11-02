@@ -1,4 +1,4 @@
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { DateTime } from 'luxon';
 import {
@@ -61,6 +61,9 @@ export function OrderTicket({
   price,
   time,
   onChange,
+  side,
+  onSideChange,
+  onPlaced,
 }: {
   inst: BacktestInstrument;
   account: SimAccount;
@@ -68,9 +71,14 @@ export function OrderTicket({
   price: number | null;
   time: number | null;
   onChange: (a: SimAccount) => void;
+  /** Buy or sell, chosen with the Buy / Sell buttons that open the ticket. */
+  side: OrderSide;
+  onSideChange: (side: OrderSide) => void;
+  /** The order went in (the ticket closes). */
+  onPlaced?: () => void;
 }) {
   const [symbol, setSymbol] = useState(inst.trades.at(-1)!);
-  const [side, setSide] = useState<OrderSide>('buy');
+  const setSide = onSideChange;
   const [kind, setKind] = useState<Kind>('market');
   const [orderPrice, setOrderPrice] = useState('');
   const [sizeMode, setSizeMode] = useState<'qty' | 'risk'>('qty');
@@ -116,6 +124,7 @@ export function OrderTicket({
     const bracket: Bracket = { stop, target };
     if (kind === 'market') onChange(marketOrder(account, spec, side, size, price, time, bracket));
     else onChange(placeOrder(account, { symbol, type: kind, side, qty: size, price: entry, bracket, placedAt: time }));
+    onPlaced?.();
   };
 
   const label = `${side === 'buy' ? 'Buy' : 'Sell'} ${size > 0 ? size : ''} ${symbol}${kind === 'market' ? ' at market' : ` ${kind} @ ${entry?.toFixed(dp) ?? '–'}`}`;
@@ -294,6 +303,8 @@ export function SimPanel({
   price,
   time,
   onChange,
+  collapsed = false,
+  onToggleCollapsed,
 }: {
   inst: BacktestInstrument;
   account: SimAccount;
@@ -301,6 +312,9 @@ export function SimPanel({
   price: number | null;
   time: number | null;
   onChange: (a: SimAccount) => void;
+  /** Collapsed: just the tabs and balance row, so the chart gets the room. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const [tab, setTab] = useState<PanelTab>('positions');
   const [settings, setSettings] = useState(false);
@@ -332,9 +346,14 @@ export function SimPanel({
         <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setSettings((s) => !s)}>
           Account settings
         </Button>
+        {onToggleCollapsed && (
+          <Button size="sm" variant="ghost" onClick={onToggleCollapsed} aria-label={collapsed ? 'Show the trading panel' : 'Hide the trading panel'} title={collapsed ? 'Show' : 'Hide'}>
+            {collapsed ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </Button>
+        )}
       </div>
       {settings && <AccountSettings inst={inst} account={account} onChange={onChange} onClose={() => setSettings(false)} />}
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className={cn('min-h-0 flex-1 overflow-auto', collapsed && 'hidden')}>
         {tab === 'positions' &&
           (account.positions.length === 0 ? (
             <Empty>No open positions.</Empty>
