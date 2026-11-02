@@ -58,6 +58,8 @@ export interface LineTools {
   riskPct?: number | null;
   /** Rectangle templates (kept apart from the line templates). */
   rectTemplates?: RectTemplate[];
+  /** Fib retracement templates. */
+  fibTemplates?: FibTemplate[];
   /** The levels and look of the next Fib retracement (the last one set). */
   fibLast?: { levels: FibLevel[]; style: FibStyle } | null;
 }
@@ -198,6 +200,14 @@ export const DEFAULT_FIB_STYLE: FibStyle = {
   labelPlace: 'middle',
   fontSize: 12,
 };
+
+/** A Fib's levels and look saved under a name (the text label isn't part of it). */
+export interface FibTemplate {
+  id: string;
+  name: string;
+  levels: FibLevel[];
+  style: FibStyle;
+}
 
 export type Shape = RectDrawing | RiskRewardDrawing | FibDrawing;
 

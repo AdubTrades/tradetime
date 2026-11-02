@@ -2,6 +2,9 @@ import { X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  DEFAULT_FIB_LEVELS,
+  DEFAULT_FIB_STYLE,
+  type FibTemplate,
   DEFAULT_RECT_LABEL,
   DEFAULT_RECT_STYLE,
   riskDollars,
@@ -36,6 +39,9 @@ export function ShapeSettings({
   rectTemplates = [],
   onSaveRectTemplate,
   onDeleteRectTemplate,
+  fibTemplates = [],
+  onSaveFibTemplate,
+  onDeleteFibTemplate,
 }: {
   shape: Shape;
   inst: BacktestInstrument;
@@ -50,6 +56,10 @@ export function ShapeSettings({
   rectTemplates?: RectTemplate[];
   onSaveRectTemplate?: (name: string) => void;
   onDeleteRectTemplate?: (id: string) => void;
+  /** Fib templates, and saving / removing one (Fibs only). */
+  fibTemplates?: FibTemplate[];
+  onSaveFibTemplate?: (name: string) => void;
+  onDeleteFibTemplate?: (id: string) => void;
 }) {
   const rect = shape.kind === 'rect';
   const fib = shape.kind === 'fib';
@@ -103,7 +113,11 @@ export function ShapeSettings({
       aria-label="Drawing settings"
       className="fixed z-50 flex w-[380px] flex-col rounded-lg border border-border bg-card text-text shadow-menu"
       style={{ left: pos ? pos.x : 'calc(50% - 190px)', top: pos ? pos.y : 96, maxHeight: `calc(100vh - ${(pos ? pos.y : 96) + 12}px)` }}
-      onKeyDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        // Keys typed here stay out of the chart's shortcuts (space, Delete…), except Esc, which closes the window.
+        e.stopPropagation();
+        if (e.key === 'Escape') onCancel();
+      }}
     >
       <header className="flex cursor-move items-center justify-between border-b border-border px-4 py-3 select-none" onPointerDown={startDrag}>
         <h2 className="text-[15px] font-semibold">{rect ? 'Rectangle' : fib ? 'Fib retracement' : shape.kind === 'long' ? 'Long position' : 'Short position'}</h2>
@@ -148,6 +162,16 @@ export function ShapeSettings({
               onDefaults={() => onChange({ ...shape, style: DEFAULT_RECT_STYLE, label: DEFAULT_RECT_LABEL })}
               onSave={onSaveRectTemplate}
               onDelete={onDeleteRectTemplate}
+            />
+          )}
+          {shape.kind === 'fib' && onSaveFibTemplate && onDeleteFibTemplate && (
+            <TemplateMenu
+              templates={fibTemplates}
+              swatch={(t) => t.style.oneColor ?? t.levels.find((l) => l.on)?.color ?? '#787b86'}
+              onApply={(t) => onChange({ ...shape, levels: t.levels, style: t.style })}
+              onDefaults={() => onChange({ ...shape, levels: DEFAULT_FIB_LEVELS, style: DEFAULT_FIB_STYLE })}
+              onSave={onSaveFibTemplate}
+              onDelete={onDeleteFibTemplate}
             />
           )}
           {onPlaceOrder && (

@@ -74,7 +74,11 @@ export function LineSettings({
       aria-label="Line settings"
       className="fixed z-50 flex w-[380px] flex-col rounded-lg border border-border bg-card text-text shadow-menu"
       style={{ left: pos ? pos.x : 'calc(50% - 190px)', top: pos ? pos.y : 96, maxHeight: `calc(100vh - ${(pos ? pos.y : 96) + 12}px)` }}
-      onKeyDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        // Keys typed here stay out of the chart's shortcuts (space, Delete…), except Esc, which closes the window.
+        e.stopPropagation();
+        if (e.key === 'Escape') onCancel();
+      }}
     >
       <header className="flex cursor-move items-center justify-between border-b border-border px-4 py-3 select-none" onPointerDown={startDrag}>
         <h2 className="text-[15px] font-semibold">{line.kind === 'hray' ? 'Horizontal ray' : 'Horizontal line'}</h2>

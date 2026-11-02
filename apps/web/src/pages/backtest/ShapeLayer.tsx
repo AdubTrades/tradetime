@@ -430,7 +430,10 @@ export function ShapeLayer({
           className="absolute z-30 max-h-[70%] w-52 overflow-y-auto rounded-md border border-border bg-card py-1 text-[13px] shadow-menu"
           style={{
             left: Math.min(menu.x, host.clientWidth - 220),
-            top: Math.min(menu.y, Math.max(0, host.clientHeight - 140 - (menuShape.kind === 'rect' ? (tools.rectTemplates?.length ?? 0) * 30 : 0))),
+            top: Math.min(
+              menu.y,
+              Math.max(0, host.clientHeight - 140 - (menuShape.kind === 'rect' ? (tools.rectTemplates?.length ?? 0) : menuShape.kind === 'fib' ? (tools.fibTemplates?.length ?? 0) : 0) * 30),
+            ),
           }}
           onPointerDown={(e) => e.stopPropagation()}
         >
@@ -454,6 +457,32 @@ export function ShapeLayer({
               </button>
             ))}
           {menuShape.kind === 'rect' && (tools.rectTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
+          {/* Fib templates, one click to apply. */}
+          {menuShape.kind === 'fib' &&
+            sortTemplates(tools.fibTemplates ?? []).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  update({ ...menuShape, levels: t.levels, style: t.style });
+                  onToolsChange({ ...tools, fibLast: { levels: t.levels, style: t.style } });
+                  setMenu(null);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
+              >
+                <span className="flex h-2.5 w-3 shrink-0 flex-col justify-between">
+                  {t.levels
+                    .filter((l) => l.on)
+                    .slice(0, 3)
+                    .map((l, i) => (
+                      <span key={i} className="h-px w-full" style={{ background: t.style.oneColor ?? l.color }} />
+                    ))}
+                </span>
+                <span className="truncate">{t.name}</span>
+              </button>
+            ))}
+          {menuShape.kind === 'fib' && (tools.fibTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
           {(menuShape.kind === 'long' || menuShape.kind === 'short') && onPlaceOrder && (
             <button
               type="button"
@@ -520,6 +549,13 @@ export function ShapeLayer({
             onToolsChange({ ...tools, rectTemplates: [...others, { id: newId(), name, style: current.style, label: current.label }] });
           }}
           onDeleteRectTemplate={(id) => onToolsChange({ ...tools, rectTemplates: (tools.rectTemplates ?? []).filter((t) => t.id !== id) })}
+          fibTemplates={tools.fibTemplates ?? []}
+          onSaveFibTemplate={(name) => {
+            if (current.kind !== 'fib') return;
+            const others = (tools.fibTemplates ?? []).filter((t) => t.name.toLowerCase() !== name.toLowerCase());
+            onToolsChange({ ...tools, fibTemplates: [...others, { id: newId(), name, levels: current.levels, style: current.style }] });
+          }}
+          onDeleteFibTemplate={(id) => onToolsChange({ ...tools, fibTemplates: (tools.fibTemplates ?? []).filter((t) => t.id !== id) })}
         />
       )}
     </>
