@@ -39,6 +39,15 @@ const decimals = (tick: number) => Math.max(0, (String(tick).split('.')[1] ?? ''
 
 const MAGNET_KEY = 'tc-backtest-magnet';
 
+/** Trend line icon: a line between two points. */
+const TrendIcon = (({ size = 16, strokeWidth = 1.75 }: { size?: number; strokeWidth?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" aria-hidden>
+    <path d="M7 17 17 7" />
+    <circle cx="5" cy="19" r="2" />
+    <circle cx="19" cy="5" r="2" />
+  </svg>
+)) as unknown as LucideIcon;
+
 /** Fib retracement icon (lucide has none): three levels and the diagonal between the two points. */
 const FibIcon = (({ size = 16, strokeWidth = 1.75 }: { size?: number; strokeWidth?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" aria-hidden>
@@ -416,6 +425,7 @@ export function ReplayChart({
         <ToolButton icon={MousePointer2} label="Cursor (Esc)" active={tool === 'cursor'} onClick={() => setTool('cursor')} />
         <ToolButton icon={ArrowRightFromLine} label="Horizontal ray (Alt+J)" active={tool === 'hray'} onClick={() => setTool(tool === 'hray' ? 'cursor' : 'hray')} />
         <ToolButton icon={Minus} label="Horizontal line (Alt+H)" active={tool === 'hline'} onClick={() => setTool(tool === 'hline' ? 'cursor' : 'hline')} />
+        <ToolButton icon={TrendIcon} label="Trend line (Alt+T)" active={tool === 'trend'} onClick={() => setTool(tool === 'trend' ? 'cursor' : 'trend')} />
         <ToolButton icon={RectangleHorizontal} label="Rectangle (Alt+Shift+R)" active={tool === 'rect'} onClick={() => setTool(tool === 'rect' ? 'cursor' : 'rect')} />
         <ToolButton icon={FibIcon} label="Fib retracement" active={tool === 'fib'} onClick={() => setTool(tool === 'fib' ? 'cursor' : 'fib')} />
         <ToolButton icon={TrendingUp} label="Long position" active={tool === 'long'} onClick={() => setTool(tool === 'long' ? 'cursor' : 'long')} />

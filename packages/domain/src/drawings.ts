@@ -58,6 +58,9 @@ export interface LineTools {
   riskPct?: number | null;
   /** Rectangle templates (kept apart from the line templates). */
   rectTemplates?: RectTemplate[];
+  /** Trend line templates, and the look of the next trend line. */
+  trendTemplates?: TrendTemplate[];
+  trendLast?: { style: TrendStyle; label: LineLabel } | null;
   /** Fib retracement templates. */
   fibTemplates?: FibTemplate[];
   /** The levels and look of the next Fib retracement (the last one set). */
@@ -123,8 +126,7 @@ export interface RiskRewardDrawing {
 }
 
 /** Dollars at risk for a long/short tool: its dollar amount, or its percentage of `balance`. */
-export const riskDollars = (rr: Pick<RiskRewardDrawing, 'riskMode' | 'riskUsd' | 'riskPct'>, balance: number) =>
-  rr.riskMode === 'percent' ? (balance * (rr.riskPct ?? 1)) / 100 : rr.riskUsd;
+export const riskDollars = (rr: Pick<RiskRewardDrawing, 'riskMode' | 'riskUsd' | 'riskPct'>, balance: number) => (rr.riskMode === 'percent' ? (balance * (rr.riskPct ?? 1)) / 100 : rr.riskUsd);
 
 // ---------- Fib retracement ----------
 
@@ -178,11 +180,13 @@ export const fibPrice = (f: Pick<FibDrawing, 'p1' | 'p2' | 'style'>, value: numb
 };
 
 /** TradingView's 24 levels; 0, 0.5 and 1 on to start with. */
-export const DEFAULT_FIB_LEVELS: FibLevel[] = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618, 2.618, 3.618, 4.236, 1.272, 1.414, 2.272, 2.414, 2, 3, 3.272, 3.414, 4, 4.272, 4.414, 4.618, 4.764].map((value) => ({
-  value,
-  color: value === 0.5 ? '#f23645' : value === 0 || value === 1 ? '#2962ff' : '#787b86',
-  on: value === 0 || value === 0.5 || value === 1,
-}));
+export const DEFAULT_FIB_LEVELS: FibLevel[] = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618, 2.618, 3.618, 4.236, 1.272, 1.414, 2.272, 2.414, 2, 3, 3.272, 3.414, 4, 4.272, 4.414, 4.618, 4.764].map(
+  (value) => ({
+    value,
+    color: value === 0.5 ? '#f23645' : value === 0 || value === 1 ? '#2962ff' : '#787b86',
+    on: value === 0 || value === 0.5 || value === 1,
+  }),
+);
 
 export const DEFAULT_FIB_STYLE: FibStyle = {
   trendLine: false,
@@ -209,7 +213,70 @@ export interface FibTemplate {
   style: FibStyle;
 }
 
-export type Shape = RectDrawing | RiskRewardDrawing | FibDrawing;
+// ---------- Trend line ----------
+
+export type TrendStat = 'priceRange' | 'percent' | 'ticks' | 'bars' | 'dateRange' | 'angle';
+export const TREND_STATS: { value: TrendStat; label: string }[] = [
+  { value: 'priceRange', label: 'Price range' },
+  { value: 'percent', label: 'Percent change' },
+  { value: 'ticks', label: 'Change in ticks' },
+  { value: 'bars', label: 'Bars range' },
+  { value: 'dateRange', label: 'Date/time range' },
+  { value: 'angle', label: 'Angle' },
+];
+
+export interface TrendStyle {
+  color: string;
+  width: 1 | 2 | 3 | 4;
+  dash: LineDash;
+  startCap: 'normal' | 'arrow';
+  endCap: 'normal' | 'arrow';
+  extend: 'none' | 'left' | 'right' | 'both';
+  /** A dot at the middle of the line. */
+  middlePoint: boolean;
+  /** Both ends' prices as tags on the price axis. */
+  priceLabels: boolean;
+  stats: TrendStat[];
+  statsPos: 'left' | 'center' | 'right';
+  /** Show the stats all the time, not just while the line is selected or under the mouse. */
+  alwaysStats: boolean;
+}
+
+export interface TrendDrawing {
+  id: string;
+  kind: 'trend';
+  t1: number;
+  t2: number;
+  p1: number;
+  p2: number;
+  style: TrendStyle;
+  label: LineLabel;
+  hiddenOn: Timeframe[];
+}
+
+export interface TrendTemplate {
+  id: string;
+  name: string;
+  style: TrendStyle;
+  label: LineLabel;
+}
+
+export const DEFAULT_TREND_STYLE: TrendStyle = {
+  color: '#787b86',
+  width: 1,
+  dash: 'solid',
+  startCap: 'normal',
+  endCap: 'normal',
+  extend: 'none',
+  middlePoint: false,
+  priceLabels: false,
+  stats: [],
+  statsPos: 'right',
+  alwaysStats: false,
+};
+export const DEFAULT_TREND_LABEL: LineLabel = { text: '', color: null, size: 12, bold: false, align: 'center', place: 'above' };
+
+export type Shape = RectDrawing | RiskRewardDrawing | FibDrawing | TrendDrawing;
 
 export interface Drawings {
   lines: HorizontalLine[];

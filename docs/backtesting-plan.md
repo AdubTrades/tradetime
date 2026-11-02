@@ -87,6 +87,11 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
 - **Fib retracement:** TradingView-style (level 1 at the first point, 0 at the second; 24 levels with value, colour
   and on/off; trend line, level line, extend, one colour, background, reverse, prices, levels as values or %, label
   position, text, font size). New Fibs take the last levels and look (`fibLast`).
+- **Trend line:** colour, thickness, dash, arrow ends, extend, middle point, price labels on the axis, stats (price
+  range, % change, ticks, bars, date/time range, angle; position; always or only when selected), a label along the
+  line, templates (Alt+T). TradingView's "Distance" stat is left out (it overlaps bars and date/time range).
+- **Templates:** lines, rectangles, Fibs and trend lines each have their own (Save as / Apply defaults / remove in
+  settings, one-click apply from the right-click menu), stored in the line-tools document.
 - **Data bought (1 Nov 2026):** NQ 1-second, Nov 2025 to Oct 2026, US$48.33 from Databento
   (`market-data futures --buy`; raw files cached in market-data/raw so they're never paid for twice). ES and GC were
   left out for now and removed from the instrument list. Crypto stays (free).

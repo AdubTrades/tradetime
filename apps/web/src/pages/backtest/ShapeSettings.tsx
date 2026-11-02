@@ -5,6 +5,11 @@ import {
   DEFAULT_FIB_LEVELS,
   DEFAULT_FIB_STYLE,
   type FibTemplate,
+  type TrendDrawing,
+  type TrendTemplate,
+  DEFAULT_TREND_LABEL,
+  DEFAULT_TREND_STYLE,
+  TREND_STATS,
   DEFAULT_RECT_LABEL,
   DEFAULT_RECT_STYLE,
   riskDollars,
@@ -39,6 +44,9 @@ export function ShapeSettings({
   rectTemplates = [],
   onSaveRectTemplate,
   onDeleteRectTemplate,
+  trendTemplates = [],
+  onSaveTrendTemplate,
+  onDeleteTrendTemplate,
   fibTemplates = [],
   onSaveFibTemplate,
   onDeleteFibTemplate,
@@ -57,13 +65,18 @@ export function ShapeSettings({
   onSaveRectTemplate?: (name: string) => void;
   onDeleteRectTemplate?: (id: string) => void;
   /** Fib templates, and saving / removing one (Fibs only). */
+  /** Trend line templates (trend lines only). */
+  trendTemplates?: TrendTemplate[];
+  onSaveTrendTemplate?: (name: string) => void;
+  onDeleteTrendTemplate?: (id: string) => void;
   fibTemplates?: FibTemplate[];
   onSaveFibTemplate?: (name: string) => void;
   onDeleteFibTemplate?: (id: string) => void;
 }) {
   const rect = shape.kind === 'rect';
   const fib = shape.kind === 'fib';
-  const [tab, setTab] = useState<Tab>(rect || fib ? 'style' : 'inputs');
+  const trend = shape.kind === 'trend';
+  const [tab, setTab] = useState<Tab>(rect || fib || trend ? 'style' : 'inputs');
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const panel = useRef<HTMLDivElement>(null);
 
@@ -92,7 +105,7 @@ export function ShapeSettings({
         { value: 'inputs', label: 'Coordinates' },
         { value: 'visibility', label: 'Visibility' },
       ]
-    : rect
+    : rect || trend
       ? [
           { value: 'style', label: 'Style' },
           { value: 'text', label: 'Text' },
@@ -120,7 +133,7 @@ export function ShapeSettings({
       }}
     >
       <header className="flex cursor-move items-center justify-between border-b border-border px-4 py-3 select-none" onPointerDown={startDrag}>
-        <h2 className="text-[15px] font-semibold">{rect ? 'Rectangle' : fib ? 'Fib retracement' : shape.kind === 'long' ? 'Long position' : 'Short position'}</h2>
+        <h2 className="text-[15px] font-semibold">{rect ? 'Rectangle' : fib ? 'Fib retracement' : trend ? 'Trend line' : shape.kind === 'long' ? 'Long position' : 'Short position'}</h2>
         <button
           type="button"
           onClick={onCancel}
@@ -137,6 +150,8 @@ export function ShapeSettings({
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 text-[13px]">
         {shape.kind === 'fib' ? (
           <FibFields shape={shape} tab={tab} tick={inst.tickSize} onChange={onChange} />
+        ) : shape.kind === 'trend' ? (
+          <TrendFields shape={shape} tab={tab} tick={inst.tickSize} onChange={onChange} />
         ) : shape.kind === 'rect' ? (
           <RectFields shape={shape} tab={tab} tick={inst.tickSize} onChange={onChange} />
         ) : (
@@ -162,6 +177,16 @@ export function ShapeSettings({
               onDefaults={() => onChange({ ...shape, style: DEFAULT_RECT_STYLE, label: DEFAULT_RECT_LABEL })}
               onSave={onSaveRectTemplate}
               onDelete={onDeleteRectTemplate}
+            />
+          )}
+          {shape.kind === 'trend' && onSaveTrendTemplate && onDeleteTrendTemplate && (
+            <TemplateMenu
+              templates={trendTemplates}
+              swatch={(t) => t.style.color}
+              onApply={(t) => onChange({ ...shape, style: t.style, label: { ...t.label, text: shape.label.text || t.label.text } })}
+              onDefaults={() => onChange({ ...shape, style: DEFAULT_TREND_STYLE, label: { ...DEFAULT_TREND_LABEL, text: shape.label.text } })}
+              onSave={onSaveTrendTemplate}
+              onDelete={onDeleteTrendTemplate}
             />
           )}
           {shape.kind === 'fib' && onSaveFibTemplate && onDeleteFibTemplate && (
@@ -574,4 +599,146 @@ function FibFields({ shape, tab, tick, onChange }: { shape: FibDrawing; tab: Tab
       </Row>
     </>
   );
+}
+
+function TrendFields({ shape, tab, tick, onChange }: { shape: TrendDrawing; tab: Tab; tick: number; onChange: (s: Shape) => void }) {
+  const st = shape.style;
+  const style = (patch: Partial<TrendDrawing['style']>) => onChange({ ...shape, style: { ...st, ...patch } });
+  const label = (patch: Partial<TrendDrawing['label']>) => onChange({ ...shape, label: { ...shape.label, ...patch } });
+  if (tab === 'style')
+    return (
+      <>
+        <Row label="Line">
+          <ColorPicker value={st.color} onChange={(color) => style({ color })} />
+        </Row>
+        <Row label="Thickness">
+          <div className="flex gap-1">
+            {([1, 2, 3, 4] as const).map((w) => (
+              <button
+                key={w}
+                type="button"
+                aria-label={`${w}px`}
+                aria-pressed={st.width === w}
+                onClick={() => style({ width: w })}
+                className={cn('flex h-8 w-9 items-center justify-center rounded-md border', st.width === w ? 'border-text' : 'border-border hover:bg-hover')}
+              >
+                <span className="w-4 rounded-full bg-text" style={{ height: w }} />
+              </button>
+            ))}
+          </div>
+          <Select size="sm" aria-label="Line style" value={st.dash} onChange={(e) => style({ dash: e.target.value as LineDash })} className="w-24">
+            <option value="solid">Solid</option>
+            <option value="dashed">Dashed</option>
+            <option value="dotted">Dotted</option>
+          </Select>
+        </Row>
+        <Row label="Ends">
+          <Select size="sm" aria-label="Start of the line" value={st.startCap} onChange={(e) => style({ startCap: e.target.value as 'normal' | 'arrow' })} className="w-32">
+            <option value="normal">Start: normal</option>
+            <option value="arrow">Start: arrow</option>
+          </Select>
+          <Select size="sm" aria-label="End of the line" value={st.endCap} onChange={(e) => style({ endCap: e.target.value as 'normal' | 'arrow' })} className="w-32">
+            <option value="normal">End: normal</option>
+            <option value="arrow">End: arrow</option>
+          </Select>
+        </Row>
+        <Row label="Extend">
+          <Select size="sm" aria-label="Extend" value={st.extend} onChange={(e) => style({ extend: e.target.value as TrendDrawing['style']['extend'] })} className="w-36">
+            <option value="none">Don’t extend</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+            <option value="both">Both</option>
+          </Select>
+        </Row>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <Check checked={st.middlePoint} onChange={(middlePoint) => style({ middlePoint })}>
+            Middle point
+          </Check>
+          <Check checked={st.priceLabels} onChange={(priceLabels) => style({ priceLabels })}>
+            Price labels
+          </Check>
+        </div>
+        <p className="pt-1 text-[11px] font-medium tracking-wide text-muted uppercase">Info</p>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+          {TREND_STATS.map((o) => (
+            <Check key={o.value} checked={st.stats.includes(o.value)} onChange={(on) => style({ stats: on ? [...st.stats, o.value] : st.stats.filter((x) => x !== o.value) })}>
+              {o.label}
+            </Check>
+          ))}
+        </div>
+        <Row label="Stats position">
+          <Select size="sm" aria-label="Stats position" value={st.statsPos} onChange={(e) => style({ statsPos: e.target.value as 'left' | 'center' | 'right' })} className="w-28">
+            <option value="left">Left</option>
+            <option value="center">Centre</option>
+            <option value="right">Right</option>
+          </Select>
+        </Row>
+        <Check checked={st.alwaysStats} onChange={(alwaysStats) => style({ alwaysStats })}>
+          Always show stats
+        </Check>
+      </>
+    );
+  if (tab === 'text')
+    return (
+      <>
+        <textarea
+          aria-label="Label text"
+          autoFocus
+          value={shape.label.text}
+          onChange={(e) => label({ text: e.target.value })}
+          placeholder="Add text"
+          rows={2}
+          className="w-full resize-none rounded-md border border-border bg-card px-3 py-2 text-[13px]"
+        />
+        <Row label="Colour">
+          <div className="flex items-center gap-2">
+            <Check checked={shape.label.color === null} onChange={(same) => label({ color: same ? null : st.color })}>
+              Same as line
+            </Check>
+            {shape.label.color !== null && <ColorPicker value={shape.label.color} onChange={(color) => label({ color })} />}
+          </div>
+        </Row>
+        <Row label="Size">
+          <Select size="sm" aria-label="Text size" value={String(shape.label.size)} onChange={(e) => label({ size: Number(e.target.value) })} className="w-20">
+            {[10, 11, 12, 14, 16, 20, 24].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </Select>
+          <button
+            type="button"
+            aria-pressed={shape.label.bold}
+            onClick={() => label({ bold: !shape.label.bold })}
+            className={cn('h-8 w-8 rounded-md border font-bold', shape.label.bold ? 'border-text bg-hover' : 'border-border hover:bg-hover')}
+          >
+            B
+          </button>
+        </Row>
+        <Row label="Position">
+          <Select size="sm" aria-label="Label position along the line" value={shape.label.align} onChange={(e) => label({ align: e.target.value as TrendDrawing['label']['align'] })} className="w-24">
+            <option value="left">Start</option>
+            <option value="center">Middle</option>
+            <option value="right">End</option>
+          </Select>
+          <Select size="sm" aria-label="Label above or below the line" value={shape.label.place} onChange={(e) => label({ place: e.target.value as TrendDrawing['label']['place'] })} className="w-24">
+            <option value="above">Above</option>
+            <option value="middle">On line</option>
+            <option value="below">Below</option>
+          </Select>
+        </Row>
+      </>
+    );
+  if (tab === 'inputs')
+    return (
+      <>
+        <Row label="Point 1">
+          <PriceInput label="First point price" tick={tick} value={shape.p1} onChange={(p1) => onChange({ ...shape, p1 })} />
+        </Row>
+        <Row label="Point 2">
+          <PriceInput label="Second point price" tick={tick} value={shape.p2} onChange={(p2) => onChange({ ...shape, p2 })} />
+        </Row>
+      </>
+    );
+  return null;
 }

@@ -57,8 +57,43 @@ const fibStyle = z.object({
   labelPlace: z.enum(['top', 'middle', 'bottom']),
   fontSize: z.number().int().min(8).max(32),
 });
+const trendStyle = z.object({
+  color,
+  width: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  dash: z.enum(['solid', 'dashed', 'dotted']),
+  startCap: z.enum(['normal', 'arrow']),
+  endCap: z.enum(['normal', 'arrow']),
+  extend: z.enum(['none', 'left', 'right', 'both']),
+  middlePoint: z.boolean(),
+  priceLabels: z.boolean(),
+  stats: z.array(z.enum(['priceRange', 'percent', 'ticks', 'bars', 'dateRange', 'angle'])).max(6),
+  statsPos: z.enum(['left', 'center', 'right']),
+  alwaysStats: z.boolean(),
+});
 const shape = z.discriminatedUnion('kind', [
-  z.object({ id: z.string().min(1).max(40), kind: z.literal('fib'), t1: z.number().int(), t2: z.number().int(), p1: z.number().finite(), p2: z.number().finite(), levels: fibLevels, style: fibStyle, text: z.string().max(200), hiddenOn: tfs }),
+  z.object({
+    id: z.string().min(1).max(40),
+    kind: z.literal('trend'),
+    t1: z.number().int(),
+    t2: z.number().int(),
+    p1: z.number().finite(),
+    p2: z.number().finite(),
+    style: trendStyle,
+    label: lineLabel,
+    hiddenOn: tfs,
+  }),
+  z.object({
+    id: z.string().min(1).max(40),
+    kind: z.literal('fib'),
+    t1: z.number().int(),
+    t2: z.number().int(),
+    p1: z.number().finite(),
+    p2: z.number().finite(),
+    levels: fibLevels,
+    style: fibStyle,
+    text: z.string().max(200),
+    hiddenOn: tfs,
+  }),
   z.object({
     id: z.string().min(1).max(40),
     kind: z.literal('rect'),
@@ -94,8 +129,19 @@ const lineToolsSchema = z.object({
   riskMode: z.enum(['usd', 'percent']).nullable().optional(),
   riskPct: z.number().min(0).max(100).nullable().optional(),
   fibLast: z.object({ levels: fibLevels, style: fibStyle }).nullable().optional(),
-  fibTemplates: z.array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), levels: fibLevels, style: fibStyle })).max(200).optional(),
-  rectTemplates: z.array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), style: rectStyle, label: lineLabel })).max(200).optional(),
+  trendTemplates: z
+    .array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), style: trendStyle, label: lineLabel }))
+    .max(200)
+    .optional(),
+  trendLast: z.object({ style: trendStyle, label: lineLabel }).nullable().optional(),
+  fibTemplates: z
+    .array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), levels: fibLevels, style: fibStyle }))
+    .max(200)
+    .optional(),
+  rectTemplates: z
+    .array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), style: rectStyle, label: lineLabel }))
+    .max(200)
+    .optional(),
 });
 
 const num = z.number().finite();

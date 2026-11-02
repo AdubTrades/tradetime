@@ -5,6 +5,8 @@ import {
   DEFAULT_FIB_LEVELS,
   DEFAULT_FIB_STYLE,
   DEFAULT_RECT_STYLE,
+  DEFAULT_TREND_LABEL,
+  DEFAULT_TREND_STYLE,
   newId,
   sortTemplates,
   riskDollars,
@@ -126,6 +128,7 @@ export function ShapeLayer({
     prim.tf = tf;
     prim.kind = inst.kind;
     prim.selected = selected;
+    prim.tickSize = inst.tickSize;
     prim.colours = colours;
     prim.describe = describe;
     prim.update();
@@ -176,10 +179,14 @@ export function ShapeLayer({
       st.current.onShapesChange(list.some((s) => s.id === shape.id) ? list.map((s) => (s.id === shape.id ? shape : s)) : [...list, shape]);
     };
     // A rectangle being drawn by clicking two corners.
-    let pending: { id: string; kind: 'rect' | 'fib'; t1: number; p1: number } | null = null;
+    let pending: { id: string; kind: 'rect' | 'fib' | 'trend'; t1: number; p1: number } | null = null;
     /** A rectangle or Fib from two points, in the look of the last one. */
-    const twoPoint = (kind: 'rect' | 'fib', id: string, t1: number, p1: number, t2: number, p2: number): Shape => {
+    const twoPoint = (kind: 'rect' | 'fib' | 'trend', id: string, t1: number, p1: number, t2: number, p2: number): Shape => {
       const tools = st.current.tools;
+      if (kind === 'trend') {
+        const last = tools.trendLast;
+        return { id, kind, t1, p1, t2, p2, style: last?.style ?? DEFAULT_TREND_STYLE, label: { ...(last?.label ?? DEFAULT_TREND_LABEL), text: '' }, hiddenOn: [] };
+      }
       if (kind === 'fib') {
         const last = tools.fibLast;
         return { id, kind, t1, p1, t2, p2, levels: last?.levels ?? DEFAULT_FIB_LEVELS, style: last?.style ?? DEFAULT_FIB_STYLE, text: '', hiddenOn: [] };
@@ -218,7 +225,7 @@ export function ShapeLayer({
       const s = st.current;
       const c = coords();
 
-      if (s.tool === 'rect' || s.tool === 'fib' || pending) {
+      if (s.tool === 'rect' || s.tool === 'fib' || s.tool === 'trend' || pending) {
         const price = priceAt(x, y);
         if (price === null) return;
         stop(e);
@@ -231,7 +238,7 @@ export function ShapeLayer({
           return;
         }
         const id = newId();
-        const kind = s.tool === 'fib' ? 'fib' : 'rect';
+        const kind = s.tool === 'fib' ? 'fib' : s.tool === 'trend' ? 'trend' : 'rect';
         const base = { id, t1: time, p1: price };
         let moved = false;
         drawing.current = true;
@@ -316,7 +323,7 @@ export function ShapeLayer({
       const at = priceAt(mx, my);
       const shift = (p: number) => round(p + dpx);
       const t = (l: number) => c.timeAt(l);
-      if (s0.kind === 'rect' || s0.kind === 'fib') {
+      if (s0.kind === 'rect' || s0.kind === 'fib' || s0.kind === 'trend') {
         if (part === 'body') return { ...s0, t1: t(lt1 + dl), t2: t(lt2 + dl), p1: shift(s0.p1), p2: shift(s0.p2) };
         if (at === null) return null;
         const tm = t(logicalAt(mx));
@@ -406,6 +413,9 @@ export function ShapeLayer({
       if (e.altKey && e.shiftKey && e.code === 'KeyR') {
         e.preventDefault();
         s.setTool('rect');
+      } else if (e.altKey && !e.shiftKey && e.code === 'KeyT') {
+        e.preventDefault();
+        s.setTool('trend');
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && s.selected && !s.editing && s.shapes.some((sh) => sh.id === s.selected)) {
         e.preventDefault();
         prim.preview = null;
@@ -432,7 +442,19 @@ export function ShapeLayer({
             left: Math.min(menu.x, host.clientWidth - 220),
             top: Math.min(
               menu.y,
-              Math.max(0, host.clientHeight - 140 - (menuShape.kind === 'rect' ? (tools.rectTemplates?.length ?? 0) : menuShape.kind === 'fib' ? (tools.fibTemplates?.length ?? 0) : 0) * 30),
+              Math.max(
+                0,
+                host.clientHeight -
+                  140 -
+                  (menuShape.kind === 'rect'
+                    ? (tools.rectTemplates?.length ?? 0)
+                    : menuShape.kind === 'fib'
+                      ? (tools.fibTemplates?.length ?? 0)
+                      : menuShape.kind === 'trend'
+                        ? (tools.trendTemplates?.length ?? 0)
+                        : 0) *
+                    30,
+              ),
             ),
           }}
           onPointerDown={(e) => e.stopPropagation()}
@@ -457,6 +479,25 @@ export function ShapeLayer({
               </button>
             ))}
           {menuShape.kind === 'rect' && (tools.rectTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
+          {/* Trend line templates, one click to apply. */}
+          {menuShape.kind === 'trend' &&
+            sortTemplates(tools.trendTemplates ?? []).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  update({ ...menuShape, style: t.style, label: { ...t.label, text: menuShape.label.text || t.label.text } });
+                  onToolsChange({ ...tools, trendLast: { style: t.style, label: t.label } });
+                  setMenu(null);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-hover"
+              >
+                <span className="h-0.5 w-3 shrink-0 -rotate-12 rounded-full" style={{ background: t.style.color }} />
+                <span className="truncate">{t.name}</span>
+              </button>
+            ))}
+          {menuShape.kind === 'trend' && (tools.trendTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
           {/* Fib templates, one click to apply. */}
           {menuShape.kind === 'fib' &&
             sortTemplates(tools.fibTemplates ?? []).map((t) => (
@@ -532,6 +573,7 @@ export function ShapeLayer({
           onChange={update}
           onOk={() => {
             if (current.kind === 'rect') onToolsChange({ ...tools, rectLast: current.style });
+            else if (current.kind === 'trend') onToolsChange({ ...tools, trendLast: { style: current.style, label: current.label } });
             else if (current.kind === 'fib') onToolsChange({ ...tools, fibLast: { levels: current.levels, style: current.style } });
             else onToolsChange({ ...tools, riskMode: current.riskMode ?? 'usd', riskUsd: current.riskUsd, riskPct: current.riskPct ?? 1 });
             setEditing(null);
@@ -549,6 +591,13 @@ export function ShapeLayer({
             onToolsChange({ ...tools, rectTemplates: [...others, { id: newId(), name, style: current.style, label: current.label }] });
           }}
           onDeleteRectTemplate={(id) => onToolsChange({ ...tools, rectTemplates: (tools.rectTemplates ?? []).filter((t) => t.id !== id) })}
+          trendTemplates={tools.trendTemplates ?? []}
+          onSaveTrendTemplate={(name) => {
+            if (current.kind !== 'trend') return;
+            const others = (tools.trendTemplates ?? []).filter((t) => t.name.toLowerCase() !== name.toLowerCase());
+            onToolsChange({ ...tools, trendTemplates: [...others, { id: newId(), name, style: current.style, label: current.label }] });
+          }}
+          onDeleteTrendTemplate={(id) => onToolsChange({ ...tools, trendTemplates: (tools.trendTemplates ?? []).filter((t) => t.id !== id) })}
           fibTemplates={tools.fibTemplates ?? []}
           onSaveFibTemplate={(name) => {
             if (current.kind !== 'fib') return;

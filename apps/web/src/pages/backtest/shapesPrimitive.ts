@@ -1,5 +1,5 @@
 import type { IChartApi, IPrimitivePaneRenderer, IPrimitivePaneView, ISeriesApi, ISeriesPrimitive, ISeriesPrimitiveAxisView, SeriesAttachedParameter, Time } from 'lightweight-charts';
-import { fibPrice, type Bar, type FibDrawing, type RectDrawing, type RiskRewardDrawing, type Shape, type Timeframe } from '@tc/domain';
+import { fibPrice, type Bar, type FibDrawing, type TrendDrawing, type RectDrawing, type RiskRewardDrawing, type Shape, type Timeframe } from '@tc/domain';
 import { chartCoords, type ChartCoords } from './chartCoords';
 
 type DrawTarget = Parameters<IPrimitivePaneRenderer['draw']>[0];
@@ -43,6 +43,8 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
   tf: Timeframe = '1m';
   kind: 'futures' | 'crypto' = 'crypto';
   selected: string | null = null;
+  /** Price step, for the trend line's "change in ticks". */
+  tickSize = 0.01;
   hovered: string | null = null;
   colours = { profit: '#089981', loss: '#f23645', text: '#131722', muted: '#787b86', background: '#ffffff' };
   describe: (rr: RiskRewardDrawing) => RiskRewardText = () => ({ target: '', stop: '', middle: '' });
@@ -75,7 +77,7 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
     const y = (p: number) => this.series!.priceToCoordinate(p);
     const fibOn = s.kind === 'fib' ? s.levels.filter((l) => l.on).map((l) => fibPrice(s, l.value)) : [];
     const prices: Record<string, number> =
-      s.kind === 'rect'
+      s.kind === 'rect' || s.kind === 'trend'
         ? { p1: s.p1, p2: s.p2 }
         : s.kind === 'fib'
           ? { p1: s.p1, p2: s.p2, lo: Math.min(s.p1, s.p2, ...fibOn), hi: Math.max(s.p1, s.p2, ...fibOn) }
@@ -101,6 +103,15 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
       const ts = this.chart!.timeScale();
       const xt1 = ts.logicalToCoordinate(c.logicalOf(s.t1) as never)!;
       const xt2 = ts.logicalToCoordinate(c.logicalOf(s.t2) as never)!;
+      if (s.kind === 'trend') {
+        if (s.id === this.selected) {
+          if (near(xt1, b.ys.p1!)) return { shape: s, part: 'a' };
+          if (near(xt2, b.ys.p2!)) return { shape: s, part: 'b' };
+        }
+        const [ax, ay, bx, by] = this.trendEnds(s, xt1, b.ys.p1!, xt2, b.ys.p2!);
+        if (distToSegment(x, y, ax, ay, bx, by) <= 5 + s.style.width / 2) return { shape: s, part: 'body' };
+        continue;
+      }
       if (s.kind === 'fib') {
         if (s.id === this.selected) {
           if (near(xt1, b.ys.p1!)) return { shape: s, part: 'a' };
@@ -147,9 +158,12 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
       visible: () => true,
       tickVisible: () => true,
     });
-    return this.list
-      .filter((s): s is RiskRewardDrawing => (s.kind === 'long' || s.kind === 'short') && !!this.box(s, c))
-      .flatMap((s) => [tag(s.stop, this.colours.loss), tag(s.target, this.colours.profit)]);
+    const trendTags = this.list.filter((s): s is TrendDrawing => s.kind === 'trend' && s.style.priceLabels && !!this.box(s, c)).flatMap((s) => [tag(s.p1, s.style.color), tag(s.p2, s.style.color)]);
+    return trendTags.concat(
+      this.list
+        .filter((s): s is RiskRewardDrawing => (s.kind === 'long' || s.kind === 'short') && !!this.box(s, c))
+        .flatMap((s) => [tag(s.stop, this.colours.loss), tag(s.target, this.colours.profit)]),
+    );
   }
 
   paneViews(): readonly IPrimitivePaneView[] {
@@ -185,9 +199,10 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
         const xt2 = ts.logicalToCoordinate(c.logicalOf(s.t2) as never)!;
         if (s.kind === 'rect') this.drawRect(ctx, s, b, hr, vr, text);
         else if (s.kind === 'fib') this.drawFib(ctx, s, b, xt1, xt2, hr, vr, text);
+        else if (s.kind === 'trend') this.drawTrend(ctx, s, b, xt1, xt2, hr, vr, active, c);
         else this.drawRiskReward(ctx, s, b, hr, vr, text);
         if (s.id === this.selected) {
-          if (s.kind === 'fib') {
+          if (s.kind === 'fib' || s.kind === 'trend') {
             handle(xt1, b.ys.p1!, '#2962ff');
             handle(xt2, b.ys.p2!, '#2962ff');
           } else if (s.kind === 'rect') {
@@ -256,6 +271,124 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
         baseline: s.label.place === 'above' ? 'bottom' : s.label.place === 'below' ? 'top' : 'middle',
       });
     }
+  }
+
+  /** A trend line's drawn ends: its two points, or past them to the chart's edge when extended. */
+  trendEnds(s: TrendDrawing, x1: number, y1: number, x2: number, y2: number): [number, number, number, number] {
+    if (x1 === x2 || s.style.extend === 'none') return [x1, y1, x2, y2];
+    const w = this.chart!.timeScale().width();
+    const at = (x: number) => y1 + ((y2 - y1) * (x - x1)) / (x2 - x1);
+    let [ax, ay, bx, by] = [x1, y1, x2, y2];
+    if (s.style.extend === 'left' || s.style.extend === 'both') {
+      ax = x1 < x2 ? 0 : w;
+      ay = at(ax);
+    }
+    if (s.style.extend === 'right' || s.style.extend === 'both') {
+      bx = x2 > x1 ? w : 0;
+      by = at(bx);
+    }
+    return [ax, ay, bx, by];
+  }
+
+  private drawTrend(
+    ctx: CanvasRenderingContext2D,
+    s: TrendDrawing,
+    b: { x1: number; x2: number; ys: Record<string, number> },
+    xt1: number,
+    xt2: number,
+    hr: number,
+    vr: number,
+    active: boolean,
+    c: ChartCoords,
+  ) {
+    const st = s.style;
+    const y1 = b.ys.p1!;
+    const y2 = b.ys.p2!;
+    const [ax, ay, bx, by] = this.trendEnds(s, xt1, y1, xt2, y2);
+    const lw = Math.max(1, Math.round(st.width * hr));
+    ctx.strokeStyle = st.color;
+    ctx.fillStyle = st.color;
+    ctx.lineWidth = lw;
+    ctx.setLineDash(st.dash === 'dashed' ? [6 * hr, 4 * hr] : st.dash === 'dotted' ? [lw, 3 * hr] : []);
+    ctx.beginPath();
+    ctx.moveTo(ax * hr, ay * vr);
+    ctx.lineTo(bx * hr, by * vr);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Arrowheads at the two points, pointing away from the line.
+    const arrow = (tipX: number, tipY: number, fromX: number, fromY: number) => {
+      const ang = Math.atan2((tipY - fromY) * vr, (tipX - fromX) * hr);
+      const len = (7 + st.width * 2) * hr;
+      ctx.beginPath();
+      ctx.moveTo(tipX * hr, tipY * vr);
+      ctx.lineTo(tipX * hr - len * Math.cos(ang - 0.45), tipY * vr - len * Math.sin(ang - 0.45));
+      ctx.lineTo(tipX * hr - len * Math.cos(ang + 0.45), tipY * vr - len * Math.sin(ang + 0.45));
+      ctx.closePath();
+      ctx.fill();
+    };
+    if (st.startCap === 'arrow') arrow(xt1, y1, xt2, y2);
+    if (st.endCap === 'arrow') arrow(xt2, y2, xt1, y1);
+    if (st.middlePoint) {
+      ctx.beginPath();
+      ctx.arc(((xt1 + xt2) / 2) * hr, ((y1 + y2) / 2) * vr, 3 * hr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Label along the line, kept upright.
+    const label = s.label.text.trim();
+    if (label) {
+      const f = s.label.align === 'left' ? 0.08 : s.label.align === 'right' ? 0.92 : 0.5;
+      let ang = Math.atan2((y2 - y1) * vr, (xt2 - xt1) * hr);
+      if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+      ctx.save();
+      ctx.translate((xt1 + (xt2 - xt1) * f) * hr, (y1 + (y2 - y1) * f) * vr);
+      ctx.rotate(ang);
+      ctx.font = `${s.label.bold ? '600 ' : ''}${s.label.size * vr}px Geist, system-ui, sans-serif`;
+      ctx.fillStyle = s.label.color ?? st.color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = s.label.place === 'below' ? 'top' : s.label.place === 'middle' ? 'middle' : 'bottom';
+      ctx.fillText(label, 0, s.label.place === 'below' ? 4 * vr : s.label.place === 'middle' ? 0 : -4 * vr);
+      ctx.restore();
+    }
+    // Stats box: shown all the time, or only while selected / under the mouse.
+    if (!st.stats.length || !(st.alwaysStats || active)) return;
+    const series = this.series!;
+    const diff = s.p2 - s.p1;
+    const sign = (n: number) => (n > 0 ? '+' : n < 0 ? '−' : '');
+    const lines: string[] = [];
+    const first = [
+      st.stats.includes('priceRange') ? `${sign(diff)}${series.priceFormatter().format(Math.abs(diff))}` : '',
+      st.stats.includes('percent') ? `(${sign(diff)}${Math.abs((diff / s.p1) * 100).toFixed(2)}%)` : '',
+      st.stats.includes('ticks') ? `${sign(diff)}${Math.round(Math.abs(diff) / this.tickSize)} ticks` : '',
+    ].filter(Boolean);
+    if (first.length) lines.push(first.join(' '));
+    const bars = Math.round(c.logicalOf(s.t2) - c.logicalOf(s.t1));
+    const secs = Math.abs(s.t2 - s.t1);
+    const d = Math.floor(secs / 86_400);
+    const h = Math.floor((secs % 86_400) / 3600);
+    const span = [d ? `${d}d` : '', h ? `${h}h` : '', `${Math.floor((secs % 3600) / 60)}m`].filter(Boolean).join(' ');
+    const second = [st.stats.includes('bars') ? `${bars} bars` : '', st.stats.includes('dateRange') ? span : ''].filter(Boolean);
+    if (second.length) lines.push(second.join(', '));
+    if (st.stats.includes('angle')) lines.push(`∠ ${(-Math.atan2(y2 - y1, xt2 - xt1) * (180 / Math.PI)).toFixed(1)}°`);
+    if (!lines.length) return;
+    const size = 11;
+    ctx.font = `${size * vr}px Geist, system-ui, sans-serif`;
+    const wpx = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 12 * hr;
+    const hpx = (lines.length * (size + 4) + 6) * vr;
+    const anchorX = st.statsPos === 'left' ? xt1 : st.statsPos === 'center' ? (xt1 + xt2) / 2 : xt2;
+    const anchorY = st.statsPos === 'left' ? y1 : st.statsPos === 'center' ? (y1 + y2) / 2 : y2;
+    const bxp = anchorX * hr + (st.statsPos === 'left' ? -wpx - 10 * hr : st.statsPos === 'center' ? -wpx / 2 : 10 * hr);
+    const byp = anchorY * vr + 10 * vr;
+    ctx.fillStyle = this.colours.background;
+    ctx.strokeStyle = st.color;
+    ctx.lineWidth = Math.max(1, hr);
+    ctx.beginPath();
+    ctx.roundRect(bxp, byp, wpx, hpx, 4 * hr);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = this.colours.text;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    lines.forEach((l, i) => ctx.fillText(l, bxp + 6 * hr, byp + (4 + i * (size + 4)) * vr));
   }
 
   private drawFib(
@@ -353,4 +486,13 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
     text(info.stop, cx, up ? stop - 10 : stop + 10, this.colours.loss, { align: 'center', bold: true });
     text(info.middle, cx, up ? entry + 10 : entry - 10, this.colours.text, { align: 'center' });
   }
+}
+
+/** Shortest distance from a point to a line segment (CSS pixels). */
+function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len = dx * dx + dy * dy;
+  const t = len ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
