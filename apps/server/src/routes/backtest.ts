@@ -61,7 +61,9 @@ const shape = z.discriminatedUnion('kind', [
     stop: z.number().finite(),
     target: z.number().finite(),
     symbol: z.string().min(1).max(20),
+    riskMode: z.enum(['usd', 'percent']).optional(),
     riskUsd: z.number().min(0).max(1e9),
+    riskPct: z.number().min(0).max(100).optional(),
     hiddenOn: tfs,
   }),
 ]);
@@ -71,6 +73,8 @@ const lineToolsSchema = z.object({
   last: z.object({ style: lineStyle, label: lineLabel }).nullable(),
   rectLast: rectStyle.nullable().optional(),
   riskUsd: z.number().min(0).max(1e9).nullable().optional(),
+  riskMode: z.enum(['usd', 'percent']).nullable().optional(),
+  riskPct: z.number().min(0).max(100).nullable().optional(),
 });
 
 const num = z.number().finite();

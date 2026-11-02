@@ -4,6 +4,7 @@ import {
   DEFAULT_LINE_LABEL,
   DEFAULT_RECT_STYLE,
   newId,
+  riskDollars,
   sizeForRisk,
   timeframesFor,
   type Bar,
@@ -27,10 +28,13 @@ const money = (n: number) => `${n < 0 ? '−' : '+'}$${Math.abs(n).toLocaleStrin
 export const claim = (e: Event) => ((e as Event & { tcClaimed?: boolean }).tcClaimed = true);
 export const claimed = (e: Event) => !!(e as Event & { tcClaimed?: boolean }).tcClaimed;
 
-/** Size for a long/short tool: whole contracts, or coins for spot crypto. */
-export function riskRewardSize(rr: RiskRewardDrawing, spec: SimSpec | undefined, crypto: boolean): number {
-  return spec ? sizeForRisk(rr.riskUsd, rr.entry, rr.stop, spec.pointValue, crypto ? 0.0001 : 1) : 0;
+/** Size for a long/short tool: whole contracts, or coins for spot crypto, from its dollar or % risk. */
+export function riskRewardSize(rr: RiskRewardDrawing, spec: SimSpec | undefined, crypto: boolean, balance: number): number {
+  return spec ? sizeForRisk(riskDollars(rr, balance), rr.entry, rr.stop, spec.pointValue, crypto ? 0.0001 : 1) : 0;
 }
+
+/** R as TradingView-free shorthand: 2 → "2R", 1.5 → "1.5R", 2.05 → "2.05R". */
+export const formatR = (r: number) => `${Number(r.toFixed(2))}R`;
 
 /**
  * Rectangles and long/short tools on the replay chart. Rectangle: drag (or click two corners) to draw; drag the body to
@@ -56,6 +60,7 @@ export function ShapeLayer({
   specs,
   colours,
   onPlaceOrder,
+  balance,
 }: {
   chart: IChartApi;
   series: ISeriesApi<'Candlestick'>;
@@ -75,6 +80,8 @@ export function ShapeLayer({
   specs: Record<string, SimSpec>;
   colours: ShapesPrimitive['colours'];
   onPlaceOrder?: (rr: RiskRewardDrawing) => void;
+  /** The practice account's balance, for tools sized as a % of it. */
+  balance: number;
 }) {
   const [prim] = useState(() => new ShapesPrimitive());
   /** True while a shape is being drawn or dragged. */
@@ -85,30 +92,17 @@ export function ShapeLayer({
 
   const describe = (rr: RiskRewardDrawing): RiskRewardText => {
     const spec = specs[rr.symbol];
-    const qty = riskRewardSize(rr, spec, inst.kind === 'crypto');
+    const qty = riskRewardSize(rr, spec, inst.kind === 'crypto', balance);
     const pv = spec?.pointValue ?? 0;
     const dir = rr.kind === 'long' ? 1 : -1;
     const tPts = (rr.target - rr.entry) * dir;
     const sPts = (rr.entry - rr.stop) * dir;
     const pct = (p: number) => `${((p / rr.entry) * 100).toFixed(2)}%`;
-    // Has the replay reached the stop or target since the tool's start bar?
-    let outcome: RiskRewardText['outcome'] = null;
-    const c = chartCoords(bars, tf, inst.kind);
-    const from = Math.max(0, Math.ceil(c.logicalOf(rr.t1)) + 1);
-    const to = Math.min(bars.length - 1, Math.floor(c.logicalOf(rr.t2)));
-    for (let i = from; i <= to && !outcome; i++) {
-      const b = bars[i]!;
-      const hitStop = rr.kind === 'long' ? b.l <= rr.stop : b.h >= rr.stop;
-      const hitTarget = rr.kind === 'long' ? b.h >= rr.target : b.l <= rr.target;
-      if (hitStop) outcome = 'stop';
-      else if (hitTarget) outcome = 'target';
-    }
-    const rrRatio = sPts > 0 ? (tPts / sPts).toFixed(2) : '–';
     return {
-      target: `Target ${rr.target.toFixed(dp)} · ${tPts.toFixed(dp)} pts (${pct(tPts)}) · ${money(tPts * qty * pv)}`,
-      stop: `Stop ${rr.stop.toFixed(dp)} · ${sPts.toFixed(dp)} pts (${pct(sPts)}) · ${money(-sPts * qty * pv)}`,
-      middle: `${rr.kind === 'long' ? 'Long' : 'Short'} ${qty} ${rr.symbol} · R:R ${rrRatio}${outcome === 'target' ? ' · Target hit' : outcome === 'stop' ? ' · Stop hit' : ''}`,
-      outcome,
+      target: `${tPts.toFixed(dp)} pts (${pct(tPts)}) · ${money(tPts * qty * pv)}`,
+      stop: `${sPts.toFixed(dp)} pts (${pct(sPts)}) · ${money(-sPts * qty * pv)}`,
+      // Just the size to trade and the R, e.g. "6   2.05R".
+      middle: `${qty}   ${sPts > 0 ? formatR(tPts / sPts) : '–'}`,
     };
   };
 
@@ -294,7 +288,9 @@ export function ShapeLayer({
           stop: round(entry - dir * d),
           target: round(entry + dir * d * 2),
           symbol: inst.trades.at(-1)!,
+          riskMode: s.tools.riskMode ?? 'usd',
           riskUsd: s.tools.riskUsd ?? 200,
+          riskPct: s.tools.riskPct ?? 1,
           hiddenOn: [],
         };
         commit(rr);
@@ -494,11 +490,12 @@ export function ShapeLayer({
           shape={current}
           inst={inst}
           specs={specs}
+          balance={balance}
           timeframes={timeframesFor(inst)}
           onChange={update}
           onOk={() => {
             if (current.kind === 'rect') onToolsChange({ ...tools, rectLast: current.style });
-            else onToolsChange({ ...tools, riskUsd: current.riskUsd });
+            else onToolsChange({ ...tools, riskMode: current.riskMode ?? 'usd', riskUsd: current.riskUsd, riskPct: current.riskPct ?? 1 });
             setEditing(null);
           }}
           onCancel={() => {

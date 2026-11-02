@@ -53,6 +53,9 @@ export interface LineTools {
   /** The look of the next rectangle, and the dollar risk of the next long/short tool. */
   rectLast?: RectStyle | null;
   riskUsd?: number | null;
+  /** How the last long/short tool was sized, so the next one starts the same. */
+  riskMode?: 'usd' | 'percent' | null;
+  riskPct?: number | null;
 }
 
 export const DEFAULT_LINE_STYLE: LineStyle = { color: '#2962ff', width: 1, dash: 'solid', priceLabel: true };
@@ -106,9 +109,16 @@ export interface RiskRewardDrawing {
   target: number;
   /** Contract the size is worked out for (MNQ, NQ…). */
   symbol: string;
+  /** Size from a dollar amount, or a percentage of the practice account's balance. */
+  riskMode?: 'usd' | 'percent';
   riskUsd: number;
+  riskPct?: number;
   hiddenOn: Timeframe[];
 }
+
+/** Dollars at risk for a long/short tool: its dollar amount, or its percentage of `balance`. */
+export const riskDollars = (rr: Pick<RiskRewardDrawing, 'riskMode' | 'riskUsd' | 'riskPct'>, balance: number) =>
+  rr.riskMode === 'percent' ? (balance * (rr.riskPct ?? 1)) / 100 : rr.riskUsd;
 
 export type Shape = RectDrawing | RiskRewardDrawing;
 

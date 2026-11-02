@@ -423,12 +423,15 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
       .sort((a, b) => a.time - b.time);
   }, [account, bars, tf, inst]);
 
+  // Balance for tools sized as a % of the account: closed trades only, like a broker's balance.
+  const balance = account ? account.startBalance + account.trades.reduce((sum, t) => sum + t.net, 0) : 0;
+
   /** A long/short tool as a working order: a limit (or stop, if price must rise/fall to it) at its entry, with its stop and target. */
   const placeFromTool = useCallback(
     (rr: RiskRewardDrawing) => {
       if (!account || price === null || cursor === null) return;
       const spec = specs[rr.symbol];
-      const qty = riskRewardSize(rr, spec, inst.kind === 'crypto');
+      const qty = riskRewardSize(rr, spec, inst.kind === 'crypto', balance);
       if (!spec || qty <= 0) {
         setNotice({ text: 'That risk is too small for one contract at this stop distance.', bad: true });
         return;
@@ -438,7 +441,7 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
       setAccount(placeOrder(account, { symbol: rr.symbol, type, side, qty, price: rr.entry, bracket: { stop: rr.stop, target: rr.target }, placedAt: cursor }));
       setNotice({ text: `${side === 'buy' ? 'Buy' : 'Sell'} ${type} ${qty} ${rr.symbol} @ ${rr.entry} placed, with its stop and target.`, bad: false });
     },
-    [account, price, cursor, specs, inst, setAccount],
+    [account, price, cursor, specs, inst, setAccount, balance],
   );
 
   /** The next replay moment: one step on, skipping closed markets (nights, weekends) straight to the next bar. */
@@ -630,6 +633,7 @@ function Backtester({ session, sessions, onSwitch, onNew }: { session: BacktestS
               onShapesChange={setShapes}
               specs={specs}
               onPlaceOrder={placeFromTool}
+              balance={balance}
               onLinesChange={setLines}
               tools={tools}
               onToolsChange={saveTools}

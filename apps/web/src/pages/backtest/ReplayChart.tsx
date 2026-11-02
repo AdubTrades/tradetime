@@ -75,6 +75,7 @@ export function ReplayChart({
   onShapesChange,
   specs,
   onPlaceOrder,
+  balance,
   priceLines = [],
   markers = [],
   onLevelMove,
@@ -92,6 +93,8 @@ export function ReplayChart({
   specs: Record<string, SimSpec>;
   /** Turn a long/short tool into a working order. */
   onPlaceOrder?: (rr: RiskRewardDrawing) => void;
+  /** Practice account balance, for long/short tools sized as a % of it. */
+  balance: number;
   priceLines?: ChartPriceLine[];
   markers?: ChartMarker[];
   /** A level was dragged to a new price. */
@@ -456,6 +459,7 @@ export function ReplayChart({
             specs={specs}
             colours={{ profit: css('--positive'), loss: css('--negative'), text: css('--text'), muted: css('--text-muted'), background }}
             onPlaceOrder={onPlaceOrder}
+            balance={balance}
           />
         )}
         <div className="pointer-events-none absolute top-2.5 left-3 z-10 flex items-center gap-3 font-mono text-[12px]">

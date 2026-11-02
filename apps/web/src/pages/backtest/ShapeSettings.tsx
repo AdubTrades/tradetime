@@ -1,11 +1,11 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import type { BacktestInstrument, LineDash, RectDrawing, RiskRewardDrawing, Shape, SimSpec, Timeframe } from '@tc/domain';
+import { riskDollars, type BacktestInstrument, type LineDash, type RectDrawing, type RiskRewardDrawing, type Shape, type SimSpec, type Timeframe } from '@tc/domain';
 import { Select } from '../../components/Select';
 import { Button, cn, SegmentedTabs } from '../../components/ui';
 import { ColorPicker } from './LineSettings';
-import { riskRewardSize } from './ShapeLayer';
+import { formatR, riskRewardSize } from './ShapeLayer';
 
 type Tab = 'style' | 'text' | 'inputs' | 'visibility';
 
@@ -14,6 +14,7 @@ export function ShapeSettings({
   shape,
   inst,
   specs,
+  balance,
   timeframes,
   onChange,
   onOk,
@@ -23,6 +24,7 @@ export function ShapeSettings({
   shape: Shape;
   inst: BacktestInstrument;
   specs: Record<string, SimSpec>;
+  balance: number;
   timeframes: Timeframe[];
   onChange: (s: Shape) => void;
   onOk: () => void;
@@ -92,7 +94,11 @@ export function ShapeSettings({
         <SegmentedTabs label="Drawing settings" value={tab} onChange={setTab} options={tabs} />
       </div>
       <div className="min-h-[180px] space-y-4 px-4 py-4 text-[13px] overflow-y-auto">
-        {rect ? <RectFields shape={shape} tab={tab} tick={inst.tickSize} onChange={onChange} /> : tab === 'inputs' && <RiskRewardFields shape={shape} inst={inst} specs={specs} onChange={onChange} />}
+        {rect ? (
+          <RectFields shape={shape} tab={tab} tick={inst.tickSize} onChange={onChange} />
+        ) : (
+          tab === 'inputs' && <RiskRewardFields shape={shape} inst={inst} specs={specs} balance={balance} onChange={onChange} />
+        )}
         {tab === 'visibility' && (
           <div className="grid grid-cols-3 gap-2">
             {timeframes.map((tf) => (
@@ -281,8 +287,22 @@ function RectFields({ shape, tab, tick, onChange }: { shape: RectDrawing; tab: T
   return null;
 }
 
-function RiskRewardFields({ shape, inst, specs, onChange }: { shape: RiskRewardDrawing; inst: BacktestInstrument; specs: Record<string, SimSpec>; onChange: (s: Shape) => void }) {
-  const qty = riskRewardSize(shape, specs[shape.symbol], inst.kind === 'crypto');
+function RiskRewardFields({
+  shape,
+  inst,
+  specs,
+  balance,
+  onChange,
+}: {
+  shape: RiskRewardDrawing;
+  inst: BacktestInstrument;
+  specs: Record<string, SimSpec>;
+  balance: number;
+  onChange: (s: Shape) => void;
+}) {
+  const qty = riskRewardSize(shape, specs[shape.symbol], inst.kind === 'crypto', balance);
+  const mode = shape.riskMode ?? 'usd';
+  const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const risk = Math.abs(shape.entry - shape.stop);
   const reward = Math.abs(shape.target - shape.entry);
   return (
@@ -307,19 +327,34 @@ function RiskRewardFields({ shape, inst, specs, onChange }: { shape: RiskRewardD
           </Select>
         </Row>
       )}
-      <Row label="Risk ($)">
+      <Row label="Risk">
+        <SegmentedTabs
+          label="Risk as"
+          value={mode}
+          onChange={(riskMode) => onChange({ ...shape, riskMode })}
+          options={[
+            { value: 'usd', label: '$ amount' },
+            { value: 'percent', label: '% of account' },
+          ]}
+        />
+      </Row>
+      <Row label={mode === 'usd' ? 'Amount ($)' : 'Percent (%)'}>
         <input
           type="number"
-          aria-label="Risk in dollars"
+          aria-label={mode === 'usd' ? 'Risk in dollars' : 'Risk as a percentage of the account'}
           min={0}
-          step={10}
-          value={shape.riskUsd}
-          onChange={(e) => onChange({ ...shape, riskUsd: Math.max(0, Number(e.target.value) || 0) })}
+          step={mode === 'usd' ? 10 : 0.25}
+          value={mode === 'usd' ? shape.riskUsd : (shape.riskPct ?? 1)}
+          onChange={(e) => {
+            const v = Math.max(0, Number(e.target.value) || 0);
+            onChange(mode === 'usd' ? { ...shape, riskUsd: v } : { ...shape, riskPct: Math.min(100, v) });
+          }}
           className="h-8 w-36 rounded-md border border-border bg-card px-2 font-mono text-[13px]"
         />
       </Row>
       <p className="text-[12px] text-muted">
-        Size {qty} {shape.symbol} · R:R {risk > 0 ? (reward / risk).toFixed(2) : '–'}
+        {mode === 'percent' && `${shape.riskPct ?? 1}% of ${usd(balance)} = ${usd(riskDollars(shape, balance))} · `}
+        Size {qty} · {risk > 0 ? formatR(reward / risk) : '–'}
       </p>
     </>
   );

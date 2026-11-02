@@ -1,4 +1,4 @@
-import type { IChartApi, IPrimitivePaneRenderer, IPrimitivePaneView, ISeriesApi, ISeriesPrimitive, SeriesAttachedParameter, Time } from 'lightweight-charts';
+import type { IChartApi, IPrimitivePaneRenderer, IPrimitivePaneView, ISeriesApi, ISeriesPrimitive, ISeriesPrimitiveAxisView, SeriesAttachedParameter, Time } from 'lightweight-charts';
 import type { Bar, RectDrawing, RiskRewardDrawing, Shape, Timeframe } from '@tc/domain';
 import { chartCoords, type ChartCoords } from './chartCoords';
 
@@ -12,12 +12,11 @@ const alpha = (hex: string, a: number) =>
     .toString(16)
     .padStart(2, '0')}`;
 
-/** What a long/short tool says in each zone, and whether the replay has reached its stop or target. */
+/** What a long/short tool says in each zone, and in the middle (size and R). */
 export interface RiskRewardText {
   target: string;
   stop: string;
   middle: string;
-  outcome: 'target' | 'stop' | null;
 }
 
 /**
@@ -46,7 +45,7 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
   selected: string | null = null;
   hovered: string | null = null;
   colours = { profit: '#089981', loss: '#f23645', text: '#131722', muted: '#787b86', background: '#ffffff' };
-  describe: (rr: RiskRewardDrawing) => RiskRewardText = () => ({ target: '', stop: '', middle: '', outcome: null });
+  describe: (rr: RiskRewardDrawing) => RiskRewardText = () => ({ target: '', stop: '', middle: '' });
 
   attached(p: SeriesAttachedParameter<Time>) {
     this.chart = p.chart;
@@ -119,6 +118,22 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
       }
     }
     return null;
+  }
+
+  /** The stop and target prices of each long/short tool as red and green tags on the price axis. */
+  priceAxisViews(): readonly ISeriesPrimitiveAxisView[] {
+    const series = this.series;
+    if (!series) return [];
+    const c = this.coords();
+    const tag = (price: number, colour: string): ISeriesPrimitiveAxisView => ({
+      coordinate: () => series.priceToCoordinate(price) ?? -100,
+      text: () => series.priceFormatter().format(price),
+      textColor: () => '#ffffff',
+      backColor: () => colour,
+      visible: () => true,
+      tickVisible: () => true,
+    });
+    return this.list.filter((s): s is RiskRewardDrawing => s.kind !== 'rect' && !!this.box(s, c)).flatMap((s) => [tag(s.stop, this.colours.loss), tag(s.target, this.colours.profit)]);
   }
 
   paneViews(): readonly IPrimitivePaneView[] {
@@ -235,12 +250,12 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
     const info = this.describe(s);
     const x = Math.round(b.x1 * hr);
     const w = Math.max(1, Math.round((b.x2 - b.x1) * hr));
-    const zone = (y1: number, y2: number, colour: string, strong: boolean) => {
-      ctx.fillStyle = alpha(colour, strong ? 0.32 : 0.18);
+    const zone = (y1: number, y2: number, colour: string) => {
+      ctx.fillStyle = alpha(colour, 0.18);
       ctx.fillRect(x, Math.round(Math.min(y1, y2) * vr), w, Math.round(Math.abs(y2 - y1) * vr));
     };
-    zone(entry, target, this.colours.profit, info.outcome === 'target');
-    zone(entry, stop, this.colours.loss, info.outcome === 'stop');
+    zone(entry, target, this.colours.profit);
+    zone(entry, stop, this.colours.loss);
     ctx.strokeStyle = this.colours.muted;
     ctx.lineWidth = Math.max(1, Math.round(hr));
     ctx.beginPath();
