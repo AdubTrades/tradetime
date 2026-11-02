@@ -338,7 +338,8 @@ export function SimPanel({
             { value: 'history', label: `History${account.trades.length ? ` (${account.trades.length})` : ''}` },
           ]}
         />
-        <Stat label="Balance" value={usd(sum.balance)} />
+        {/* Green above the starting balance, red below, plain at it (to the cent). */}
+        <Stat label="Balance" value={usd(sum.balance)} className={pnlClass(Math.round((sum.balance - account.startBalance) * 100))} />
         <Stat label="Open P&L" value={usd(sum.openPnl, true)} className={pnlClass(sum.openPnl)} />
         <Stat label="Realised" value={usd(sum.realised, true)} className={pnlClass(sum.realised)} />
         <Stat label="Trades" value={String(sum.trades)} />
