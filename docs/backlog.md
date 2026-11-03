@@ -3,6 +3,23 @@
 Ideas agreed for later but not scheduled yet. Newest first. When one is picked up, move its decisions into the
 relevant plan or `CLAUDE.md` and delete it here.
 
+## Live charts in TradeTime via Interactive Brokers (to replace TradingView)
+*Raised 3 Nov 2026.* The owner charts on TradingView mainly for 30-second charts (its top tiers), and dislikes
+NinjaTrader's charting. Every drawing tool used live is already built for the backtester. The TradingView sub runs to the end of
+December 2026, and its CME data add-on ends about a week after cancelling. Decision pending.
+- **Feed:** an IBKR Australia account, at least US$500 equity, and the non-professional **US Securities Snapshot and
+  Futures Value Bundle** (US$10/month plus GST; real-time top of book for CME/CBOT/COMEX/NYMEX; waived at US$30/month IB
+  commissions). Skip depth (Futures Value PLUS) and the standalone CME Real-Time item. Not pro-rated.
+- **Build:** IB Gateway on the Mac, plus a small local helper that streams **tick-by-tick trades** (every trade, so 30s
+  candles, highs, lows and volume are exact) to the TradeTime chart on that computer, with today's earlier bars from
+  IB history and older days from the stored files. A "Live" mode on the backtesting chart reuses all the drawing tools and
+  templates, and shows when the feed is stale.
+- **Expectations:** roughly 0.25–0.5 s behind the exchange from Perth, the same as TradingView. Mac only (Gateway must be
+  running). IB streams data to one session at a time, so logging into IB mobile can cut the feed.
+- **Alternative:** Databento live (Standard plan, about US$199/month), which runs anywhere but costs more than TradingView.
+- **Plan:** owner opens the account and adds the bundle, Claude builds the helper and Live mode, then a week side by
+  side with TradingView before cancelling.
+
 ## Broker auto-sync (Tradovate first, then Rithmic)
 *Raised 20 Oct 2026.* Pull fills in automatically, the way TradeZella does, instead of exporting a CSV from NinjaTrader.
 - **How TradeZella does it:** periodic sync, not live. It re-syncs every 3 hours, with a manual refresh at most every
