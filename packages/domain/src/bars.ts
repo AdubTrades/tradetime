@@ -89,6 +89,8 @@ export const BACKTEST_INSTRUMENTS: BacktestInstrument[] = [
   },
 ];
 export const findInstrument = (id: string) => BACKTEST_INSTRUMENTS.find((i) => i.id === id);
+/** The price data a journal contract uses (MNQ → NQ's prices), or undefined if there's none. */
+export const instrumentForContract = (symbol: string) => BACKTEST_INSTRUMENTS.find((i) => i.trades.includes(symbol.toUpperCase()));
 
 /** Timeframes offered for an instrument: futures from 30 seconds, crypto from 1 minute. */
 export const timeframesFor = (i: Pick<BacktestInstrument, 'baseSeconds'>): Timeframe[] =>

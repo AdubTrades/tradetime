@@ -1,8 +1,8 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, BookImage, History, Pencil, Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useState } from 'react';
-import { formatLocal, zoneLabel } from '@tc/domain';
+import { lazy, Suspense, useState } from 'react';
+import { formatLocal, instrumentForContract, zoneLabel } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import { HistoryDialog } from '../../components/HistoryDialog';
@@ -12,7 +12,11 @@ import { api, type Attachment } from '../../lib/api';
 import { useAccounts, useList } from '../../lib/expenses';
 import { useContracts, useJournalMutation, usePlays, useTrade } from '../../lib/journal';
 import { useMoneyFormat, usePnlCurrency } from '../../lib/pnlCurrency';
+import { useMe } from '../../lib/marketData';
 import { TradeForm } from './TradeForm';
+
+// The chart brings the charting library, so it loads only for trades that can show one.
+const TradeChart = lazy(() => import('./TradeChart').then((m) => ({ default: m.TradeChart })));
 
 const tradeFieldLabels: Record<string, string> = {
   tradingDay: 'Trading day',
@@ -38,6 +42,7 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
   const money = useMoneyFormat();
   const { data: plays = [] } = usePlays();
   const { data: contracts = [] } = useContracts();
+  const { data: me } = useMe();
   const { data: accounts = [] } = useAccounts();
   const { data: moods = [] } = useList('mood');
   const { data: mistakes = [] } = useList('mistake');
@@ -148,6 +153,13 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
           </dl>
         </Card>
       </div>
+
+      {/* The trade on the stored price history (owner only, like the backtester), for contracts with data. */}
+      {me?.backtest && contract && instrumentForContract(contract.symbol) && (
+        <Suspense fallback={null}>
+          <TradeChart trade={t} symbol={contract.symbol} inst={instrumentForContract(contract.symbol)!} />
+        </Suspense>
+      )}
 
       <Card title="Execution">
         <div className="grid gap-6 lg:grid-cols-2">

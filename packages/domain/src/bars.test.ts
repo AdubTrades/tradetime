@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregate, barStart, BACKTEST_INSTRUMENTS, bucketTime, mergeBars, replayView, sessionDate, sessionOpen, timeframesFor, type Bar } from './bars';
+import { aggregate, barStart, instrumentForContract, BACKTEST_INSTRUMENTS, bucketTime, mergeBars, replayView, sessionDate, sessionOpen, timeframesFor, type Bar } from './bars';
 
 const at = (iso: string) => Date.parse(iso) / 1000;
 const iso = (t: number) => new Date(t * 1000).toISOString().replace('.000', '');
@@ -145,6 +145,15 @@ describe('barStart', () => {
     expect(bucketTime(barStart(label, '1D', 'futures'), '1D', 'futures')).toBe(label);
     expect(barStart(label, '1D', 'crypto')).toBe(label);
     expect(barStart(label + 300, '5m', 'futures')).toBe(label + 300);
+  });
+});
+
+describe('instrumentForContract', () => {
+  it('maps contracts to the prices they trade on', () => {
+    expect(instrumentForContract('MNQ')?.id).toBe('NQ');
+    expect(instrumentForContract('nq')?.id).toBe('NQ');
+    expect(instrumentForContract('BTCUSDT')?.id).toBe('BTCUSDT');
+    expect(instrumentForContract('ES')).toBeUndefined();
   });
 });
 
