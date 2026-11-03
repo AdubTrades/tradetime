@@ -37,6 +37,7 @@ const rectStyle = z.object({
   fillOpacity: z.number().min(0).max(1),
   midline: z.boolean(),
   midDash: z.enum(['solid', 'dashed', 'dotted']),
+  midColor: color.nullable().optional(),
   extendRight: z.boolean(),
 });
 const tfs = z.array(z.enum(TIMEFRAMES as [string, ...string[]]));

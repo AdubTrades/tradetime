@@ -93,6 +93,8 @@ export interface RectStyle {
   /** A line through the middle (TradingView's "middle line"), e.g. the 50% of a fair value gap. */
   midline: boolean;
   midDash: LineDash;
+  /** The middle line's colour; null or missing = the border's. */
+  midColor?: string | null;
   /** Keep going to the right edge of the chart. */
   extendRight: boolean;
 }

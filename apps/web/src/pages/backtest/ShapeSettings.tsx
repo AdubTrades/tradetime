@@ -302,6 +302,11 @@ function RectFields({ shape, tab, tick, onChange }: { shape: RectDrawing; tab: T
             </Select>
           )}
         </Row>
+        {shape.style.midline && (
+          <Row label="Middle colour">
+            <ColorPicker value={shape.style.midColor ?? shape.style.border} onChange={(midColor) => style({ midColor })} />
+          </Row>
+        )}
         <Check checked={shape.style.extendRight} onChange={(extendRight) => style({ extendRight })}>
           Extend right
         </Check>
