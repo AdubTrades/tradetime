@@ -52,7 +52,7 @@ export function DrawingToolbar({ host, onTemplates, onSettings }: { host: HTMLEl
     window.addEventListener('pointerup', up);
   };
 
-  const button = 'flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-muted transition hover:bg-hover hover:text-text';
+  const button = 'flex h-8 w-8 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-text';
   return (
     <div
       ref={bar}
@@ -69,6 +69,7 @@ export function DrawingToolbar({ host, onTemplates, onSettings }: { host: HTMLEl
         <button
           type="button"
           title="Templates"
+          aria-label="Templates"
           className={button}
           onClick={(e) => {
             const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -76,13 +77,11 @@ export function DrawingToolbar({ host, onTemplates, onSettings }: { host: HTMLEl
             onTemplates({ x: r.left - h.left, y: r.bottom - h.top + 6 });
           }}
         >
-          <LayoutTemplate size={15} strokeWidth={1.75} />
-          Templates
+          <LayoutTemplate size={16} strokeWidth={1.75} />
         </button>
       )}
-      <button type="button" title="Settings (or double-click the drawing)" className={button} onClick={onSettings}>
-        <Settings2 size={15} strokeWidth={1.75} />
-        Settings
+      <button type="button" title="Settings (or double-click the drawing)" aria-label="Settings" className={button} onClick={onSettings}>
+        <Settings2 size={16} strokeWidth={1.75} />
       </button>
     </div>
   );
