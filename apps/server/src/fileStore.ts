@@ -43,6 +43,14 @@ export async function putObject(cfg: StoreConfig, token: string | null, path: st
   if (!res.ok) throw new Error(`File storage refused the upload (${res.status}): ${await res.text().catch(() => '')}`.trim());
 }
 
+/** Download an object, or null if it doesn't exist. */
+export async function getObject(cfg: StoreConfig, token: string | null, path: string): Promise<Uint8Array | null> {
+  const res = await (cfg.fetcher ?? fetch)(objectUrl(cfg, 'object', path), { headers: headers(cfg, token) });
+  if (res.status === 400 || res.status === 404) return null;
+  if (!res.ok) throw new Error(`File storage couldn’t send ${path} (${res.status})`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
 /** A temporary link to a private object, or null if it doesn't exist (or isn't this user's). */
 export async function signedUrl(cfg: StoreConfig, token: string | null, path: string, expiresIn = 3600): Promise<string | null> {
   const res = await (cfg.fetcher ?? fetch)(objectUrl(cfg, 'object/sign', path), {

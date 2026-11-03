@@ -1,0 +1,43 @@
+# Daily top-up of the backtester's NQ prices (Databento, 1-second bars → 30-second day files in Supabase Storage).
+# Each run downloads only the CME sessions after the last stored one (about US$0.20 a session) and stops without
+# buying if a run would cost more than US$2. Weekends and holidays cost nothing. See docs/backtesting-plan.md.
+#
+# Needs four repository secrets (Settings → Secrets and variables → Actions):
+#   DATABENTO_API_KEY         the Databento API key (the same one as in apps/server/.env.local).
+#   SUPABASE_URL              the project URL.
+#   SUPABASE_PUBLISHABLE_KEY  the publishable key.
+#   SUPABASE_SECRET_KEY       the secret key (sb_secret_…), to write to the private market-data bucket.
+name: Market data top-up
+
+on:
+  schedule:
+    - cron: '0 9 * * 2-6' # 09:00 UTC Tue–Sat (17:00 in Perth), after Databento has the previous session
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: market-data
+  cancel-in-progress: false
+
+jobs:
+  top-up:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24 # zstd support in node:zlib
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @tc/server...
+      - name: Download new NQ sessions and upload them
+        env:
+          DATABENTO_API_KEY: ${{ secrets.DATABENTO_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          TC_DATA_DIR: ${{ runner.temp }}/tradetime
+        run: pnpm --filter @tc/server market-data futures --daily --buy --upload --max-cost 2

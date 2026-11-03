@@ -99,6 +99,11 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   symbol, timeframe, OHLC) as a JPEG; it attaches to the open position (or the latest closed trade) and is linked to the
   journal trade's Screenshots when the trade is saved, or straight away if it already was. Automatic snapshots at entry
   and exit are on by default (toggle in the camera's ▾ menu, `autoSnapshots`). Snapshots count towards the storage cap.
+- **Daily NQ top-up (3 Nov 2026):** GitHub Action `.github/workflows/market-data.yml` runs
+  `market-data futures --daily --buy --upload` at 09:00 UTC Tue–Sat: each CME session after the last stored one
+  (read from the bucket's daily summary), merged into the day files and summaries; stops if a run would cost more than
+  US$2 (a session is about US$0.20). Secrets: DATABENTO_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY,
+  SUPABASE_SECRET_KEY. The monthly backfill skips months the daily job filled and merges summaries before uploading.
 - **Data bought (1 Nov 2026):** NQ 1-second, Nov 2025 to Oct 2026, US$48.33 from Databento
   (`market-data futures --buy`; raw files cached in market-data/raw so they're never paid for twice). ES and GC were
   left out for now and removed from the instrument list. Crypto stays (free).
