@@ -257,24 +257,33 @@ function RectFields({ shape, tab, tick, onChange }: { shape: RectDrawing; tab: T
     return (
       <>
         <Row label="Border">
-          <ColorPicker value={shape.style.border} onChange={(border) => style({ border })} />
+          <Check checked={!shape.style.noBorder} onChange={(on) => style({ noBorder: !on })}>
+            Show
+          </Check>
         </Row>
-        <Row label="Thickness">
-          <div className="flex gap-1">
-            {([1, 2, 3, 4] as const).map((w) => (
-              <button
-                key={w}
-                type="button"
-                aria-label={`${w}px`}
-                aria-pressed={shape.style.borderWidth === w}
-                onClick={() => style({ borderWidth: w })}
-                className={cn('flex h-8 w-10 items-center justify-center rounded-md border', shape.style.borderWidth === w ? 'border-text' : 'border-border hover:bg-hover')}
-              >
-                <span className="w-5 rounded-full bg-text" style={{ height: w }} />
-              </button>
-            ))}
-          </div>
-        </Row>
+        {!shape.style.noBorder && (
+          <Row label="Colour">
+            <ColorPicker value={shape.style.border} onChange={(border) => style({ border })} />
+          </Row>
+        )}
+        {!shape.style.noBorder && (
+          <Row label="Thickness">
+            <div className="flex gap-1">
+              {([1, 2, 3, 4] as const).map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  aria-label={`${w}px`}
+                  aria-pressed={shape.style.borderWidth === w}
+                  onClick={() => style({ borderWidth: w })}
+                  className={cn('flex h-8 w-10 items-center justify-center rounded-md border', shape.style.borderWidth === w ? 'border-text' : 'border-border hover:bg-hover')}
+                >
+                  <span className="w-5 rounded-full bg-text" style={{ height: w }} />
+                </button>
+              ))}
+            </div>
+          </Row>
+        )}
         <Row label="Fill">
           <ColorPicker value={shape.style.fill} onChange={(fill) => style({ fill })} />
         </Row>
@@ -307,6 +316,9 @@ function RectFields({ shape, tab, tick, onChange }: { shape: RectDrawing; tab: T
             <ColorPicker value={shape.style.midColor ?? shape.style.border} onChange={(midColor) => style({ midColor })} />
           </Row>
         )}
+        <Row label="Text">
+          <ColorPicker value={shape.label.color ?? shape.style.border} onChange={(color) => label({ color })} />
+        </Row>
         <Check checked={shape.style.extendRight} onChange={(extendRight) => style({ extendRight })}>
           Extend right
         </Check>
@@ -325,12 +337,7 @@ function RectFields({ shape, tab, tick, onChange }: { shape: RectDrawing; tab: T
           className="w-full resize-none rounded-md border border-border bg-card px-3 py-2 text-[13px]"
         />
         <Row label="Colour">
-          <div className="flex items-center gap-2">
-            <Check checked={shape.label.color === null} onChange={(same) => label({ color: same ? null : shape.style.border })}>
-              Same as border
-            </Check>
-            {shape.label.color !== null && <ColorPicker value={shape.label.color} onChange={(color) => label({ color })} />}
-          </div>
+          <ColorPicker value={shape.label.color ?? shape.style.border} onChange={(color) => label({ color })} />
         </Row>
         <Row label="Size">
           <Select size="sm" aria-label="Text size" value={String(shape.label.size)} onChange={(e) => label({ size: Number(e.target.value) })} className="w-20">

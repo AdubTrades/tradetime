@@ -248,7 +248,7 @@ export class ShapesPrimitive implements ISeriesPrimitive<Time> {
     ctx.lineWidth = lw;
     ctx.strokeStyle = s.style.border;
     ctx.setLineDash([]);
-    ctx.strokeRect(x + (lw % 2 ? 0.5 : 0), y + (lw % 2 ? 0.5 : 0), w, h);
+    if (!s.style.noBorder) ctx.strokeRect(x + (lw % 2 ? 0.5 : 0), y + (lw % 2 ? 0.5 : 0), w, h);
     if (s.style.midline) {
       const my = Math.round(((top + bottom) / 2) * vr) + 0.5;
       ctx.setLineDash(s.style.midDash === 'dashed' ? [6 * hr, 4 * hr] : s.style.midDash === 'dotted' ? [hr, 3 * hr] : []);

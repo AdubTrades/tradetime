@@ -108,6 +108,8 @@ export interface ChartStyle {
 
 export interface RectStyle {
   border: string;
+  /** No outline (missing = outlined). */
+  noBorder?: boolean;
   borderWidth: 1 | 2 | 3 | 4;
   fill: string;
   /** 0–1. */
