@@ -24,6 +24,7 @@ import { chartCoords } from './chartCoords';
 import type { DrawTool } from './LineLayer';
 import { ShapesPrimitive, type RiskRewardText, type ShapePart } from './shapesPrimitive';
 import { ShapeSettings } from './ShapeSettings';
+import { DrawingToolbar } from './DrawingToolbar';
 
 const MAGNET_PX = 30;
 const decimals = (tick: number) => Math.max(0, (String(tick).split('.')[1] ?? '').length);
@@ -92,7 +93,8 @@ export function ShapeLayer({
   /** True while a shape is being drawn or dragged. */
   const drawing = useRef(false);
   const [editing, setEditing] = useState<Shape | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  // The right-click menu, or just the templates when opened from the floating bar.
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string; templatesOnly?: boolean } | null>(null);
   const dp = decimals(inst.tickSize);
 
   const describe = (rr: RiskRewardDrawing): RiskRewardText => {
@@ -438,9 +440,22 @@ export function ShapeLayer({
   const current = editing ? shapes.find((s) => s.id === editing.id) : null;
   const menuShape = menu ? shapes.find((s) => s.id === menu.id) : null;
   const item = 'flex w-full px-3 py-1.5 text-left hover:bg-hover';
+  const selectedShape = selected ? shapes.find((s) => s.id === selected) : null;
+  const templateCount = (shape: Shape) => (shape.kind === 'rect' ? tools.rectTemplates : shape.kind === 'trend' ? tools.trendTemplates : shape.kind === 'fib' ? tools.fibTemplates : [])?.length ?? 0;
 
   return (
     <>
+      {selectedShape && !editing && (
+        <DrawingToolbar
+          host={host}
+          // The long/short tools have no templates.
+          onTemplates={selectedShape.kind === 'long' || selectedShape.kind === 'short' ? undefined : (at) => setMenu(menu?.templatesOnly ? null : { ...at, id: selectedShape.id, templatesOnly: true })}
+          onSettings={() => {
+            setMenu(null);
+            setEditing(selectedShape);
+          }}
+        />
+      )}
       {menu && menuShape && (
         <div
           role="menu"
@@ -485,7 +500,7 @@ export function ShapeLayer({
                 <span className="truncate">{t.name}</span>
               </button>
             ))}
-          {menuShape.kind === 'rect' && (tools.rectTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
+          {!menu.templatesOnly && menuShape.kind === 'rect' && (tools.rectTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
           {/* Trend line templates, one click to apply. */}
           {menuShape.kind === 'trend' &&
             sortTemplates(tools.trendTemplates ?? []).map((t) => (
@@ -504,7 +519,7 @@ export function ShapeLayer({
                 <span className="truncate">{t.name}</span>
               </button>
             ))}
-          {menuShape.kind === 'trend' && (tools.trendTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
+          {!menu.templatesOnly && menuShape.kind === 'trend' && (tools.trendTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
           {/* Fib templates, one click to apply. */}
           {menuShape.kind === 'fib' &&
             sortTemplates(tools.fibTemplates ?? []).map((t) => (
@@ -530,44 +545,49 @@ export function ShapeLayer({
                 <span className="truncate">{t.name}</span>
               </button>
             ))}
-          {menuShape.kind === 'fib' && (tools.fibTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
-          {(menuShape.kind === 'long' || menuShape.kind === 'short') && onPlaceOrder && (
-            <button
-              type="button"
-              role="menuitem"
-              className={item}
-              onClick={() => {
-                onPlaceOrder(menuShape);
-                setMenu(null);
-              }}
-            >
-              Place order from this
-            </button>
+          {!menu.templatesOnly && menuShape.kind === 'fib' && (tools.fibTemplates?.length ?? 0) > 0 && <div className="my-1 border-t border-border" />}
+          {menu.templatesOnly && templateCount(menuShape) === 0 && <p className="px-3 py-1.5 text-muted">No templates yet. Save one in Settings.</p>}
+          {!menu.templatesOnly && (
+            <>
+              {(menuShape.kind === 'long' || menuShape.kind === 'short') && onPlaceOrder && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={item}
+                  onClick={() => {
+                    onPlaceOrder(menuShape);
+                    setMenu(null);
+                  }}
+                >
+                  Place order from this
+                </button>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                className={item}
+                onClick={() => {
+                  setEditing(menuShape);
+                  setMenu(null);
+                }}
+              >
+                Settings…
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={`${item} text-loss`}
+                onClick={() => {
+                  prim.preview = null;
+                  onShapesChange(shapes.filter((s) => s.id !== menuShape.id));
+                  setSelected(null);
+                  setMenu(null);
+                }}
+              >
+                Delete
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            role="menuitem"
-            className={item}
-            onClick={() => {
-              setEditing(menuShape);
-              setMenu(null);
-            }}
-          >
-            Settings…
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={`${item} text-loss`}
-            onClick={() => {
-              prim.preview = null;
-              onShapesChange(shapes.filter((s) => s.id !== menuShape.id));
-              setSelected(null);
-              setMenu(null);
-            }}
-          >
-            Delete
-          </button>
         </div>
       )}
       {editing && current && (

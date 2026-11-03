@@ -14,6 +14,7 @@ import {
   type Timeframe,
 } from '@tc/domain';
 import { LinesPrimitive } from './linesPrimitive';
+import { DrawingToolbar } from './DrawingToolbar';
 import { LineSettings } from './LineSettings';
 import { claim } from './ShapeLayer';
 
@@ -65,7 +66,8 @@ export function LineLayer({
 }) {
   const [prim] = useState(() => new LinesPrimitive());
   const [editing, setEditing] = useState<HorizontalLine | null>(null); // the line as it was when settings opened
-  const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  // The right-click menu, or just the templates when opened from the floating bar.
+  const [menu, setMenu] = useState<{ x: number; y: number; id: string; templatesOnly?: boolean } | null>(null);
 
   // The latest props for the native event handlers below.
   const st = useRef({ lines, onLinesChange, tools, onToolsChange, tool, setTool, magnet, bars, tf, inst, selected, setSelected, editing });
@@ -277,9 +279,20 @@ export function LineLayer({
   const remember = (line: HorizontalLine) => onToolsChange({ ...tools, last: { style: line.style, label: { ...line.label, text: '' } } });
   const current = editing ? lines.find((l) => l.id === editing.id) : null;
   const menuLine = menu ? lines.find((l) => l.id === menu.id) : null;
+  const selectedLine = selected ? lines.find((l) => l.id === selected) : null;
 
   return (
     <>
+      {selectedLine && !editing && (
+        <DrawingToolbar
+          host={host}
+          onTemplates={(at) => setMenu(menu?.templatesOnly ? null : { ...at, id: selectedLine.id, templatesOnly: true })}
+          onSettings={() => {
+            setMenu(null);
+            setEditing(selectedLine);
+          }}
+        />
+      )}
       {menu && menuLine && (
         <div
           role="menu"
@@ -304,30 +317,35 @@ export function LineLayer({
               <span className="truncate">{t.name}</span>
             </button>
           ))}
-          {tools.templates.length > 0 && <div className="my-1 border-t border-border" />}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setEditing(menuLine);
-              setMenu(null);
-            }}
-            className="flex w-full px-3 py-1.5 text-left hover:bg-hover"
-          >
-            Settings…
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onLinesChange(lines.filter((l) => l.id !== menuLine.id));
-              setSelected(null);
-              setMenu(null);
-            }}
-            className="flex w-full px-3 py-1.5 text-left text-loss hover:bg-hover"
-          >
-            Delete
-          </button>
+          {menu.templatesOnly && tools.templates.length === 0 && <p className="px-3 py-1.5 text-muted">No templates yet. Save one in Settings.</p>}
+          {!menu.templatesOnly && tools.templates.length > 0 && <div className="my-1 border-t border-border" />}
+          {!menu.templatesOnly && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setEditing(menuLine);
+                  setMenu(null);
+                }}
+                className="flex w-full px-3 py-1.5 text-left hover:bg-hover"
+              >
+                Settings…
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onLinesChange(lines.filter((l) => l.id !== menuLine.id));
+                  setSelected(null);
+                  setMenu(null);
+                }}
+                className="flex w-full px-3 py-1.5 text-left text-loss hover:bg-hover"
+              >
+                Delete
+              </button>
+            </>
+          )}
         </div>
       )}
       {editing && current && (
