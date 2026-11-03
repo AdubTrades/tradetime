@@ -58,6 +58,8 @@ export interface LineTools {
   riskPct?: number | null;
   /** Rectangle templates (kept apart from the line templates). */
   rectTemplates?: RectTemplate[];
+  /** Timeframes shown as quick buttons on the backtesting chart (the rest are in its menu). */
+  tfFavourites?: Timeframe[] | null;
   /** Time zone for the backtesting chart's times (IANA, e.g. America/New_York); null: the user's own. */
   chartZone?: string | null;
   /** Take chart snapshots automatically when a position opens and when it closes (on unless turned off). */

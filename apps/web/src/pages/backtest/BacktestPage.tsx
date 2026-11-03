@@ -38,6 +38,7 @@ import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
 import { useCreateSession, useDeleteSession, useDrawings, useLineTools, useSessions, useSimAccount, useUpdateSession, type BacktestSession } from '../../lib/drawings';
 import { DateTimePicker } from './DateTimePicker';
+import { DEFAULT_TF_FAVOURITES, TimeframePicker } from './TimeframePicker';
 import { ReplayChart, type ChartMarker, type ChartPriceLine, type LevelRef } from './ReplayChart';
 import { DEFAULT_START_BALANCE, OrderTicket, SimPanel, useSimSpecs } from './SimTrading';
 import { riskRewardSize } from './ShapeLayer';
@@ -632,20 +633,13 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
             {session.description && <span className="truncate">{session.description}</span>}
           </span>
         )}
-        <div role="tablist" aria-label="Timeframe" className="inline-flex rounded-md bg-tabs-track p-[3px]">
-          {tfs.map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={t === tf}
-              onClick={() => setTf(t)}
-              className={cn('h-8 rounded-[7px] px-2.5 font-mono text-[12px] font-medium', t === tf ? 'bg-card text-text shadow-[0_1px_2px_rgba(0,0,0,0.08)]' : 'text-muted hover:text-text')}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        <TimeframePicker
+          timeframes={tfs}
+          value={tf}
+          onChange={setTf}
+          favourites={(tools.tfFavourites as Timeframe[] | null | undefined) ?? DEFAULT_TF_FAVOURITES}
+          onFavouritesChange={(tfFavourites) => saveTools({ ...tools, tfFavourites })}
+        />
         <div ref={ticketBox} className="relative ml-auto flex items-center gap-2">
           <button
             type="button"
