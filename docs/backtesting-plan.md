@@ -104,6 +104,8 @@ owner only, and desktop only. Simulated trades save to the journal under the **B
   (read from the bucket's daily summary), merged into the day files and summaries; stops if a run would cost more than
   US$2 (a session is about US$0.20). Secrets: DATABENTO_API_KEY, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY,
   SUPABASE_SECRET_KEY. The monthly backfill skips months the daily job filled and merges summaries before uploading.
+  The same Action then runs `market-data crypto --daily --upload` (free): each new UTC day for BTC, ETH and SOL, and
+  drops days older than 5 years from the summaries and the bucket.
 - **Data bought (1 Nov 2026):** NQ 1-second, Nov 2025 to Oct 2026, US$48.33 from Databento
   (`market-data futures --buy`; raw files cached in market-data/raw so they're never paid for twice). ES and GC were
   left out for now and removed from the instrument list. Crypto stays (free).

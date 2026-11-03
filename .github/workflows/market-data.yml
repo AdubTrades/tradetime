@@ -1,6 +1,7 @@
-# Daily top-up of the backtester's NQ prices (Databento, 1-second bars → 30-second day files in Supabase Storage).
-# Each run downloads only the CME sessions after the last stored one (about US$0.20 a session) and stops without
-# buying if a run would cost more than US$2. Weekends and holidays cost nothing. See docs/backtesting-plan.md.
+# Daily top-up of the backtester's prices in Supabase Storage (see docs/backtesting-plan.md):
+# - NQ from Databento (1-second bars → 30-second day files): only the CME sessions after the last stored one, about
+#   US$0.20 a session; stops without buying if a run would cost more than US$2. Weekends and holidays cost nothing.
+# - BTC, ETH and SOL from Binance's free archive (1-minute bars): each new UTC day, keeping a rolling 5 years.
 #
 # Needs four repository secrets (Settings → Secrets and variables → Actions):
 #   DATABENTO_API_KEY         the Databento API key (the same one as in apps/server/.env.local).
@@ -41,3 +42,11 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           TC_DATA_DIR: ${{ runner.temp }}/tradetime
         run: pnpm --filter @tc/server market-data futures --daily --buy --upload --max-cost 2
+      - name: Download new BTC, ETH and SOL days and upload them
+        if: ${{ !cancelled() }} # even if the NQ step failed
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          TC_DATA_DIR: ${{ runner.temp }}/tradetime
+        run: pnpm --filter @tc/server market-data crypto --daily --upload

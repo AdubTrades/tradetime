@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fomcEvents } from '@tc/domain';
 import * as cal from './calendar';
 import * as expenses from './expenses';
@@ -22,6 +22,14 @@ const fakeFred = (failWith?: string) => async (url: string) => {
 };
 
 describe('market events', () => {
+  // The refresh covers the last 30 and next 120 days from today, and the fake FRED dates are in October 2026: pin
+  // today inside that range so these tests don't start failing as the real date moves on.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-20T00:00:00Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+
   it('needs a key, stores events, and is idempotent', () =>
     asUser(async () => {
       expect((await market.refreshMarketEvents(fakeFred())).lastError).toMatch(/FRED API key/);
