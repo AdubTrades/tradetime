@@ -136,6 +136,23 @@ const lineToolsSchema = z.object({
   fibLast: z.object({ levels: fibLevels, style: fibStyle }).nullable().optional(),
   autoSnapshots: z.boolean().optional(),
   chartZone: z.string().max(64).nullable().optional(),
+  chartStyle: z
+    .object({
+      background: color.nullable().optional(),
+      gradientTo: color.nullable().optional(),
+      upBody: color.nullable().optional(),
+      upBorder: color.nullable().optional(),
+      upWick: color.nullable().optional(),
+      downBody: color.nullable().optional(),
+      downBorder: color.nullable().optional(),
+      downWick: color.nullable().optional(),
+      borders: z.boolean().optional(),
+      wicks: z.boolean().optional(),
+      vertGrid: z.boolean().optional(),
+      horzGrid: z.boolean().optional(),
+    })
+    .nullable()
+    .optional(),
   tfFavourites: z.array(z.enum(TIMEFRAMES as [string, ...string[]])).max(20).nullable().optional(),
   trendTemplates: z
     .array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(60), style: trendStyle, label: lineLabel }))

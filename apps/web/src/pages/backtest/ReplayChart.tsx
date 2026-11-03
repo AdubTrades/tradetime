@@ -1,8 +1,9 @@
-import { ArrowRightFromLine, Magnet, Minus, MousePointer2, RectangleHorizontal, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ArrowRightFromLine, Magnet, Minus, MousePointer2, RectangleHorizontal, Settings2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
 import {
   CandlestickSeries,
+  ColorType,
   createChart,
   createSeriesMarkers,
   CrosshairMode,
@@ -16,8 +17,21 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import { currentZone, isIntraday, type Bar, type BacktestInstrument, type HorizontalLine, type LineTools, type RiskRewardDrawing, type Shape, type SimSpec, type Timeframe } from '@tc/domain';
+import {
+  currentZone,
+  isIntraday,
+  type Bar,
+  type BacktestInstrument,
+  type ChartStyle,
+  type HorizontalLine,
+  type LineTools,
+  type RiskRewardDrawing,
+  type Shape,
+  type SimSpec,
+  type Timeframe,
+} from '@tc/domain';
 import { cn } from '../../components/ui';
+import { ChartSettings, chartLook } from './ChartSettings';
 import { LineLayer, type DrawTool } from './LineLayer';
 import { ShapeLayer } from './ShapeLayer';
 
@@ -138,7 +152,14 @@ export function ReplayChart({
       return false;
     }
   });
-  const [background, setBackground] = useState(() => palette().bg);
+  // Bumped when the app switches light/dark, so the theme's colours are read again.
+  const [theme, setTheme] = useState(0);
+  // Chart settings: while the window is open, the chart shows the draft.
+  const [styleDraft, setStyleDraft] = useState<{ style: ChartStyle | null } | null>(null);
+  const chartStyle = styleDraft ? styleDraft.style : (tools.chartStyle ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const look = useMemo(() => chartLook(palette(), chartStyle), [chartStyle, theme]);
+  const background = look.bg;
   const levelLines = useRef<IPriceLine[]>([]);
   const fillMarkers = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const el = useRef<HTMLDivElement>(null);
@@ -148,7 +169,7 @@ export function ReplayChart({
   const chart = useRef<IChartApi | null>(null);
   const candles = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volume = useRef<ISeriesApi<'Histogram'> | null>(null);
-  const shown = useRef<{ key: string; first: number; count: number } | null>(null);
+  const shown = useRef<{ key: string; look: unknown; first: number; count: number } | null>(null);
   const [legend, setLegend] = useState<Bar | null>(null);
   const intraday = isIntraday(tf);
   const intradayRef = useRef(intraday);
@@ -239,14 +260,7 @@ export function ReplayChart({
         rightPriceScale: { borderColor: p.border },
         timeScale: { borderColor: p.border },
       });
-      candles.current?.applyOptions({
-        upColor: p.up,
-        downColor: p.down,
-        wickUpColor: p.up,
-        wickDownColor: p.down,
-      });
-      shown.current = null; // volume colours are per bar: redraw
-      setBackground(p.bg);
+      setTheme((t) => t + 1);
     });
     observer.observe(document.documentElement, {
       attributes: true,
@@ -261,6 +275,28 @@ export function ReplayChart({
       chart.current = null;
     };
   }, []);
+
+  // The chart's look: the theme's colours with the user's chart settings on top.
+  useEffect(() => {
+    if (!ready) return;
+    ready.chart.applyOptions({
+      layout: {
+        textColor: look.text?.muted ?? palette().text,
+        background: look.gradientTo ? { type: ColorType.VerticalGradient, topColor: look.bg, bottomColor: look.gradientTo } : { type: ColorType.Solid, color: look.bg },
+      },
+      grid: { vertLines: { visible: look.vertGrid, color: look.text?.grid ?? palette().grid }, horzLines: { visible: look.horzGrid, color: look.text?.grid ?? palette().grid } },
+    });
+    ready.series.applyOptions({
+      upColor: look.upBody,
+      downColor: look.downBody,
+      borderVisible: look.borders,
+      borderUpColor: look.upBorder,
+      borderDownColor: look.downBorder,
+      wickVisible: look.wicks,
+      wickUpColor: look.upWick,
+      wickDownColor: look.downWick,
+    });
+  }, [ready, look]);
 
   // A new time zone: nudge the chart to redraw its time labels (the formatters read the zone when they run).
   useEffect(() => {
@@ -283,7 +319,6 @@ export function ReplayChart({
 
   useEffect(() => {
     if (!bars || !candles.current || !volume.current) return;
-    const p = palette();
     const candle = (b: Bar) => ({
       time: b.t as UTCTimestamp,
       open: b.o,
@@ -294,13 +329,13 @@ export function ReplayChart({
     const vol = (b: Bar) => ({
       time: b.t as UTCTimestamp,
       value: b.v,
-      color: `${b.c >= b.o ? p.up : p.down}55`,
+      color: `${(b.c >= b.o ? look.upBody : look.downBody).slice(0, 7)}55`,
     });
     const key = `${inst.id}/${tf}`;
     const prev = shown.current;
     const last = bars.at(-1);
     // Each replay step only changes the last bar or adds one, so update in place instead of redrawing everything.
-    if (prev && prev.key === key && last && bars[0]?.t === prev.first && bars.length - prev.count <= 1 && bars.length >= prev.count) {
+    if (prev && prev.key === key && prev.look === look && last && bars[0]?.t === prev.first && bars.length - prev.count <= 1 && bars.length >= prev.count) {
       for (const b of bars.slice(Math.max(0, prev.count - 1))) {
         candles.current.update(candle(b));
         volume.current.update(vol(b));
@@ -310,8 +345,8 @@ export function ReplayChart({
       volume.current.setData(bars.map(vol));
       if (!prev || prev.key !== key) chart.current?.timeScale().scrollToRealTime();
     }
-    shown.current = { key, first: bars[0]?.t ?? 0, count: bars.length };
-  }, [bars, inst, tf]);
+    shown.current = { key, look, first: bars[0]?.t ?? 0, count: bars.length };
+  }, [bars, inst, tf, look]);
 
   // Trading levels: redrawn whenever they change (there are only a handful).
   useEffect(() => {
@@ -330,7 +365,7 @@ export function ReplayChart({
         title: l.title,
       }),
     );
-  }, [priceLines, background]);
+  }, [priceLines, theme]);
 
   useEffect(() => {
     const p = palette();
@@ -343,7 +378,7 @@ export function ReplayChart({
         text: m.text,
       })),
     );
-  }, [markers, background]);
+  }, [markers, theme]);
 
   // Drag stops, targets and working orders. Listening on the wrapper (capture) runs before the drawing layer and the
   // chart, so grabbing a level never moves a drawn line or pans the chart.
@@ -468,6 +503,11 @@ export function ReplayChart({
     };
   }, [snapshotRef]);
   const up = show ? show.c >= show.o : true;
+  const Muted = ({ children }: { children: React.ReactNode }) => (
+    <span className="text-muted" style={look.text ? { color: look.text.muted } : undefined}>
+      {children}
+    </span>
+  );
   const toggleMagnet = () =>
     setMagnet((m) => {
       try {
@@ -491,6 +531,19 @@ export function ReplayChart({
         <ToolButton icon={TrendingDown} label="Short position" active={tool === 'short'} onClick={() => setTool(tool === 'short' ? 'cursor' : 'short')} />
         <div className="my-1 w-6 border-t border-border" />
         <ToolButton icon={Magnet} label={magnet ? 'Magnet on: snaps to open, high, low and close' : 'Magnet off'} active={magnet} onClick={toggleMagnet} />
+        <ToolButton icon={Settings2} label="Chart settings: background, candles, grid" active={!!styleDraft} onClick={() => setStyleDraft(styleDraft ? null : { style: tools.chartStyle ?? null })} />
+        {styleDraft && (
+          <ChartSettings
+            style={styleDraft.style}
+            look={look}
+            onChange={(style) => setStyleDraft({ style })}
+            onOk={() => {
+              onToolsChange({ ...tools, chartStyle: styleDraft.style });
+              setStyleDraft(null);
+            }}
+            onCancel={() => setStyleDraft(null)}
+          />
+        )}
       </div>
       <div ref={wrap} className="group/levels relative min-w-0 flex-1">
         <div
@@ -535,19 +588,18 @@ export function ReplayChart({
             selected={selected}
             setSelected={setSelected}
             specs={specs}
-            colours={{ profit: css('--positive'), loss: css('--negative'), text: css('--text'), muted: css('--text-muted'), background }}
+            colours={{ profit: css('--positive'), loss: css('--negative'), text: look.text?.strong ?? css('--text'), muted: look.text?.muted ?? css('--text-muted'), background }}
             onPlaceOrder={onPlaceOrder}
             balance={balance}
           />
         )}
         <div className="pointer-events-none absolute top-2.5 left-3 z-10 flex items-center gap-3 font-mono text-[12px]">
-          <span className="font-sans font-semibold text-text">
+          <span className="font-sans font-semibold text-text" style={look.text ? { color: look.text.strong } : undefined}>
             {inst.id} · {tf}
           </span>
           {show && (
-            <span className={up ? 'text-profit' : 'text-loss'}>
-              <span className="text-muted">O</span> {show.o.toFixed(dp)} <span className="text-muted">H</span> {show.h.toFixed(dp)} <span className="text-muted">L</span> {show.l.toFixed(dp)}{' '}
-              <span className="text-muted">C</span> {show.c.toFixed(dp)}
+            <span style={{ color: up ? look.upBody : look.downBody }}>
+              <Muted>O</Muted> {show.o.toFixed(dp)} <Muted>H</Muted> {show.h.toFixed(dp)} <Muted>L</Muted> {show.l.toFixed(dp)} <Muted>C</Muted> {show.c.toFixed(dp)}
             </span>
           )}
         </div>

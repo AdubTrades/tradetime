@@ -62,6 +62,8 @@ export interface LineTools {
   tfFavourites?: Timeframe[] | null;
   /** Time zone for the backtesting chart's times (IANA, e.g. America/New_York); null: the user's own. */
   chartZone?: string | null;
+  /** The backtesting chart's look (Chart settings); null: the app's light/dark colours. */
+  chartStyle?: ChartStyle | null;
   /** Take chart snapshots automatically when a position opens and when it closes (on unless turned off). */
   autoSnapshots?: boolean;
   /** Trend line templates, and the look of the next trend line. */
@@ -81,6 +83,26 @@ export const LINE_COLORS = ['#f23645', '#ff9800', '#ffeb3b', '#4caf50', '#089981
 
 /** Templates sorted by name, the way the template menu lists them. */
 export const sortTemplates = <T extends { name: string }>(list: readonly T[]) => [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+/** The backtesting chart's own look. A missing or null field follows the app's light/dark theme. */
+export interface ChartStyle {
+  background?: string | null;
+  /** Bottom colour of a top-to-bottom gradient (`background` is the top); null: a plain background. */
+  gradientTo?: string | null;
+  upBody?: string | null;
+  upBorder?: string | null;
+  upWick?: string | null;
+  downBody?: string | null;
+  downBorder?: string | null;
+  downWick?: string | null;
+  /** Candle outlines (off unless turned on). */
+  borders?: boolean;
+  /** Wicks (on unless turned off). */
+  wicks?: boolean;
+  /** Grid lines (on unless turned off). */
+  vertGrid?: boolean;
+  horzGrid?: boolean;
+}
 
 // ---------- Rectangles and the risk-reward tool ----------
 
