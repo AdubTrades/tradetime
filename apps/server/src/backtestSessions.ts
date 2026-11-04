@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { schema } from '@tc/db';
 import { findInstrument, newId, newSimAccount, tradingDay, type SimAccount, type SimTrade, type Timeframe } from '@tc/domain';
 import { createAccount } from './accounts';
@@ -151,6 +151,18 @@ async function journalTrade(s: BacktestSession, t: SimTrade): Promise<string> {
     needsReview: true,
   });
   return created.id;
+}
+
+/** Which journal trade each of a session's practice trades became (trades deleted from the journal left out). */
+export async function sessionJournalIds(id: string): Promise<Record<string, string>> {
+  const s = await getSession(id);
+  const ids = (await getState<Record<string, string>>(`backtest.journalIds.${s.id}`)) ?? {};
+  const values = Object.values(ids);
+  if (!values.length) return {};
+  const live = new Set(
+    (await db.select({ id: schema.trade.id }).from(schema.trade).where(and(inArray(schema.trade.id, values), isNull(schema.trade.deletedAt)))).map((r) => r.id),
+  );
+  return Object.fromEntries(Object.entries(ids).filter(([, tradeId]) => live.has(tradeId)));
 }
 
 /**

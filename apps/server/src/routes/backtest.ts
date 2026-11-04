@@ -9,7 +9,7 @@ import { getState, setState } from '../settings';
 import { AppError } from '../errors';
 import type { AuthUser } from '../auth';
 import { canBacktest, isMarketPath, localMarketFile, marketFileLink } from '../marketData';
-import { createSession, deleteSession, getSession, listSessions, saveSim, updateSession } from '../backtestSessions';
+import { createSession, deleteSession, getSession, listSessions, saveSim, sessionJournalIds, updateSession } from '../backtestSessions';
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/, 'Invalid colour');
 const lineStyle = z.object({ color, width: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), dash: z.enum(['solid', 'dashed', 'dotted']), priceLabel: z.boolean() });
@@ -297,6 +297,8 @@ export const backtestRoutes = new Hono<{ Variables: { user: AuthUser } }>()
   })
   /** A session's practice account (balance, orders, positions, closed trades). Saving also journals new trades. */
   .get('/sim/:id', async (c) => c.json((await getState(`backtest.sim.${await sessionParam(c.req.param('id'))}`)) ?? null))
+  /** Practice trade id → journal trade id, so the History tab can open each trade. */
+  .get('/sim/:id/journal', async (c) => c.json(await sessionJournalIds(c.req.param('id'))))
   .put('/sim/:id', async (c) => {
     const result = await saveSim(c.req.param('id'), await body(c.req, simSchema));
     return c.json({ journaled: result.journaled, failed: result.failed });

@@ -70,10 +70,16 @@ describe('backtesting routes', () => {
       needsReview: boolean;
       stopPrice: number;
       targetPrice: number;
+      id: string;
       notes: string;
       accounts: { accountId: string; maxQty: number; grossCents: number; feesCents: number }[];
     }[];
     expect(trades).toHaveLength(1);
+    // The History tab finds the journal trade from the practice trade; one deleted from the journal drops out.
+    const journalIds = `/api/backtest/sim/${s.id}/journal`;
+    expect(await (await call('GET', journalIds, OWNER)).json()).toEqual({ [acc.trades[0]!.id]: trades[0]!.id });
+    expect((await call('DELETE', `/api/trades/${trades[0]!.id}`, OWNER)).status).toBeLessThan(300);
+    expect(await (await call('GET', journalIds, OWNER)).json()).toEqual({});
     expect(trades[0]).toMatchObject({ source: 'backtest', needsReview: true, stopPrice: 79_000, targetPrice: 82_000, notes: 'Backtest: Crypto' });
     expect(trades[0]!.accounts[0]).toMatchObject({ accountId: s.accountId, maxQty: 0.05, grossCents: 5000, feesCents: Math.round((4 + 4.05) * 100) });
     const accounts = (await (await call('GET', '/api/accounts', OWNER)).json()) as { id: string; name: string }[];

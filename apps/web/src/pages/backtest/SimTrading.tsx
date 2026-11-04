@@ -1,5 +1,6 @@
 import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { DateTime } from 'luxon';
 import {
   breakeven,
@@ -18,6 +19,7 @@ import {
   type OrderSide,
   type SimAccount,
   type SimSpec,
+  type SimTrade,
 } from '@tc/domain';
 import { Select } from '../../components/Select';
 import { Button, cn, SegmentedTabs } from '../../components/ui';
@@ -305,9 +307,12 @@ export function SimPanel({
   onChange,
   collapsed = false,
   onToggleCollapsed,
+  journalIds = {},
 }: {
   inst: BacktestInstrument;
   account: SimAccount;
+  /** Practice trade id → journal trade id: History rows open their journal trade. */
+  journalIds?: Record<string, string>;
   specs: Record<string, SimSpec>;
   price: number | null;
   time: number | null;
@@ -318,6 +323,8 @@ export function SimPanel({
 }) {
   const [tab, setTab] = useState<PanelTab>('positions');
   const [settings, setSettings] = useState(false);
+  const [filter, setFilter] = useState<HistoryFilter>(NO_FILTER);
+  const navigate = useNavigate();
   const marks = useMemo(() => (price === null ? {} : Object.fromEntries(inst.trades.map((s) => [s, price]))), [inst, price]);
   const sum = summariseSim(account, specs, marks);
   const dp = decimals(inst.tickSize);
@@ -419,34 +426,136 @@ export function SimPanel({
           (account.trades.length === 0 ? (
             <Empty>Closed trades show here.</Empty>
           ) : (
-            <Table head={['Opened', 'Closed', 'Contract', 'Side', 'Size', 'Entry', 'Exit', 'Exit by', 'Net P&L', 'R']}>
-              {[...account.trades].reverse().map((t) => (
-                <tr key={t.id} className="border-t border-border-subtle">
-                  <td className="px-3 py-1.5 font-mono text-muted">{when(t.openedAt)}</td>
-                  <td className="px-3 font-mono text-muted">{when(t.closedAt)}</td>
-                  <td className="px-3 font-medium">{t.symbol}</td>
-                  <td className={cn('px-3', t.side === 'long' ? 'text-profit' : 'text-loss')}>{t.side === 'long' ? 'Long' : 'Short'}</td>
-                  <td className="px-3 font-mono">{t.qty}</td>
-                  <td className="px-3 font-mono">{t.avgEntry.toFixed(dp)}</td>
-                  <td className="px-3 font-mono">{t.avgExit.toFixed(dp)}</td>
-                  <td className="px-3">
-                    <span className="inline-flex items-center gap-1">
-                      {t.exitReason === 'stop' ? 'Stop' : t.exitReason === 'target' ? 'Target' : 'Manual'}
-                      {t.ambiguous && (
-                        <span title="This bar reached both the stop and the target (or the entry and an exit), so which came first is a guess. Check it on a smaller timeframe.">
-                          <AlertTriangle size={13} className="text-warning" aria-label="Uncertain fill" />
-                        </span>
-                      )}
-                    </span>
-                  </td>
-                  <td className={cn('px-3 font-mono', pnlClass(t.net))}>{usd(t.net, true)}</td>
-                  <td className="px-3 font-mono">{t.r === null ? '–' : `${t.r >= 0 ? '' : '−'}${Math.abs(t.r).toFixed(2)}R`}</td>
-                </tr>
-              ))}
-            </Table>
+            <HistoryTrades trades={account.trades} zone={zone} filter={filter} onFilter={setFilter}>
+              {(shown) => (
+                <Table head={['Opened', 'Closed', 'Contract', 'Side', 'Size', 'Entry', 'Exit', 'Exit by', 'Net P&L', 'R']}>
+                  {shown.map((t) => {
+                    const tradeId = journalIds[t.id];
+                    const open = (newTab: boolean) => {
+                      if (!tradeId) return;
+                      if (newTab) window.open(`/journal/trades/${tradeId}`, '_blank');
+                      else void navigate({ to: '/journal/trades/$tradeId', params: { tradeId } });
+                    };
+                    return (
+                      <tr
+                        key={t.id}
+                        className={cn('border-t border-border-subtle', tradeId && 'cursor-pointer hover:bg-hover')}
+                        title={tradeId ? 'Open in the journal' : 'Not in the journal yet'}
+                        tabIndex={tradeId ? 0 : undefined}
+                        onClick={(e) => open(e.metaKey || e.ctrlKey)}
+                        onKeyDown={(e) => e.key === 'Enter' && open(e.metaKey || e.ctrlKey)}
+                      >
+                        <td className="px-3 py-1.5 font-mono text-muted">{when(t.openedAt)}</td>
+                        <td className="px-3 font-mono text-muted">{when(t.closedAt)}</td>
+                        <td className="px-3 font-medium">{t.symbol}</td>
+                        <td className={cn('px-3', t.side === 'long' ? 'text-profit' : 'text-loss')}>{t.side === 'long' ? 'Long' : 'Short'}</td>
+                        <td className="px-3 font-mono">{t.qty}</td>
+                        <td className="px-3 font-mono">{t.avgEntry.toFixed(dp)}</td>
+                        <td className="px-3 font-mono">{t.avgExit.toFixed(dp)}</td>
+                        <td className="px-3">
+                          <span className="inline-flex items-center gap-1">
+                            {t.exitReason === 'stop' ? 'Stop' : t.exitReason === 'target' ? 'Target' : 'Manual'}
+                            {t.ambiguous && (
+                              <span title="This bar reached both the stop and the target (or the entry and an exit), so which came first is a guess. Check it on a smaller timeframe.">
+                                <AlertTriangle size={13} className="text-warning" aria-label="Uncertain fill" />
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className={cn('px-3 font-mono', pnlClass(t.net))}>{usd(t.net, true)}</td>
+                        <td className="px-3 font-mono">{t.r === null ? '–' : `${t.r >= 0 ? '' : '−'}${Math.abs(t.r).toFixed(2)}R`}</td>
+                      </tr>
+                    );
+                  })}
+                </Table>
+              )}
+            </HistoryTrades>
           ))}
       </div>
     </div>
+  );
+}
+
+interface HistoryFilter {
+  /** yyyy-MM of the close, in the user's zone. */
+  month: string;
+  result: '' | 'win' | 'loss';
+  exit: '' | 'target' | 'stop' | 'manual';
+}
+const NO_FILTER: HistoryFilter = { month: '', result: '', exit: '' };
+
+/** The History tab's filters (month, wins / losses, how it closed) above the trades they leave, newest first. */
+function HistoryTrades({
+  trades,
+  zone,
+  filter,
+  onFilter,
+  children,
+}: {
+  trades: SimTrade[];
+  zone: string;
+  filter: HistoryFilter;
+  onFilter: (f: HistoryFilter) => void;
+  children: (shown: SimTrade[]) => ReactNode;
+}) {
+  const month = (t: SimTrade) => DateTime.fromSeconds(t.closedAt, { zone }).toFormat('yyyy-MM');
+  const months = [...new Set(trades.map(month))].sort().reverse();
+  const shown = [...trades]
+    .reverse()
+    .filter(
+      (t) =>
+        (!filter.month || month(t) === filter.month) &&
+        (filter.result !== 'win' || t.net > 0) &&
+        (filter.result !== 'loss' || t.net < 0) &&
+        (!filter.exit || (filter.exit === 'manual' ? t.exitReason !== 'stop' && t.exitReason !== 'target' : t.exitReason === filter.exit)),
+    );
+  const filtered = filter.month !== '' || filter.result !== '' || filter.exit !== '';
+  const net = shown.reduce((sum, t) => sum + t.net, 0);
+  const wins = shown.filter((t) => t.net > 0).length;
+  const select = { size: 'sm' as const, highlightActive: true, className: 'w-auto min-w-[130px]' };
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-3 py-2 text-[12px]">
+        <Select {...select} aria-label="Month" value={filter.month} onChange={(e) => onFilter({ ...filter, month: e.target.value })}>
+          <option value="">All months</option>
+          {months.map((m) => (
+            <option key={m} value={m}>
+              {DateTime.fromFormat(m, 'yyyy-MM').toFormat('LLLL yyyy')}
+            </option>
+          ))}
+        </Select>
+        <Select {...select} aria-label="Result" value={filter.result} onChange={(e) => onFilter({ ...filter, result: e.target.value as HistoryFilter['result'] })}>
+          <option value="">Wins and losses</option>
+          <option value="win">Wins</option>
+          <option value="loss">Losses</option>
+        </Select>
+        <Select {...select} aria-label="Exit" value={filter.exit} onChange={(e) => onFilter({ ...filter, exit: e.target.value as HistoryFilter['exit'] })}>
+          <option value="">Any exit</option>
+          <option value="target">Hit target</option>
+          <option value="stop">Stopped</option>
+          <option value="manual">Closed manually</option>
+        </Select>
+        {filtered && (
+          <>
+            <Button size="sm" variant="ghost" onClick={() => onFilter(NO_FILTER)}>
+              Clear
+            </Button>
+            <span className="ml-auto text-muted">
+              {shown.length} of {trades.length} trades
+              {shown.length > 0 && (
+                <>
+                  {' · '}
+                  <span className={cn('font-mono', net > 0 ? 'text-profit' : net < 0 ? 'text-loss' : 'text-text')}>{usd(net, true)}</span>
+                  {' · '}
+                  {Math.round((wins / shown.length) * 100)}% wins
+                </>
+              )}
+            </span>
+          </>
+        )}
+      </div>
+      {shown.length ? children(shown) : <Empty>No trades match these filters.</Empty>}
+    </>
   );
 }
 

@@ -41,15 +41,8 @@ export function useSessions() {
 export function useCreateSession() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: {
-      name: string;
-      description: string | null;
-      playId: string | null;
-      instrument: string;
-      startBalance: number;
-      cursor: number | null;
-      tf: Timeframe;
-    }) => api.post<BacktestSession>('/backtest/sessions', input),
+    mutationFn: (input: { name: string; description: string | null; playId: string | null; instrument: string; startBalance: number; cursor: number | null; tf: Timeframe }) =>
+      api.post<BacktestSession>('/backtest/sessions', input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['backtest', 'sessions'] });
       // The first session may have created the Backtesting account.
@@ -61,7 +54,7 @@ export function useCreateSession() {
 export function useUpdateSession() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...patch }: { id: string; name?: string; description?: string | null; playId?: string | null; tf?: Timeframe; cursor?: number | null}) =>
+    mutationFn: ({ id, ...patch }: { id: string; name?: string; description?: string | null; playId?: string | null; tf?: Timeframe; cursor?: number | null }) =>
       api.patch<BacktestSession>(`/backtest/sessions/${id}`, patch),
     onSuccess: (s) => qc.setQueryData<BacktestSession[]>(['backtest', 'sessions'], (list) => list?.map((x) => (x.id === s.id ? s : x))),
   });
@@ -157,10 +150,16 @@ export function useSimAccount(sessionId: string, onJournal?: (r: JournalResult) 
         // New journal trades (and maybe a new contract, e.g. BTCUSDT): refresh what the journal shows.
         for (const key of ['trades', 'contracts', 'accounts']) void qc.invalidateQueries({ queryKey: [key] });
         void qc.invalidateQueries({ queryKey: ['backtest', 'sessions'] });
+        void qc.invalidateQueries({ queryKey: ['backtest', 'journalIds', sessionId] });
       }
       onJournal?.(r);
     },
-    [qc, onJournal],
+    [qc, onJournal, sessionId],
   );
   return useSavedDoc<SimAccount | null, JournalResult>('sim', sessionId, 'practice account', handle) as [SimAccount | null | undefined, (account: SimAccount) => void, string | null];
+}
+
+/** Which journal trade each of a session's practice trades became, so the History tab can open them. */
+export function useSimJournalIds(sessionId: string) {
+  return useQuery({ queryKey: ['backtest', 'journalIds', sessionId], queryFn: () => api.get<Record<string, string>>(`/backtest/sim/${sessionId}/journal`) }).data ?? {};
 }

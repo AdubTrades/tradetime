@@ -36,7 +36,7 @@ import { uploadFiles } from '../../lib/upload';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, cn, PageHeader } from '../../components/ui';
 import { dailyFile, dayFile, hourlyFile, loadAll, peekBars, useMe } from '../../lib/marketData';
-import { useCreateSession, useDeleteSession, useDrawings, useLineTools, useSessions, useSimAccount, useUpdateSession, type BacktestSession } from '../../lib/drawings';
+import { useCreateSession, useDeleteSession, useDrawings, useLineTools, useSessions, useSimAccount, useSimJournalIds, useUpdateSession, type BacktestSession } from '../../lib/drawings';
 import { DateTimePicker } from './DateTimePicker';
 import { DEFAULT_TF_FAVOURITES, TimeframePicker } from './TimeframePicker';
 import { ReplayChart, type ChartMarker, type ChartPriceLine, type LevelRef } from './ReplayChart';
@@ -261,6 +261,7 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
   // The chart's time zone: your own (from Settings) unless you pick another here, e.g. New York for US sessions.
   const ownZone = currentZone();
   const chartZone = tools.chartZone && isValidZone(tools.chartZone) ? tools.chartZone : ownZone;
+  const journalIds = useSimJournalIds(session.id);
   const [savedAccount, setAccount, simError] = useSimAccount(session.id, (r) => {
     if (r.failed.length) setNotice({ text: `Couldn’t save ${r.failed.length === 1 ? 'a trade' : `${r.failed.length} trades`} to the journal: ${r.failed[0]!.message}`, bad: true });
     else if (r.journaled) setNotice({ text: `Saved ${r.journaled === 1 ? 'the trade' : `${r.journaled} trades`} to your journal (${journalName}, needs review).`, bad: false, journal: true });
@@ -856,7 +857,7 @@ function Backtester({ session, sessions, onSwitch, onNew, onEdit }: { session: B
       )}
       <div className="hidden shrink-0 overflow-hidden rounded-lg border border-border bg-card md:block" style={{ height: panelCollapsed ? undefined : panelHeight }}>
         {account && (
-          <SimPanel inst={inst} account={account} specs={specs} price={price} time={cursor} onChange={setAccount} collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />
+          <SimPanel inst={inst} account={account} journalIds={journalIds} specs={specs} price={price} time={cursor} onChange={setAccount} collapsed={panelCollapsed} onToggleCollapsed={() => setPanelCollapsed((c) => !c)} />
         )}
       </div>
     </div>
