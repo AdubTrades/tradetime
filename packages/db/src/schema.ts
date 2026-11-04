@@ -382,6 +382,8 @@ export const trade = app.table(
     /** Planned risk in points (entry to stop). Derived from the stop when given. */
     plannedRiskPoints: doublePrecision('planned_risk_points'),
     followedPlan: text('followed_plan', { enum: ['yes', 'partly', 'no'] }),
+    /** Did managing the trade (stop to breakeven, closing early…) prevent a loss or deny profit? Null: not managed / not said. */
+    management: text('management', { enum: ['prevented_loss', 'denied_profit'] }),
     emotionId: text('emotion_id'),
     confidence: integer('confidence'),
     notes: text('notes'),

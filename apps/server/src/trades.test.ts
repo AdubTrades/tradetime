@@ -115,6 +115,16 @@ describe('editing trades', () => {
       expect(changes[0]!.reason).toBe('Wrong exit');
     }));
 
+  it('records whether managing the trade prevented a loss or denied profit', () =>
+    asUser(async () => {
+      const t = await trades.createTrade({ ...baseInput(), management: 'denied_profit' });
+      expect(t.management).toBe('denied_profit');
+      const updated = await trades.updateTrade(t.id, { ...baseInput(), management: 'prevented_loss' }, null);
+      expect(updated.management).toBe('prevented_loss');
+      expect((await trades.tradeHistory(t.id)).some((h) => h.action === 'update' && h.field === 'management')).toBe(true);
+      expect((await trades.updateTrade(t.id, baseInput(), null)).management).toBeNull();
+    }));
+
   it('lists trades in a day range with totals', () =>
     asUser(async () => {
       await trades.createTrade(baseInput());

@@ -35,6 +35,7 @@ export interface TradeInput {
   targetPrice?: number | null;
   riskPoints?: number | null;
   followedPlan?: 'yes' | 'partly' | 'no' | null;
+  management?: 'prevented_loss' | 'denied_profit' | null;
   emotionId?: string | null;
   confidence?: number | null;
   notes?: string | null;
@@ -159,6 +160,7 @@ async function build(input: TradeInput, tradeId: string) {
     targetPrice: input.targetPrice ?? null,
     plannedRiskPoints: plan.riskPoints,
     followedPlan: input.followedPlan ?? null,
+    management: input.management ?? null,
     emotionId: input.emotionId ?? null,
     confidence: input.confidence ?? null,
     notes: input.notes?.trim() || null,
@@ -222,6 +224,7 @@ async function auditView(id: string) {
     targetPrice: d.targetPrice,
     plannedRiskPoints: d.plannedRiskPoints,
     followedPlan: d.followedPlan,
+    management: d.management,
     notes: d.notes,
     ticked: d.checks.filter((c) => c.checked).map((c) => c.label),
     fills: d.accounts[0]?.fills.map((f) => `${f.side} ${f.qty / (d.accounts[0]?.multiplier ?? 1)} @ ${f.price} at ${formatLocal(f.at, 'HH:mm:ss')}`),

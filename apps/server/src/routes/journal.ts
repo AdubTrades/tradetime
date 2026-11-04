@@ -124,6 +124,7 @@ const tradeSchema = z.object({
   targetPrice: price.nullable().optional(),
   riskPoints: z.number().positive().nullable().optional(),
   followedPlan: z.enum(['yes', 'partly', 'no']).nullable().optional(),
+  management: z.enum(['prevented_loss', 'denied_profit']).nullable().optional(),
   emotionId: z.string().min(1).nullable().optional(),
   confidence: z.number().int().min(1).max(5).nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),

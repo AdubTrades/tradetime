@@ -278,6 +278,7 @@ export interface TradeBase {
   targetPrice: number | null;
   plannedRiskPoints: number | null;
   followedPlan: 'yes' | 'partly' | 'no' | null;
+  management: 'prevented_loss' | 'denied_profit' | null;
   emotionId: string | null;
   confidence: number | null;
   notes: string | null;

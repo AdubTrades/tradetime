@@ -268,6 +268,7 @@ export async function commitImport(opts: ImportOptions) {
             targetPrice: logged.targetPrice,
             riskPoints: logged.stopPrice == null ? logged.plannedRiskPoints : null,
             followedPlan: logged.followedPlan,
+            management: logged.management,
             emotionId: logged.emotionId,
             confidence: logged.confidence,
             notes: logged.notes,

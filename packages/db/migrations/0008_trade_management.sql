@@ -1,0 +1,1 @@
+ALTER TABLE "tradetime"."trade" ADD COLUMN "management" text;

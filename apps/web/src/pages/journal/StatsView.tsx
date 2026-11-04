@@ -4,8 +4,9 @@ import { GRADES, stats, zoneLabel } from '@tc/domain';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
 import type { TradeRow } from '../../lib/api';
 import { useAccounts, useList } from '../../lib/expenses';
-import { useContracts, usePlays } from '../../lib/journal';
+import { MANAGEMENT_LABELS, useContracts, usePlays } from '../../lib/journal';
 import { moneyText, usePnlCurrency } from '../../lib/pnlCurrency';
+import { cn } from '../../components/ui';
 
 // ECharts is large; load it only when stats are shown.
 const LineChart = lazy(() => import('../../components/LineChart').then((m) => ({ default: m.LineChart })));
@@ -115,7 +116,73 @@ export function StatsView({ trades }: { trades: TradeRow[] }) {
         <Breakdown title="Followed my plan?" rows={followed.map((r) => ({ ...r, key: r.key[0]!.toUpperCase() + r.key.slice(1) }))} note={`${trades.filter((t) => t.followedPlan).length} of ${trades.length} trades answered.`} />
         <Breakdown title="What mistakes cost" rows={mistakeRows.map((m) => ({ key: m.name, summary: m.summary }))} note="Net result of trades tagged with each mistake." />
       </div>
+
+      <ManagementPanel trades={trades} />
     </div>
+  );
+}
+
+/**
+ * Is managing trades worth it? Each managed trade is compared with letting it run to its plan: one where managing
+ * prevented a loss would have hit the stop (−1R), one where it denied profit would have reached the target (planned R:R).
+ */
+function ManagementPanel({ trades }: { trades: TradeRow[] }) {
+  const prevented = trades.filter((t) => t.management === 'prevented_loss');
+  const denied = trades.filter((t) => t.management === 'denied_profit');
+  const savedRows = prevented.filter((t) => t.r !== null);
+  const costRows = denied.filter((t) => t.r !== null && t.plannedRR !== null);
+  const saved = savedRows.reduce((s, t) => s + Math.max(0, t.r! + 1), 0);
+  const cost = costRows.reduce((s, t) => s + Math.max(0, t.plannedRR! - t.r!), 0);
+  const net = saved - cost;
+  const r = (n: number) => `${n.toFixed(1)}R`;
+  const answered = prevented.length + denied.length;
+  return (
+    <section className="panel">
+      <h2 className="border-b border-border-subtle px-5 py-3.5 text-base font-semibold">Managing trades vs letting them run</h2>
+      {answered === 0 ? (
+        <p className="px-5 py-4 text-sm text-muted">No trades marked yet. Use “Trade management” in a trade’s review when you move the stop to breakeven or close early.</p>
+      ) : (
+        <>
+          <div className="grid gap-4 px-5 py-4 sm:grid-cols-3">
+            <div>
+              <div className="text-xs text-muted">Losses prevented</div>
+              <div className="tabular mt-1 text-[22px] text-profit">+{r(saved)}</div>
+              <div className="text-xs text-muted">
+                <N n={prevented.length} />
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted">Profit given up</div>
+              <div className="tabular mt-1 text-[22px] text-loss">−{r(cost)}</div>
+              <div className="text-xs text-muted">
+                <N n={denied.length} />
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted">Net effect of managing</div>
+              <div className={cn('tabular mt-1 text-[22px]', net > 0 ? 'text-profit' : net < 0 ? 'text-loss' : '')}>
+                {net > 0 ? '+' : net < 0 ? '−' : ''}
+                {r(Math.abs(net))}
+              </div>
+              <div className="text-xs text-muted">{net > 0 ? 'Managing has paid off so far.' : net < 0 ? 'Letting trades run would have done better so far.' : 'About even so far.'}</div>
+            </div>
+          </div>
+          <SummaryTable
+            rows={[
+              { label: MANAGEMENT_LABELS.prevented_loss, summary: stats.summarise(prevented) },
+              { label: MANAGEMENT_LABELS.denied_profit, summary: stats.summarise(denied) },
+            ].filter((row) => row.summary.n)}
+          />
+        </>
+      )}
+      <p className="border-t border-border-subtle px-5 py-2 text-xs text-muted">
+        Compared with each trade’s plan: a prevented loss would have hit the stop (−1R), denied profit would have reached the target. Needs a stop (and a target for denied profit).
+        {answered > savedRows.length + costRows.length &&
+          (answered - savedRows.length - costRows.length === 1
+            ? ' 1 marked trade without one is left out of the R figures.'
+            : ` ${answered - savedRows.length - costRows.length} marked trades without one are left out of the R figures.`)}
+      </p>
+    </section>
   );
 }
 

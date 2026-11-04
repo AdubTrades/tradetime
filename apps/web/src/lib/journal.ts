@@ -50,3 +50,6 @@ export function useJournalMutation<TVars, TResult = unknown>(fn: (vars: TVars) =
 }
 
 
+
+/** The trade review's "Trade management" answers, as the dropdown and the trade page show them. */
+export const MANAGEMENT_LABELS = { prevented_loss: 'Managing trade prevented loss', denied_profit: 'Managing trade denied profit' } as const;

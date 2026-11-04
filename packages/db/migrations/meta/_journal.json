@@ -57,6 +57,13 @@
       "when": 1793513707778,
       "tag": "0007_fractional_sizes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793769766323,
+      "tag": "0008_trade_management",
+      "breakpoints": true
     }
   ]
 }

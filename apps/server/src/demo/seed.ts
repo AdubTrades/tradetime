@@ -191,6 +191,8 @@ export async function seedDemo(): Promise<void> {
         checks,
         stopPrice: stop,
         targetPrice: target,
+        // Small results read as managed trades: a scratch saved by breakeven, or a winner closed before the target.
+        management: Math.abs(x - e) < riskPts * scale * 0.3 ? 'prevented_loss' : win && Math.abs(x - e) < riskPts * scale * 1.2 ? 'denied_profit' : null,
         followedPlan: outside || mistakeIds.length ? pick(['partly', 'no'] as const) : r() < 0.9 ? 'yes' : 'partly',
         emotionId: late ? pick(moods.slice(3)) : pick(moods.slice(0, 3)),
         confidence: outside ? 2 : 3 + Math.floor(r() * 3),

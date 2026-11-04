@@ -10,7 +10,7 @@ import { ReadingChips } from '../../components/ReadingSummary';
 import { Button, Card, cn, PageHeader } from '../../components/ui';
 import { api, type Attachment } from '../../lib/api';
 import { useAccounts, useList } from '../../lib/expenses';
-import { useContracts, useJournalMutation, usePlays, useTrade } from '../../lib/journal';
+import { MANAGEMENT_LABELS, useContracts, useJournalMutation, usePlays, useTrade } from '../../lib/journal';
 import { useMoneyFormat, usePnlCurrency } from '../../lib/pnlCurrency';
 import { useMe } from '../../lib/marketData';
 import { TradeForm } from './TradeForm';
@@ -150,6 +150,8 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
             </dd>
             <dt className="text-muted">Actual</dt>
             <dd className="tabular">{t.r === null ? '—' : `${t.r}R`}</dd>
+            <dt className="text-muted">Management</dt>
+            <dd>{t.management ? MANAGEMENT_LABELS[t.management] : '—'}</dd>
           </dl>
         </Card>
       </div>

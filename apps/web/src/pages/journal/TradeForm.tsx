@@ -13,7 +13,7 @@ import { ReadingChips } from '../../components/ReadingSummary';
 import { useAccounts, useList } from '../../lib/expenses';
 import { ContractPicker } from '../../components/ContractPicker';
 import { MenuButton } from '../../components/Menu';
-import { useAccountGroups, useContracts, useJournalMutation, usePlays } from '../../lib/journal';
+import { MANAGEMENT_LABELS, useAccountGroups, useContracts, useJournalMutation, usePlays } from '../../lib/journal';
 import { instantToLocalTime, tradingDayTimeToInstant } from '../../lib/localTime';
 import { useSettings } from '../../lib/settings';
 
@@ -53,6 +53,7 @@ interface Form extends Carry {
   size: string;
   fills: FillDraft[];
   followedPlan: 'yes' | 'partly' | 'no' | null;
+  management: '' | 'prevented_loss' | 'denied_profit';
   emotionId: string;
   confidence: number | null;
   mistakeIds: string[];
@@ -100,6 +101,7 @@ function fresh(carry: Carry): Form {
     size: '1',
     fills: [blankFill('buy'), blankFill('sell')],
     followedPlan: null,
+    management: '',
     emotionId: '',
     confidence: null,
     mistakeIds: [],
@@ -131,6 +133,7 @@ function fromTrade(t: TradeDetail): Form {
     size: simple ? String(fills[0]!.qty) : '1',
     fills: fills.map((f) => ({ key: newId(), time: instantToLocalTime(f.at), side: f.side, qty: String(f.qty), price: String(f.price) })),
     followedPlan: t.followedPlan,
+    management: t.management ?? '',
     emotionId: t.emotionId ?? '',
     confidence: t.confidence,
     mistakeIds: t.mistakeIds,
@@ -260,6 +263,7 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
       targetPrice: num(form.target),
       riskPoints: num(form.stop) === null ? num(form.riskPoints) : null,
       followedPlan: form.followedPlan,
+      management: form.management || null,
       emotionId: form.emotionId || null,
       confidence: form.confidence,
       mistakeIds: form.mistakeIds,
@@ -474,6 +478,15 @@ export function TradeForm({ open, onClose, trade, defaults }: Props) {
                 </div>
               </div>
             )}
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field label="Trade management" hint="Moved the stop to breakeven, closed early…? Leave blank if you let it run.">
+              <Select value={form.management} onChange={(e) => set('management', e.target.value as Form['management'])}>
+                <option value="">—</option>
+                <option value="prevented_loss">{MANAGEMENT_LABELS.prevented_loss}</option>
+                <option value="denied_profit">{MANAGEMENT_LABELS.denied_profit}</option>
+              </Select>
+            </Field>
           </div>
         </section>
 
