@@ -151,3 +151,21 @@ describe('playbook', () => {
       expect(await trades.resultLabel({ netCents: 0, r: null })).toBe('Breakeven');
     }));
 });
+
+describe('copying criteria between Plays', () => {
+  it('adds the other Play’s criteria in order, keeps must-haves, and skips ones already there', () =>
+    asUser(async () => {
+      const other = (await plays.createPlay({ title: 'FVGC BOS' })).id;
+      await plays.addCriterion(other, { label: 'volume expansion' });
+      expect(await plays.copyCriteria(other, playId)).toEqual({ added: 2 });
+      const copied = (await plays.getPlay(other)).criteria.map((c) => [c.label, c.mustHave]);
+      expect(copied).toEqual([
+        ['volume expansion', false],
+        ['Break of OR high/low', true],
+        ['With higher-timeframe trend', false],
+      ]);
+      expect(await plays.copyCriteria(other, playId)).toEqual({ added: 0 });
+    }));
+
+  it('refuses to copy a Play into itself', () => asUser(() => expect(plays.copyCriteria(playId, playId)).rejects.toThrow('different Play')));
+});

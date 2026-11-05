@@ -7,7 +7,7 @@ import { FileDropTarget } from '../../components/FileDropTarget';
 import { GradeBadge } from '../../components/GradeBadge';
 import { Button, Card, Input, PageHeader, Select } from '../../components/ui';
 import { api, type Attachment, type GradeRule, type PlayDetail, type PlayExample } from '../../lib/api';
-import { useJournalMutation, usePlay } from '../../lib/journal';
+import { useJournalMutation, usePlay, usePlays } from '../../lib/journal';
 import { uploadFiles } from '../../lib/upload';
 
 export function PlayDetailPage({ playId }: { playId: string }) {
@@ -64,6 +64,10 @@ function CriteriaEditor({ play }: { play: PlayDetail }) {
     api.patch(`/plays/criteria/${id}`, body),
   );
   const active = play.criteria.filter((c) => !c.archived);
+  const { data: plays = [] } = usePlays();
+  const sources = plays.filter((p) => p.id !== play.id && !p.archived && p.criteria.some((c) => !c.archived));
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = useJournalMutation((from: string) => api.post<{ added: number }>(`/plays/${play.id}/criteria/copy`, { from }));
 
   const move = (i: number, d: -1 | 1) => {
     const a = active[i];
@@ -130,6 +134,33 @@ function CriteriaEditor({ play }: { play: PlayDetail }) {
           <Plus size={16} aria-hidden /> Add
         </Button>
       </form>
+      {sources.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <Select
+            size="sm"
+            aria-label="Copy criteria from another Play"
+            className="w-auto min-w-[220px]"
+            value=""
+            disabled={copy.isPending}
+            onChange={(e) => {
+              const from = plays.find((p) => p.id === e.target.value);
+              if (!from) return;
+              setCopied(null);
+              copy.mutate(from.id, {
+                onSuccess: (r) => setCopied(r.added ? `Added ${r.added === 1 ? '1 criterion' : `${r.added} criteria`} from ${from.title}.` : `${play.title} already has all of ${from.title}’s criteria.`),
+              });
+            }}
+          >
+            <option value="">Copy criteria from…</option>
+            {sources.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title} ({p.criteria.filter((c) => !c.archived).length})
+              </option>
+            ))}
+          </Select>
+          {copied && <span className="text-muted">{copied}</span>}
+        </div>
+      )}
       <p className="mt-3 text-xs text-muted">Removed criteria stay on past trades exactly as they were logged.</p>
     </Card>
   );

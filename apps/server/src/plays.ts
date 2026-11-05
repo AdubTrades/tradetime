@@ -75,6 +75,30 @@ export async function addCriterion(playId: string, input: { label: string; mustH
   return row!;
 }
 
+/**
+ * Copy another Play's criteria (label, must-have, order) to the end of this one. Ones it already has, by label, are
+ * skipped, so copying twice adds nothing.
+ */
+export async function copyCriteria(playId: string, fromPlayId: string) {
+  if (playId === fromPlayId) throw new AppError(422, 'Pick a different Play to copy from');
+  await getPlayRow(playId);
+  await getPlayRow(fromPlayId);
+  const live = (id: string) =>
+    db
+      .select()
+      .from(playCriterion)
+      .where(and(eq(playCriterion.playId, id), isNull(playCriterion.deletedAt), eq(playCriterion.archived, false)))
+      .orderBy(asc(playCriterion.sortOrder));
+  const have = new Set((await live(playId)).map((c) => c.label.trim().toLowerCase()));
+  const added = [];
+  for (const c of await live(fromPlayId)) {
+    if (have.has(c.label.trim().toLowerCase())) continue;
+    added.push(await addCriterion(playId, { label: c.label, mustHave: c.mustHave }));
+    have.add(c.label.trim().toLowerCase());
+  }
+  return { added: added.length };
+}
+
 /** Criteria are archived rather than deleted so past trades keep their checklist. */
 export async function updateCriterion(id: string, patch: Partial<{ label: string; mustHave: boolean; archived: boolean; sortOrder: number }>) {
   const [row] = await db.update(playCriterion).set({ ...patch, updatedAt: nowIso() }).where(eq(playCriterion.id, id)).returning();

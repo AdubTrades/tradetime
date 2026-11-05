@@ -6,7 +6,7 @@ import { createContract, deleteAccountGroup, ensureContract, listAccountGroups, 
 import { AppError } from '../errors';
 import { usdRate, usdRatesSinceFirstTrade } from '../fx';
 import { body, cents, instant, isoDate } from '../http';
-import { addCriterion, addExample, createPlay, deleteExample, getPlay, listPlays, updateCriterion, updateExample, updatePlay } from '../plays';
+import { addCriterion, addExample, copyCriteria, createPlay, deleteExample, getPlay, listPlays, updateCriterion, updateExample, updatePlay } from '../plays';
 import {
   createTrade,
   deleteTrade,
@@ -97,6 +97,7 @@ export const playRoutes = new Hono()
   .post('/:id/criteria', async (c) =>
     c.json(await addCriterion(c.req.param('id'), await body(c.req, z.object({ label: z.string().trim().min(1).max(300), mustHave: z.boolean().optional() }))), 201),
   )
+  .post('/:id/criteria/copy', async (c) => c.json(await copyCriteria(c.req.param('id'), (await body(c.req, z.object({ from: z.string().min(1) }))).from)))
   .patch('/criteria/:id', async (c) =>
     c.json(
       await updateCriterion(
