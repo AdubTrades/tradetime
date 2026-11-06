@@ -10,6 +10,7 @@ import { useAccounts } from '../../lib/expenses';
 import { useContracts, usePlays, useReviewCount, useTrades } from '../../lib/journal';
 import { usePnlCurrency } from '../../lib/pnlCurrency';
 import { useSettings } from '../../lib/settings';
+import { setTradeNav } from '../../lib/tradeNav';
 import { StatsView } from './StatsView';
 import { ImportTradesDialog } from './ImportTradesDialog';
 import { TradeForm } from './TradeForm';
@@ -17,6 +18,29 @@ import { TradeForm } from './TradeForm';
 type Range = 'last30' | 'last7' | 'month' | 'fy' | 'all';
 const DEFAULT_RANGE: Range = 'last30';
 const DAYS_PER_PAGE = 10;
+
+/** The list's tab, range and filters, kept for this browser tab so coming back from a trade shows the same list. */
+const LIST_KEY = 'tt.journalList';
+interface ListState {
+  tab: 'trades' | 'stats';
+  range: Range;
+  filters: TradeFilters;
+}
+function rememberedList(): ListState | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(LIST_KEY) ?? 'null');
+    return v && typeof v.range === 'string' && v.filters && typeof v.filters === 'object' ? { tab: v.tab === 'stats' ? 'stats' : 'trades', range: v.range, filters: { ...noFilters, ...v.filters } } : null;
+  } catch {
+    return null;
+  }
+}
+function rememberList(state: ListState) {
+  try {
+    sessionStorage.setItem(LIST_KEY, JSON.stringify(state));
+  } catch {
+    // Not kept; the list starts fresh next time.
+  }
+}
 
 export interface TradeFilters {
   playId: string;
@@ -61,13 +85,15 @@ export function shortenAccounts(names: string[]): string {
 export function JournalPage() {
   const { data: settings } = useSettings();
   const today = tradingDay(new Date(), settings?.rolloverTime);
-  const [tab, setTab] = useState<'trades' | 'stats'>('trades');
   // Home links here with ?review=1 to show imported trades that still need a Play and checklist.
   const startInReview = new URLSearchParams(window.location.search).get('review') === '1';
+  const [saved] = useState(() => (startInReview ? null : rememberedList()));
+  const [tab, setTab] = useState<'trades' | 'stats'>(saved?.tab ?? 'trades');
   // "Needs review" counts trades from any date, so turning it on shows all time (and turning it off puts the range back).
-  const [range, setRange] = useState<Range>(startInReview ? 'all' : DEFAULT_RANGE);
+  const [range, setRange] = useState<Range>(startInReview ? 'all' : (saved?.range ?? DEFAULT_RANGE));
   const rangeBeforeReview = useRef<Range>(DEFAULT_RANGE);
-  const [filters, setFiltersState] = useState<TradeFilters>(() => ({ ...noFilters, review: startInReview }));
+  const [filters, setFiltersState] = useState<TradeFilters>(() => saved?.filters ?? { ...noFilters, review: startInReview });
+  useEffect(() => rememberList({ tab, range, filters }), [tab, range, filters]);
   const setFilters = (next: TradeFilters) => {
     if (next.review && !filters.review) {
       rangeBeforeReview.current = range;
@@ -276,6 +302,9 @@ function TradeList({ trades, loading, filtered, onClear }: { trades: TradeRow[];
     for (const t of trades) map.set(t.tradingDay, [...(map.get(t.tradingDay) ?? []), t]);
     return [...map.entries()].sort(([a], [b]) => b.localeCompare(a));
   }, [trades]);
+  // Opening a trade remembers the list in the order shown, so the trade page can step through it.
+  const order = useMemo(() => days.flatMap(([, list]) => [...list].reverse().map((t) => t.id)), [days]);
+  const openTrade = () => setTradeNav({ ids: order, label: 'Journal', back: '/journal' });
   // A new set of trades (filters or range changed) starts from the first page again.
   useEffect(() => setShownDays(DAYS_PER_PAGE), [trades]);
 
@@ -318,7 +347,7 @@ function TradeList({ trades, loading, filtered, onClear }: { trades: TradeRow[];
             {/* Phones: two-line rows. Wider: the full row of columns. */}
             <div className="divide-y divide-border-subtle sm:hidden">
               {[...list].reverse().map((t) => (
-                <Link key={t.id} to="/journal/trades/$tradeId" params={{ tradeId: t.id }} className="flex flex-col gap-1 px-4 py-3 hover:bg-hover active:bg-hover">
+                <Link key={t.id} to="/journal/trades/$tradeId" params={{ tradeId: t.id }} onClick={openTrade} className="flex flex-col gap-1 px-4 py-3 hover:bg-hover active:bg-hover">
                   <span className="flex items-center gap-2.5 text-sm">
                     <span className="font-mono text-[13px] text-muted">{formatLocal(t.openedAt, 'HH:mm')}</span>
                     <span className="font-medium">{symbol(t.contractId)}</span>
@@ -343,6 +372,7 @@ function TradeList({ trades, loading, filtered, onClear }: { trades: TradeRow[];
                     key={t.id}
                     to="/journal/trades/$tradeId"
                     params={{ tradeId: t.id }}
+                    onClick={openTrade}
                     className="grid min-h-[50px] grid-cols-[52px_52px_64px_minmax(0,1fr)_auto_190px_64px_96px] items-center gap-3 rounded-sm px-3 text-sm hover:bg-hover"
                   >
                     <span className="font-mono text-[13px] text-muted">{formatLocal(t.openedAt, 'HH:mm')}</span>
