@@ -1,7 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, BookImage, History, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookImage, ChevronLeft, ChevronRight, History, Pencil, Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { formatLocal, instrumentForContract, zoneLabel } from '@tc/domain';
 import { AttachmentDropzone } from '../../components/AttachmentDropzone';
 import { GradeBadge, Pnl } from '../../components/GradeBadge';
@@ -13,6 +13,7 @@ import { useAccounts, useList } from '../../lib/expenses';
 import { MANAGEMENT_LABELS, useContracts, useJournalMutation, usePlays, useTrade } from '../../lib/journal';
 import { useMoneyFormat, usePnlCurrency } from '../../lib/pnlCurrency';
 import { useMe } from '../../lib/marketData';
+import { getTradeNav } from '../../lib/tradeNav';
 import { TradeForm } from './TradeForm';
 
 // The chart brings the charting library, so it loads only for trades that can show one.
@@ -51,6 +52,24 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
   const [sent, setSent] = useState<Set<string>>(new Set());
   const remove = useJournalMutation(() => api.delete(`/trades/${tradeId}`));
   const send = useJournalMutation((attachmentId: string) => api.post(`/trades/${tradeId}/send-to-playbook`, { attachmentId }));
+  // Opened from a list (the backtester's History): step to the previous / next trade in it.
+  const [nav] = useState(getTradeNav);
+  const at = nav ? nav.ids.indexOf(tradeId) : -1;
+  const prevId = at > 0 ? nav!.ids[at - 1] : undefined;
+  const nextId = at >= 0 ? nav!.ids[at + 1] : undefined;
+  const go = (id: string | undefined) => id && void navigate({ to: '/journal/trades/$tradeId', params: { tradeId: id } });
+  const busy = editing || history;
+  useEffect(() => {
+    if (at < 0 || busy) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (e.metaKey || e.ctrlKey || e.altKey || el.closest('input, textarea, select, [contenteditable], [role=dialog], dialog')) return;
+      if (e.key === 'ArrowLeft' && prevId) go(prevId);
+      if (e.key === 'ArrowRight' && nextId) go(nextId);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   if (error) return <p className="text-sm text-loss">{error.message}</p>;
   if (!t) return null;
@@ -62,9 +81,28 @@ export function TradeDetailPage({ tradeId }: { tradeId: string }) {
 
   return (
     <div className="max-w-5xl space-y-6">
-      <Link to="/journal" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
-        <ArrowLeft size={14} aria-hidden /> Journal
-      </Link>
+      {at >= 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Link to={nav!.back} className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
+            <ArrowLeft size={14} aria-hidden /> {nav!.label}
+          </Link>
+          <div className="ml-auto flex items-center gap-2 text-sm text-muted">
+            <span className="tabular">
+              {at + 1} of {nav!.ids.length}
+            </span>
+            <Button size="sm" className="px-2" aria-label="Previous trade" title="Previous trade (←)" disabled={!prevId} onClick={() => go(prevId)}>
+              <ChevronLeft size={16} aria-hidden />
+            </Button>
+            <Button size="sm" className="px-2" aria-label="Next trade" title="Next trade (→)" disabled={!nextId} onClick={() => go(nextId)}>
+              <ChevronRight size={16} aria-hidden />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Link to="/journal" className="inline-flex items-center gap-1 text-sm text-muted hover:text-text">
+          <ArrowLeft size={14} aria-hidden /> Journal
+        </Link>
+      )}
       <PageHeader
         title={`${contract?.symbol ?? ''} ${t.direction} · ${DateTime.fromISO(t.tradingDay).toFormat('ccc d LLL yyyy')}`}
         actions={

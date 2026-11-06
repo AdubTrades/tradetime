@@ -24,6 +24,7 @@ import {
 import { Select } from '../../components/Select';
 import { Button, cn, SegmentedTabs } from '../../components/ui';
 import { useContracts } from '../../lib/journal';
+import { setTradeNav } from '../../lib/tradeNav';
 
 export const DEFAULT_START_BALANCE = 50_000;
 const CRYPTO_STEP = 0.0001;
@@ -321,9 +322,18 @@ export function SimPanel({
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
 }) {
-  const [tab, setTab] = useState<PanelTab>('positions');
+  // The tab and History filters last for this browser tab, so coming back from a trade keeps the list as it was.
+  const [tab, setTabState] = useState<PanelTab>(() => remembered()?.tab ?? 'positions');
   const [settings, setSettings] = useState(false);
-  const [filter, setFilter] = useState<HistoryFilter>(NO_FILTER);
+  const [filter, setFilterState] = useState<HistoryFilter>(() => remembered()?.filter ?? NO_FILTER);
+  const setTab = (t: PanelTab) => {
+    setTabState(t);
+    remember({ tab: t, filter });
+  };
+  const setFilter = (f: HistoryFilter) => {
+    setFilterState(f);
+    remember({ tab, filter: f });
+  };
   const navigate = useNavigate();
   const marks = useMemo(() => (price === null ? {} : Object.fromEntries(inst.trades.map((s) => [s, price]))), [inst, price]);
   const sum = summariseSim(account, specs, marks);
@@ -433,6 +443,8 @@ export function SimPanel({
                     const tradeId = journalIds[t.id];
                     const open = (newTab: boolean) => {
                       if (!tradeId) return;
+                      // The trade page steps through this list as filtered (newest first).
+                      setTradeNav({ ids: shown.map((x) => journalIds[x.id]).filter((id): id is string => !!id), label: 'Backtest history', back: '/backtesting' });
                       if (newTab) window.open(`/journal/trades/${tradeId}`, '_blank');
                       else void navigate({ to: '/journal/trades/$tradeId', params: { tradeId } });
                     };
@@ -483,6 +495,23 @@ interface HistoryFilter {
   exit: '' | 'target' | 'stop' | 'manual';
 }
 const NO_FILTER: HistoryFilter = { month: '', result: '', exit: '' };
+
+const PANEL_KEY = 'tt.simPanel';
+function remembered(): { tab: PanelTab; filter: HistoryFilter } | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(PANEL_KEY) ?? 'null');
+    return v && ['positions', 'orders', 'history'].includes(v.tab) && v.filter ? { tab: v.tab, filter: { ...NO_FILTER, ...v.filter } } : null;
+  } catch {
+    return null;
+  }
+}
+function remember(v: { tab: PanelTab; filter: HistoryFilter }) {
+  try {
+    sessionStorage.setItem(PANEL_KEY, JSON.stringify(v));
+  } catch {
+    // Not remembered; fine.
+  }
+}
 
 /** The History tab's filters (month, wins / losses, how it closed) above the trades they leave, newest first. */
 function HistoryTrades({
